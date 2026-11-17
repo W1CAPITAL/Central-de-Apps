@@ -21,12 +21,17 @@ function materializeNextDependencies(sourceModules,targetModules){
  const dependencyRoot=dirname(nextSource);
  for(const dependency of Object.keys(manifest.dependencies??{})){
   const source=join(dependencyRoot,dependency);
-  const target=join(targetModules,'next','node_modules',dependency);
-  if(existsSync(target)||!existsSync(source))continue;
+  const rootTarget=join(targetModules,dependency);
+  const nestedTarget=join(targetModules,'next','node_modules',dependency);
+  if(!existsSync(source))continue;
   // pnpm keeps Next dependencies beside the real Next package. Once the Next
-  // junction is materialized, keep those dependencies inside Next itself so
-  // Node can resolve them and Electron cannot prune them as root packages.
-  cpSync(source,target,{recursive:true,dereference:true,filter:path=>!privateFile(path)});
+  // junction is materialized, first turn each junction into a physical root
+  // directory (the path proven portable on Windows), then duplicate that
+  // directory inside Next so Electron cannot prune it as a root package.
+  if(!existsSync(rootTarget))
+   cpSync(source,rootTarget,{recursive:true,dereference:true,filter:path=>!privateFile(path)});
+  if(!existsSync(nestedTarget))
+   cpSync(rootTarget,nestedTarget,{recursive:true,dereference:true,filter:path=>!privateFile(path)});
  }
 }
 export function stageNext(sourcePath,id,{productsRoot=resolve(import.meta.dirname,'..','products')}={}){
