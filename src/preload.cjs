@@ -1,5 +1,7 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('w1Central',Object.freeze({
+ openCodeRelay:(action,input)=>ipcRenderer.invoke('central:opencode-relay',action,input),
+ onRelayState:listener=>{if(typeof listener!=='function')return ()=>{};const fn=(_event,state)=>listener(state);ipcRenderer.on('central:opencode-relay-state',fn);return ()=>ipcRenderer.removeListener('central:opencode-relay-state',fn);},
  openCode:(action,input)=>ipcRenderer.invoke('central:opencode',action,input),
  getState:()=>ipcRenderer.invoke('central:get-state'),
  launch:appId=>ipcRenderer.invoke('central:launch',appId),

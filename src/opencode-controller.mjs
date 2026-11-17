@@ -3,6 +3,7 @@ import {OpenCodeRuntime,detectOpenCode} from '@w1capital/predictbot-opencode/run
 export class OpenCodeController {
  #runtime=new OpenCodeRuntime();#adapter;#connecting=false;#stateDirectory;
  constructor({stateDirectory}={}){this.#stateDirectory=stateDirectory;}
+ getRelayAdapter(){if(!this.#adapter)throw Error('Conecte o OpenCode primeiro.');return this.#adapter;}
  detect(executable){return detectOpenCode({executable:executable||undefined});}
  async connect(input){
   if(this.#connecting)throw Error('Uma conexão já está em andamento.');this.#connecting=true;

@@ -54,6 +54,15 @@
      <p class="oc-note">Para credenciais, use referências {env:NOME}. Complete o login OAuth no OpenCode.</p>
      <div class="update-actions"><button class="secondary" id="oc-mcp-list">Consultar conexões</button><button class="secondary" id="oc-mcp-save">Registrar MCP</button><button class="secondary" id="oc-mcp-connect">Conectar MCP</button><button class="secondary" id="oc-mcp-disconnect">Desconectar MCP</button><button class="secondary" id="oc-mcp-remove">Remover MCP</button></div>
     </details>
+    <details><summary>Usar este OpenCode à distância</summary>
+     <p>Abra a página de conexão, entre com sua conta e confirme o autenticador. Gere um código e cole abaixo. Depois confirme o nome e o código deste computador na página.</p>
+     <button type="button" class="secondary" id="oc-relay-portal">Abrir página de conexão</button>
+     <label>Nome deste computador<input id="oc-relay-name" maxlength="80" value="Meu computador"/></label>
+     <label>Código de pareamento<textarea id="oc-relay-code" rows="3" maxlength="2000" autocomplete="off" spellcheck="false"></textarea></label>
+     <div class="update-actions"><button type="button" class="accent" id="oc-relay-pair">Parear computador</button><button type="button" class="secondary" id="oc-relay-stop">Desligar ponte</button></div>
+     <p id="oc-relay-state" role="status">Ponte remota desligada</p><p id="oc-relay-confirmation"></p>
+     <p class="oc-note">O computador precisa ficar ligado. A ponte recebe apenas operações autorizadas e não publica portas locais. A página de conexão permite revogar o dispositivo.</p>
+    </details>
     <pre id="oc-output" role="log" aria-live="polite"></pre>
    </div>
   </section>
@@ -71,5 +80,6 @@
  <footer><span>© 2026 W1 Capital · Central de Apps</span><span id="store-version"></span></footer>
 </div>
 <script src="./store.js"></script>
+<script src="./opencode-relay-ui.js"></script>
 </body>
 </html>
