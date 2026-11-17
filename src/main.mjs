@@ -6,6 +6,7 @@ import {createServer} from 'node:net';
 import {randomBytes} from 'node:crypto';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {pathToFileURL} from 'node:url';
+import {registerOpenCodeRelay,stopOpenCodeRelay} from './opencode-relay-ipc.mjs';
 import {OpenCodeController} from './opencode-controller.mjs';
 import {APPS,resolveApp} from './catalog.mjs';
 import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl} from './runtime-policy.mjs';
@@ -309,8 +310,8 @@ ipcMain.handle('central:opencode',async(event,action,input={})=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
  if(!input||typeof input!=='object'||JSON.stringify(input).length>50000)throw Error('Solicitação OpenCode inválida.');
  if(action==='detect')return getOpenCode().detect(input.executable);
- if(action==='connect')return getOpenCode().connect(input);
- if(action==='disconnect')return getOpenCode().disconnect();
+ if(action==='connect'){stopOpenCodeRelay();return getOpenCode().connect(input);}
+ if(action==='disconnect'){stopOpenCodeRelay();return getOpenCode().disconnect();}
  if(action==='prompt'||action==='mcpSave'||action==='mcpRemove'){
   const choice=await dialog.showMessageBox(storeWindow,{
    type:'question',title:'OpenCode · W1 Capital',
@@ -323,6 +324,7 @@ ipcMain.handle('central:opencode',async(event,action,input={})=>{
  return getOpenCode().act(action,input);
 });
 app.whenReady().then(()=>{
+ registerOpenCodeRelay({ipcMain,dialog,shell,controller:getOpenCode,isTrusted:trustedStoreEvent});
  Menu.setApplicationMenu(null);
  openStoreWindow();
  // Automatic discovery is non-interruptive. Never execute an unsigned download.
@@ -333,6 +335,7 @@ app.whenReady().then(()=>{
 app.on('before-quit',()=>{
  if(closing)return;
  closing=true;
+ stopOpenCodeRelay();
  openCode?.disconnect();
  for(const record of running.values())if(record.child.exitCode===null)record.child.kill();
 });
