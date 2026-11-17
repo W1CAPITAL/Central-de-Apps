@@ -8,7 +8,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 import {pathToFileURL} from 'node:url';
 import {APPS,resolveApp} from './catalog.mjs';
 import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl} from './runtime-policy.mjs';
-import {validateReleaseAsset,downloadSignedRelease,verifyWindowsSignature} from './update-security.mjs';
+import {validateReleaseAsset,downloadSignedRelease,verifyWindowsSignature,verifyFileDigest} from './update-security.mjs';
 
 const STORE_FILE=join(import.meta.dirname,'store.html');
 const UPDATE_API='https://api.github.com/repos/W1CAPITAL/Central-de-Apps/releases/latest';
@@ -209,6 +209,7 @@ async function installUpdate(){
  installing=true;
  try{
   // Verify again immediately before execution: local update files are writable.
+  await verifyFileDigest(downloadedInstaller,verifiedAsset);
   await verifyWindowsSignature(downloadedInstaller,signatureScript());
   const result=await shell.openPath(downloadedInstaller);
   if(result)throw Error('O Windows recusou o instalador: '+result);
@@ -240,6 +241,8 @@ async function downloadUpdate(mode='background'){
    }
   }
  }).then(async path=>{
+  if(verifiedAsset?.version!==asset.version||release.version!==asset.version)
+   throw Error('Uma nova release substituiu o download; pacote anterior não será instalado.');
   downloadedInstaller=path;
   release={...release,phase:'downloaded',percent:100,error:null};
   announce();
