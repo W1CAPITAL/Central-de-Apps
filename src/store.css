@@ -66,3 +66,11 @@ footer{display:flex;justify-content:space-between;border-top:1px solid #443341;p
 @media(max-width:940px){.hero{grid-template-columns:1fr;min-height:0;padding:30px}.hero-art{display:none}.apps-grid,.bottom{grid-template-columns:1fr}.shell{padding:0 18px}.top-right .circle{display:none}}
 @media(max-width:560px){.top{height:72px}.hero{padding:23px}.hero-badges{gap:9px}.brand strong{font-size:12px}.top-right{font-size:9px}.product-card{padding:19px}.card-bottom{align-items:flex-start;flex-direction:column}.launch-btn{width:100%}footer{font-size:9px}.section-title{margin-top:24px}}
 @media(prefers-reduced-motion:reduce){.product-card{transition:none}}
+
+.update-actions{flex-wrap:wrap}
+.download-progress{display:flex;align-items:center;gap:12px;margin:14px 0 9px}
+.download-progress[hidden]{display:none}
+.download-track{height:7px;flex:1;background:#4d3446;border-radius:15px;overflow:hidden}
+#download-bar{height:100%;width:0;background:linear-gradient(90deg,#a34375,#ebafc8);border-radius:15px;transition:width .15s ease}
+#download-percent{min-width:36px;color:#ead5e0;font-size:11px;font-variant-numeric:tabular-nums;text-align:right}
+@media(prefers-reduced-motion:reduce){#download-bar{transition:none}}
