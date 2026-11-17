@@ -23,7 +23,12 @@ async function port(){
 for(const id of ['lexispredict','infinitum']){
  const root=join(resources,'products',id);
  const entry=join(root,'server.js');
- for(const file of [entry,join(root,'node_modules','next','package.json'),join(root,'.next','BUILD_ID')]){
+ for(const file of [
+  entry,
+  join(root,'node_modules','next','package.json'),
+  join(root,'node_modules','next','node_modules','styled-jsx','package.json'),
+  join(root,'.next','BUILD_ID')
+ ]){
   if(!existsSync(file))throw Error('Arquivo do '+id+' ausente do EXE: '+file);
  }
  const p=await port();
