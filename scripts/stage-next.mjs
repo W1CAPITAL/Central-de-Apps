@@ -15,14 +15,14 @@ function findEntrypoint(base,depth=0){
 function privateFile(path){
  return /(^|[/\\])\.env(?:\.|$)|service[_-]?role|private[_-]?key|\.pem$|\.p12$|\.pfx$/i.test(path);
 }
-export function stageNext(sourcePath,id){
+export function stageNext(sourcePath,id,{productsRoot=resolve(import.meta.dirname,'..','products')}={}){
  resolveApp(id);
  const root=resolve(sourcePath);
  const output=join(root,'.next','standalone');
  const entry=existsSync(output)?findEntrypoint(output):null;
  if(!entry)throw Error('Não há Next standalone para '+id+'; execute o build local antes.');
  const base=dirname(entry);
- const target=resolve(import.meta.dirname,'..','products',id);
+ const target=resolve(productsRoot,id);
  rmSync(target,{recursive:true,force:true});mkdirSync(target,{recursive:true});
  // pnpm's standalone output can contain symlinks into its virtual store.
  // Electron-builder may omit those links from extraResources on Windows.

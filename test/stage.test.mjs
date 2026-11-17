@@ -10,7 +10,7 @@ test('não aceita pacote Next incompleto',()=>{
  try{
   mkdirSync(join(folder,'.next','standalone'),{recursive:true});
   writeFileSync(join(folder,'.next','standalone','server.js'),'');
-  assert.throws(()=>stageNext(folder,'lexispredict'),/incompleto/);
+  assert.throws(()=>stageNext(folder,'lexispredict',{productsRoot:join(folder,'output')}),/incompleto/);
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
 test('não permite staging de aplicativo fora do catálogo',()=>{
@@ -21,6 +21,7 @@ test('não permite staging de aplicativo fora do catálogo',()=>{
 
 test('standalone aninhado continua portátil após remover a origem pnpm',()=>{
  const folder=mkdtempSync(join(tmpdir(),'w1-stage-pnpm-'));
+ const output=mkdtempSync(join(tmpdir(),'w1-stage-output-'));
  let target;
  try{
   const standalone=join(folder,'.next','standalone');
@@ -34,7 +35,7 @@ test('standalone aninhado continua portátil após remover a origem pnpm',()=>{
   writeFileSync(join(next,'dist','server','lib','start-server.js'),'export const startServer = () => {};');
   writeFileSync(join(next,'.env.local'),'SYNTHETIC=private');
   symlinkSync(next,join(standalone,'node_modules','next'),'junction');
-  ({target}=stageNext(folder,'lexispredict'));
+  ({target}=stageNext(folder,'lexispredict',{productsRoot:output}));
   rmSync(folder,{recursive:true,force:true});
   const copied=join(target,'node_modules','next');
   assert.equal(lstatSync(copied).isSymbolicLink(),false);
@@ -43,6 +44,6 @@ test('standalone aninhado continua portátil após remover a origem pnpm',()=>{
   assert.equal(existsSync(join(copied,'.env.local')),false);
  }finally{
   rmSync(folder,{recursive:true,force:true});
-  if(target)rmSync(target,{recursive:true,force:true});
+  rmSync(output,{recursive:true,force:true});
  }
 });
