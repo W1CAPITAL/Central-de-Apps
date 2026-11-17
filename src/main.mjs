@@ -8,6 +8,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 import {pathToFileURL} from 'node:url';
 import {APPS,resolveApp} from './catalog.mjs';
 import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl} from './runtime-policy.mjs';
+import {validateReleaseAsset,downloadSignedRelease,verifyWindowsSignature} from './update-security.mjs';
 
 const STORE_FILE=join(import.meta.dirname,'store.html');
 const UPDATE_API='https://api.github.com/repos/W1CAPITAL/Central-de-Apps/releases/latest';
@@ -15,7 +16,8 @@ const running=new Map();
 const windows=new Map();
 const states=Object.fromEntries(Object.keys(APPS).map(id=>[id,{phase:'bundled',message:'Pronto para iniciar no Windows'}]));
 let storeWindow=null;
-let release={version:null,notes:'',url:null,checkedAt:null,error:null};
+let release={version:null,notes:'',url:null,checkedAt:null,error:null,phase:'none',canDownload:false,percent:0};
+let verifiedAsset=null,downloadedInstaller=null,downloadPromise=null,installing=false;
 let checking=false,closing=false;
 
 if(!app.requestSingleInstanceLock())app.quit();
@@ -169,15 +171,90 @@ async function checkUpdates(){
   const html=typeof payload.html_url==='string'?payload.html_url:'';
   if(!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(version)||!/^https:\/\/github\.com\/W1CAPITAL\/Central-de-Apps\/releases\/tag\/v?[\d.]+$/.test(html))
    throw Error('Release GitHub inválida.');
+  const available=compareVersion(version,app.getVersion())>0;
+  let asset=null;
+  if(available){try{asset=validateReleaseAsset(payload)}catch{}}
+  const preserved=available&&verifiedAsset?.version===version&&downloadedInstaller;
+  if(!preserved){
+   downloadedInstaller=null;
+   verifiedAsset=asset;
+  }
   release={version,notes:String(payload.body||'').replace(/<[^>]*>/g,'').slice(0,5000),
-   url:html,checkedAt:new Date().toISOString(),error:null,
-   available:compareVersion(version,app.getVersion())>0};
+   url:html,checkedAt:new Date().toISOString(),error:null,available,
+   canDownload:!!asset,phase:preserved?'downloaded':available?'available':'none',
+   percent:preserved?100:0};
+  if(!asset&&!preserved)verifiedAsset=null;
  }catch(error){
   release={...release,checkedAt:new Date().toISOString(),
    error:String(error?.message||'Não foi possível consultar versões.').slice(0,160)};
  }finally{checking=false;announce()}
  return publicState();
 }
+function signatureScript(){
+ return app.isPackaged
+  ?join(process.resourcesPath,'app.asar.unpacked','src','verify-signature.ps1')
+  :join(import.meta.dirname,'verify-signature.ps1');
+}
+async function installUpdate(){
+ if(installing)return publicState();
+ if(!downloadedInstaller||!verifiedAsset||release.phase!=='downloaded')
+  throw Error('Nenhum instalador W1 assinado está pronto.');
+ const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
+  type:'question',title:'Atualizar Central W1',
+  message:'A versão '+verifiedAsset.version+' está pronta para instalar.',
+  detail:'Para aplicar a atualização, todos os aplicativos abertos serão fechados. Salve seu trabalho antes de continuar.',
+  buttons:['Instalar e reiniciar','Depois'],defaultId:1,cancelId:1,noLink:true
+ });
+ if(choice.response!==0)return publicState();
+ installing=true;
+ try{
+  // Verify again immediately before execution: local update files are writable.
+  await verifyWindowsSignature(downloadedInstaller,signatureScript());
+  const result=await shell.openPath(downloadedInstaller);
+  if(result)throw Error('O Windows recusou o instalador: '+result);
+  app.quit();
+ }catch(error){
+  release={...release,phase:'error',error:String(error?.message||'Instalação bloqueada.').slice(0,160)};
+  announce();
+ }finally{installing=false}
+ return publicState();
+}
+async function downloadUpdate(mode='background'){
+ if(!['now','background'].includes(mode))throw Error('Modo de atualização inválido.');
+ if(downloadPromise)return downloadPromise;
+ if(!release.available||!release.canDownload||!verifiedAsset)
+  throw Error('Sem atualização oficial com hash e origem válidos.');
+ if(downloadedInstaller&&release.phase==='downloaded')
+  return mode==='now'?installUpdate():publicState();
+ const asset=verifiedAsset;
+ release={...release,phase:'downloading',percent:0,error:null};
+ announce();
+ // Baixar em segundo plano nunca fecha o CRM; a instalação aguarda escolha.
+ downloadPromise=downloadSignedRelease({
+  asset,folder:join(app.getPath('userData'),'trusted-updates'),
+  signatureScript:signatureScript(),
+  onProgress:percent=>{
+   if(release.version===asset.version){
+    release={...release,phase:'downloading',percent};
+    announce();
+   }
+  }
+ }).then(async path=>{
+  downloadedInstaller=path;
+  release={...release,phase:'downloaded',percent:100,error:null};
+  announce();
+  if(mode==='now')return installUpdate();
+  return publicState();
+ }).catch(error=>{
+  downloadedInstaller=null;
+  release={...release,phase:'error',percent:0,
+   error:String(error?.message||'Pacote não validado.').slice(0,160)};
+  announce();
+  return publicState();
+ }).finally(()=>{downloadPromise=null});
+ return downloadPromise;
+}
+
 function openStoreWindow(){
  if(storeWindow&&!storeWindow.isDestroyed()){storeWindow.show();storeWindow.focus();return storeWindow}
  storeWindow=new BrowserWindow({
@@ -207,6 +284,14 @@ ipcMain.handle('central:launch',async(event,id)=>{
 ipcMain.handle('central:check-updates',event=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
  return checkUpdates();
+});
+ipcMain.handle('central:download-update',(event,mode)=>{
+ if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ return downloadUpdate(mode);
+});
+ipcMain.handle('central:install-update',event=>{
+ if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ return installUpdate();
 });
 ipcMain.handle('central:open-release',async event=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
