@@ -105,7 +105,8 @@ jobs:
           pnpm test
       - name: Compilar LexisPredict Next standalone (sem Vercel)
         working-directory: central/apps-src/lexispredict
-        run: pnpm run build
+        # package.json usa NODE_ENV=production (sintaxe Unix); no Windows o env é fornecido abaixo.
+        run: pnpm exec next build
         env:
           NODE_ENV: production
           LEXIS_DESKTOP_STANDALONE: '1'
