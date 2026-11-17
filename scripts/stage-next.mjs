@@ -24,15 +24,18 @@ export function stageNext(sourcePath,id){
  const base=dirname(entry);
  const target=resolve(import.meta.dirname,'..','products',id);
  rmSync(target,{recursive:true,force:true});mkdirSync(target,{recursive:true});
- cpSync(base,target,{recursive:true,filter:path=>!privateFile(path)});
+ // pnpm's standalone output can contain symlinks into its virtual store.
+ // Electron-builder may omit those links from extraResources on Windows.
+ // Materialize actual files before packaging, not a pointer to the build workspace.
+ cpSync(base,target,{recursive:true,dereference:true,filter:path=>!privateFile(path)});
  // Next may hoist its traced node_modules above a nested server.js.
  if(base!==output&&existsSync(join(output,'node_modules'))){
   cpSync(join(output,'node_modules'),join(target,'node_modules'),{
-   recursive:true,filter:path=>!privateFile(path)
+   recursive:true,dereference:true,filter:path=>!privateFile(path)
   });
  }
  for(const [from,to] of [[join(root,'public'),join(target,'public')],[join(root,'.next','static'),join(target,'.next','static')]]){
-  if(existsSync(from))cpSync(from,to,{recursive:true});
+  if(existsSync(from))cpSync(from,to,{recursive:true,dereference:true});
  }
  for(const required of [
   join(target,'server.js'),join(target,'.next','BUILD_ID'),
