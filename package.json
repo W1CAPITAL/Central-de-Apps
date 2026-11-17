@@ -19,6 +19,7 @@
     "appId": "br.com.w1capital.centraldeapps",
     "productName": "W1 Central de Apps",
     "asar": true,
+    "asarUnpack": ["src/verify-signature.ps1"],
     "files": [
       "src/**/*",
       "package.json"
