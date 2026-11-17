@@ -6,6 +6,7 @@ import {createServer} from 'node:net';
 import {randomBytes} from 'node:crypto';
 import {setTimeout as sleep} from 'node:timers/promises';
 import {pathToFileURL} from 'node:url';
+import {OpenCodeController} from './opencode-controller.mjs';
 import {APPS,resolveApp} from './catalog.mjs';
 import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl} from './runtime-policy.mjs';
 import {validateReleaseAsset,downloadSignedRelease,verifyWindowsSignature,verifyFileDigest} from './update-security.mjs';
@@ -19,6 +20,8 @@ let storeWindow=null;
 let release={version:null,notes:'',url:null,checkedAt:null,error:null,phase:'none',canDownload:false,percent:0};
 let verifiedAsset=null,downloadedInstaller=null,downloadPromise=null,installing=false;
 let checking=false,closing=false;
+let openCode;
+function getOpenCode(){return openCode||(openCode=new OpenCodeController({stateDirectory:join(app.getPath('userData'),'opencode-sessions')}));}
 
 if(!app.requestSingleInstanceLock())app.quit();
 else app.on('second-instance',()=>{void app.whenReady().then(openStoreWindow)});
@@ -302,6 +305,23 @@ ipcMain.handle('central:open-release',async event=>{
  await shell.openExternal(release.url);
  return true;
 });
+ipcMain.handle('central:opencode',async(event,action,input={})=>{
+ if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ if(!input||typeof input!=='object'||JSON.stringify(input).length>50000)throw Error('Solicitação OpenCode inválida.');
+ if(action==='detect')return getOpenCode().detect(input.executable);
+ if(action==='connect')return getOpenCode().connect(input);
+ if(action==='disconnect')return getOpenCode().disconnect();
+ if(action==='prompt'||action==='mcpSave'||action==='mcpRemove'){
+  const choice=await dialog.showMessageBox(storeWindow,{
+   type:'question',title:'OpenCode · W1 Capital',
+   message:action==='prompt'?'Enviar esta tarefa ao OpenCode?':action==='mcpRemove'?'Remover este servidor MCP?':'Registrar este servidor MCP?',
+   detail:action==='prompt'?'O provedor configurado no OpenCode pode consumir créditos. As permissões de ferramentas serão verificadas pelo OpenCode.':action==='mcpSave'?(input.config?.type==='local'?'Comando local: '+JSON.stringify(input.config.command):'Servidor remoto: '+String(input.config?.url||'')):'Servidor: '+String(input.name||''),
+   buttons:['Continuar','Cancelar'],defaultId:1,cancelId:1,noLink:true
+  });
+  if(choice.response!==0)return {cancelled:true};
+ }
+ return getOpenCode().act(action,input);
+});
 app.whenReady().then(()=>{
  Menu.setApplicationMenu(null);
  openStoreWindow();
@@ -313,6 +333,7 @@ app.whenReady().then(()=>{
 app.on('before-quit',()=>{
  if(closing)return;
  closing=true;
+ openCode?.disconnect();
  for(const record of running.values())if(record.child.exitCode===null)record.child.kill();
 });
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit()});

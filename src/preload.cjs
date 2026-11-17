@@ -1,5 +1,6 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('w1Central',Object.freeze({
+ openCode:(action,input)=>ipcRenderer.invoke('central:opencode',action,input),
  getState:()=>ipcRenderer.invoke('central:get-state'),
  launch:appId=>ipcRenderer.invoke('central:launch',appId),
  checkUpdates:()=>ipcRenderer.invoke('central:check-updates'),

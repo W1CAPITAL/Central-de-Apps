@@ -53,7 +53,7 @@ test('instalador empacota ambos os servidores e não baixa executáveis arbitrá
 test('build Windows compila fontes originais e não usa o deploy Vercel como backend de execução',()=>{
  const w=read('.github/workflows/windows.yml');
  assert.match(w,/W1CAPITAL\/LexisPredict/);
- assert.match(w,/ProjectW1SC\/INFINITUM/);
+ assert.match(w,/W1CAPITAL\/Infinitum/);
  assert.match(w,/LEXIS_DESKTOP_STANDALONE/);
  assert.match(w,/KILLA_DESKTOP_STANDALONE/);
  assert.match(w,/npm.*test/);
