@@ -11,7 +11,7 @@ export const APPS=Object.freeze({
   description:'Atendimentos, processos, agenda, automações e agentes.',
   localHealth:'/api/desktop/health',localEntry:'/',
   color:'#9b7195',badge:'CRM + IA',
-  source:'https://github.com/ProjectW1SC/INFINITUM'
+  source:'https://github.com/W1CAPITAL/Infinitum'
  })
 });
 export function resolveApp(id){
