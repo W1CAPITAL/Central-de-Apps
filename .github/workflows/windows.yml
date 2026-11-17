@@ -10,7 +10,7 @@ on:
     - cron: '13 */6 * * *'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: central-windows-${{ github.ref }}
@@ -29,7 +29,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SIGNED_CERT_AVAILABLE: ${{ secrets.CENTRAL_WINDOWS_CERT_P12 }}
+          SIGNED_CERT_AVAILABLE: ${{ secrets.CENTRAL_WINDOWS_CERT_P12 != '' }}
         run: |
           set -euo pipefail
           lexis_sha="$(git ls-remote https://github.com/W1CAPITAL/LexisPredict.git refs/heads/main | cut -f1)"
@@ -41,7 +41,7 @@ jobs:
           build=true
           if [ "${{ github.event_name }}" = "schedule" ]; then
             # Do not burn Windows runner time while no code-signing certificate exists.
-            if [ -z "$SIGNED_CERT_AVAILABLE" ]; then
+            if [ "$SIGNED_CERT_AVAILABLE" != "true" ]; then
               build=false
             else
               mkdir -p /tmp/w1-release
@@ -69,6 +69,8 @@ jobs:
     if: needs.inspect.outputs.build == 'true'
     runs-on: windows-latest
     timeout-minutes: 120
+    outputs:
+      signed: ${{ steps.signature.outputs.publish }}
     steps:
       - name: Código da Central de Apps
         uses: actions/checkout@v4
@@ -151,8 +153,8 @@ jobs:
         working-directory: central
         run: npm run pack:win
         env:
-          WIN_CSC_LINK: ${{ secrets.CENTRAL_WINDOWS_CERT_P12 }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.CENTRAL_WINDOWS_CERT_PASSWORD }}
+          WIN_CSC_LINK: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_P12 || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_PASSWORD || '' }}
       - name: Smoke test real dos dois servidores no EXE
         working-directory: central
         run: node scripts/verify-products.mjs
@@ -160,8 +162,8 @@ jobs:
         working-directory: central
         run: npm run dist:win
         env:
-          WIN_CSC_LINK: ${{ secrets.CENTRAL_WINDOWS_CERT_P12 }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.CENTRAL_WINDOWS_CERT_PASSWORD }}
+          WIN_CSC_LINK: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_P12 || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_PASSWORD || '' }}
       - name: Guardar os commits de origem
         working-directory: central
         shell: pwsh
@@ -195,14 +197,36 @@ jobs:
             'publish=false' | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
             Write-Host 'Artefato de teste pronto; sem Authenticode W1 válido, nenhuma release executável será publicada automaticamente.'
           }
-      - name: Publicar somente instalador W1 assinado
-        if: github.ref == 'refs/heads/main' && steps.signature.outputs.publish == 'true'
+  publish:
+    needs: [windows]
+    if: github.ref == 'refs/heads/main' && needs.windows.outputs.signed == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Baixar somente instalador verificado do job Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: W1-Central-de-Apps-Windows-x64-0.1.${{ github.run_number }}
+          path: central
+      - name: Verificar assinatura novamente antes da publicação
+        shell: pwsh
+        run: |
+          $file = 'central/dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe'
+          if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw 'Instalador não encontrado no artefato autenticado.' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $file
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'W1 Capital') {
+            throw 'A release não possui assinatura Authenticode W1 válida.'
+          }
+      - name: Publicar release oficial a partir do GitHub, sem Vercel
         working-directory: central
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CENTRAL_VERSION: ${{ env.CENTRAL_VERSION }}
         run: |
-          $tag = 'v'+$env:CENTRAL_VERSION
-          $notes = "W1 Central de Apps $tag" + "`n" + "LexisPredict e INFINITUM atualizados dos commits da main e executados localmente no Windows, sem depender da Vercel." + "`n" + "Atualização assinada com Authenticode."
-          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes ("dist/W1-Central-de-Apps-Setup-"+$env:CENTRAL_VERSION+"-x64.exe") source-commits.json
+          $tag = 'v0.1.${{ github.run_number }}'
+          $installer = 'dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe'
+          $notes = "W1 Central de Apps $tag" + "`n" +
+            "LexisPredict e INFINITUM executados localmente a partir das branches main." + "`n" +
+            "GitHub Releases sem Vercel; atualização Authenticode verificada."
+          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes $installer source-commits.json
