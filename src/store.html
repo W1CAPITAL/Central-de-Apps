@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'"/>
+<title>W1 Capital · Central de Apps</title>
+<link rel="stylesheet" href="./store.css"/>
+</head>
+<body>
+<div class="shell">
+ <header class="top">
+  <div class="brand"><span class="brandmark" aria-hidden="true">W1</span><span><strong>W1 CAPITAL</strong><small>CENTRAL DE APLICATIVOS</small></span></div>
+  <div class="top-right"><span class="dot"></span><span>Windows · Plataforma local</span><span class="circle">●</span></div>
+ </header>
+ <main>
+  <div class="hero">
+   <div class="hero-copy">
+    <span class="eyebrow">SEU ESPAÇO DE TRABALHO</span>
+    <h1>Um lugar para todos<br/><em>os seus aplicativos.</em></h1>
+    <p>Abra o LexisPredict e o INFINITUM diretamente no computador. A loja fica disponível sem abrir nenhum CRM nem depender da Vercel.</p>
+    <div class="hero-badges"><span>✓ Inicialização local</span><span>✓ Contas separadas</span><span>✓ Atualizações GitHub</span></div>
+   </div>
+   <div class="hero-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="core">W1</div><div class="spark s1"></div><div class="spark s2"></div></div>
+  </div>
+  <div class="section-title"><span><small>EXPLORAR</small><h2>Aplicativos da W1 Capital</h2></span><span class="section-count" id="apps-count">2 produtos</span></div>
+  <section class="apps-grid" id="app-list" aria-label="Aplicativos disponíveis">
+   <div class="loading">Carregando a central local...</div>
+  </section>
+  <div class="bottom">
+   <section class="update-card" aria-label="Versões e atualizações">
+    <div class="update-head"><div class="update-glyph">↻</div><div><strong>Atualizações</strong><p>Distribuídas pelo GitHub Releases, não pela Vercel.</p></div></div>
+    <p id="update-message">Consultando versões oficiais...</p>
+    <pre id="release-notes" hidden></pre>
+    <div class="update-actions"><button id="check-updates" type="button" class="secondary">Verificar versões</button><button id="open-release" type="button" class="accent" hidden>Ver nova versão</button></div>
+   </section>
+   <section class="privacy-card"><div class="lock">◇</div><strong>Dados sob sua conta</strong><p>Os programas executam localmente. Supabase e serviços oficiais continuam exigindo internet e suas permissões individuais. Nenhum segredo é embutido na Central.</p></section>
+  </div>
+ </main>
+ <footer><span>© 2026 W1 Capital · Central de Apps</span><span id="store-version"></span></footer>
+</div>
+<script src="./store.js"></script>
+</body>
+</html>
