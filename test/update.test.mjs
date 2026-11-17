@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {createHash} from 'node:crypto';
 import {join} from 'node:path';
-import {validateReleaseAsset} from '../src/update-security.mjs';
+import {validateReleaseAsset,verifyFileDigest} from '../src/update-security.mjs';
 
 const current={
  tag_name:'v0.1.44',
@@ -45,4 +47,17 @@ test('instalador exige verificação Authenticode em duas etapas e consentimento
  assert.match(script,/Valid/);
  assert.match(script,/W1 Capital/);
  assert.doesNotMatch(main,/ExecutionPolicy.*Bypass/);
+});
+
+test('instalador adulterado depois do download é recusado antes do reinício',async()=>{
+ const folder=mkdtempSync(join(tmpdir(),'w1-update-'));
+ const file=join(folder,'signed-installer.exe');
+ try{
+  const payload=Buffer.from('fake-test-installer');
+  writeFileSync(file,payload);
+  const asset={size:payload.length,sha256:createHash('sha256').update(payload).digest('hex')};
+  assert.equal(await verifyFileDigest(file,asset),true);
+  writeFileSync(file,Buffer.from('adulterated-payload'));
+  await assert.rejects(()=>verifyFileDigest(file,asset),/SHA-256/);
+ }finally{rmSync(folder,{recursive:true,force:true})}
 });
