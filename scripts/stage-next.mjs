@@ -21,11 +21,11 @@ function materializeNextDependencies(sourceModules,targetModules){
  const dependencyRoot=dirname(nextSource);
  for(const dependency of Object.keys(manifest.dependencies??{})){
   const source=join(dependencyRoot,dependency);
-  const target=join(targetModules,dependency);
+  const target=join(targetModules,'next','node_modules',dependency);
   if(existsSync(target)||!existsSync(source))continue;
   // pnpm keeps Next dependencies beside the real Next package. Once the Next
-  // junction is materialized at the product root, Node no longer sees those
-  // siblings unless they are materialized at the same root too.
+  // junction is materialized, keep those dependencies inside Next itself so
+  // Node can resolve them and Electron cannot prune them as root packages.
   cpSync(source,target,{recursive:true,dereference:true,filter:path=>!privateFile(path)});
  }
 }
@@ -56,7 +56,7 @@ export function stageNext(sourcePath,id,{productsRoot=resolve(import.meta.dirnam
  for(const required of [
   join(target,'server.js'),join(target,'.next','BUILD_ID'),
   join(target,'node_modules','next','package.json'),
-  join(target,'node_modules','styled-jsx','package.json'),
+  join(target,'node_modules','next','node_modules','styled-jsx','package.json'),
   join(target,'node_modules','next','dist','server','lib','start-server.js')
  ]){
   if(!existsSync(required))throw Error('Standalone '+id+' incompleto: '+relative(target,required));

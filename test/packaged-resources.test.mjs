@@ -16,8 +16,8 @@ test('electron-builder preserva node_modules de ambos os produtos e exclui segre
    writeFileSync(join(root,'server.js'),'// synthetic server');
    writeFileSync(join(root,'.next','BUILD_ID'),'synthetic-build');
    writeFileSync(join(root,'node_modules','next','package.json'),'{"name":"next"}');
-   mkdirSync(join(root,'node_modules','styled-jsx'),{recursive:true});
-   writeFileSync(join(root,'node_modules','styled-jsx','package.json'),'{"name":"styled-jsx"}');
+   mkdirSync(join(root,'node_modules','next','node_modules','styled-jsx'),{recursive:true});
+   writeFileSync(join(root,'node_modules','next','node_modules','styled-jsx','package.json'),'{"name":"styled-jsx"}');
    writeFileSync(join(root,'node_modules','next','dist','server','lib','start-server.js'),'// synthetic runtime');
    writeFileSync(join(root,'.env.local'),'SYNTHETIC=private');
    writeFileSync(join(root,'private-key.pem'),'synthetic');
@@ -29,7 +29,7 @@ test('electron-builder preserva node_modules de ambos os produtos e exclui segre
   await copyFiles(matchers);
   for(const id of ['lexispredict','infinitum']){
    const root=join(resources,'products',id);
-   for(const path of ['server.js','.next/BUILD_ID','node_modules/next/package.json','node_modules/styled-jsx/package.json','node_modules/next/dist/server/lib/start-server.js'])
+   for(const path of ['server.js','.next/BUILD_ID','node_modules/next/package.json','node_modules/next/node_modules/styled-jsx/package.json','node_modules/next/dist/server/lib/start-server.js'])
     assert.equal(existsSync(join(root,path)),true,id+': '+path);
    assert.equal(existsSync(join(root,'.env.local')),false);
    assert.equal(existsSync(join(root,'private-key.pem')),false);

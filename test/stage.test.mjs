@@ -45,7 +45,7 @@ test('standalone aninhado continua portátil após remover a origem pnpm',()=>{
   assert.equal(lstatSync(copied).isSymbolicLink(),false);
   assert.equal(JSON.parse(readFileSync(join(copied,'package.json'),'utf8')).name,'next');
   assert.equal(existsSync(join(copied,'dist','server','lib','start-server.js')),true);
-  assert.equal(existsSync(join(target,'node_modules','styled-jsx','package.json')),true);
+  assert.equal(existsSync(join(copied,'node_modules','styled-jsx','package.json')),true);
   assert.equal(existsSync(join(copied,'.env.local')),false);
  }finally{
   rmSync(folder,{recursive:true,force:true});
