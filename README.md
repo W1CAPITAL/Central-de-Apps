@@ -47,9 +47,19 @@ Não são oferecidas respostas ou movimentações jurídicas fictícias quando u
 
 ## Atualizações
 
-A Central consulta a última GitHub Release oficial e apresenta o número da versão e as alterações. O botão **Ver nova versão** abre a release na página oficial. O aplicativo **não baixa e executa automaticamente instaladores sem Authenticode verificado**. O atualizador de primeiro e segundo plano, com instalação após consentimento, deverá ser habilitado somente no canal de releases assinadas, sem desabilitar o Microsoft Defender.
+A Central consulta a última GitHub Release oficial ao iniciar e a cada 30 minutos. Quando há uma versão superior, mostra **número, alterações e status** sem fechar nem bloquear os programas. Só habilita os botões de atualização quando a API do GitHub informa o instalador correto, tamanho permitido e `digest` SHA-256 válido.
 
-O instalador atual (quando gerado) carrega a versão do código dos produtos presente no momento do build. Novas atualizações de código exigem um novo EXE. Dados em Supabase continuam sendo sincronizados separadamente.
+O operador pode escolher:
+
+- **Atualizar agora:** baixar a versão oficial validada, verificar SHA-256 e Authenticode, perguntar antes de fechar e reiniciar a Central.
+- **Baixar em segundo plano:** continuar trabalhando no LexisPredict ou INFINITUM; a instalação fica disponível para confirmação posterior.
+- **Depois:** manter a versão instalada. Também é possível abrir a página da release oficial.
+
+A verificação do editor W1 Capital usa o script local `Get-AuthenticodeSignature`, sem executar código remoto. O SHA-256 do arquivo local é conferido novamente imediatamente antes da instalação. Arquivos com hash divergente, assinatura inválida, downgrade ou endereço externo não são executados. Nenhuma atualização pode instalar silenciosamente quando o operador fecha o CRM.
+
+**Limite de publicação:** o instalador do GitHub Actions só é disponibilizado como GitHub Release oficial quando o certificado Authenticode W1 Capital está configurado e válido. Sem o certificado, apenas o artefato de teste Windows é gerado. Esse artefato não entra no canal automático e pode sofrer avisos do SmartScreen.
+
+O instalador contém o código dos produtos existente no momento do build. Novos códigos exigem um novo EXE. Dados em Supabase continuam sendo sincronizados separadamente.
 
 ## Desenvolvimento
 
