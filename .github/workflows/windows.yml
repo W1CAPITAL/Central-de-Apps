@@ -60,6 +60,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: npm ci --ignore-scripts
       - name: Testar catálogo, escopo de IPC e inicialização local
         run: |
           npm run check

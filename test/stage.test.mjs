@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,existsSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,existsSync,rmSync,symlinkSync,lstatSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {stageNext} from '../scripts/stage-next.mjs';
@@ -17,4 +17,32 @@ test('não permite staging de aplicativo fora do catálogo',()=>{
  const folder=mkdtempSync(join(tmpdir(),'w1-stage-'));
  try{assert.throws(()=>stageNext(folder,'../../windows'),/não autorizado/)}
  finally{rmSync(folder,{recursive:true,force:true})}
+});
+
+test('standalone aninhado continua portátil após remover a origem pnpm',()=>{
+ const folder=mkdtempSync(join(tmpdir(),'w1-stage-pnpm-'));
+ let target;
+ try{
+  const standalone=join(folder,'.next','standalone');
+  const app=join(standalone,'apps','web');
+  const next=join(standalone,'node_modules','.pnpm','next@15','node_modules','next');
+  mkdirSync(join(app,'.next'),{recursive:true});
+  mkdirSync(join(next,'dist','server','lib'),{recursive:true});
+  writeFileSync(join(app,'server.js'),'// synthetic standalone');
+  writeFileSync(join(app,'.next','BUILD_ID'),'synthetic-build');
+  writeFileSync(join(next,'package.json'),'{"name":"next","version":"15.0.0"}');
+  writeFileSync(join(next,'dist','server','lib','start-server.js'),'export const startServer = () => {};');
+  writeFileSync(join(next,'.env.local'),'SYNTHETIC=private');
+  symlinkSync(next,join(standalone,'node_modules','next'),'junction');
+  ({target}=stageNext(folder,'lexispredict'));
+  rmSync(folder,{recursive:true,force:true});
+  const copied=join(target,'node_modules','next');
+  assert.equal(lstatSync(copied).isSymbolicLink(),false);
+  assert.equal(JSON.parse(readFileSync(join(copied,'package.json'),'utf8')).name,'next');
+  assert.equal(existsSync(join(copied,'dist','server','lib','start-server.js')),true);
+  assert.equal(existsSync(join(copied,'.env.local')),false);
+ }finally{
+  rmSync(folder,{recursive:true,force:true});
+  if(target)rmSync(target,{recursive:true,force:true});
+ }
 });
