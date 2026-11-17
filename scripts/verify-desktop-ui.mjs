@@ -6,14 +6,14 @@ import {createRequire} from 'node:module';
 const {_electron:electron}=createRequire(resolve('..','desktop-test','package.json'))('playwright-core');
 
 if(process.platform!=='win32')throw Error('O teste visual do EXE exige Windows.');
-const results=resolve('desktop-smoke');
+const results=resolve(process.argv[3]||'desktop-smoke');
 mkdirSync(results,{recursive:true});
 const profile=mkdtempSync(join(tmpdir(),'w1-desktop-smoke-'));
 const env={...process.env};
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.NODE_OPTIONS;
 const desktop=await electron.launch({
- executablePath:resolve('dist/win-unpacked/W1 Central de Apps.exe'),
+ executablePath:resolve(process.argv[2]||'dist/win-unpacked/W1 Central de Apps.exe'),
  args:['--user-data-dir='+profile],env,timeout:60000
 });
 try{
