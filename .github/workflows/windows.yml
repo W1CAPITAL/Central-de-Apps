@@ -1,0 +1,232 @@
+name: Central W1 — Windows (LexisPredict + INFINITUM)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '13 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: central-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.sources.outputs.build }}
+      lexis_sha: ${{ steps.sources.outputs.lexis_sha }}
+      infinitum_sha: ${{ steps.sources.outputs.infinitum_sha }}
+    steps:
+      - name: Detectar origens e evitar builds repetidos
+        id: sources
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGNED_CERT_AVAILABLE: ${{ secrets.CENTRAL_WINDOWS_CERT_P12 != '' }}
+        run: |
+          set -euo pipefail
+          lexis_sha="$(git ls-remote https://github.com/W1CAPITAL/LexisPredict.git refs/heads/main | cut -f1)"
+          infinitum_sha="$(git ls-remote https://github.com/ProjectW1SC/INFINITUM.git refs/heads/main | cut -f1)"
+          test "${#lexis_sha}" -eq 40
+          test "${#infinitum_sha}" -eq 40
+          echo "lexis_sha=$lexis_sha" >> "$GITHUB_OUTPUT"
+          echo "infinitum_sha=$infinitum_sha" >> "$GITHUB_OUTPUT"
+          build=true
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # Do not burn Windows runner time while no code-signing certificate exists.
+            if [ "$SIGNED_CERT_AVAILABLE" != "true" ]; then
+              build=false
+            else
+              mkdir -p /tmp/w1-release
+              if gh release download --repo "$GITHUB_REPOSITORY" --pattern source-commits.json --dir /tmp/w1-release >/dev/null 2>&1; then
+                if python3 -c 'import json,sys; x=json.load(open("/tmp/w1-release/source-commits.json"));sys.exit(0 if x.get("lexispredict")==sys.argv[1] and x.get("infinitum")==sys.argv[2] else 1)' "$lexis_sha" "$infinitum_sha"; then
+                  build=false
+                fi
+              fi
+            fi
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Testar catálogo, escopo de IPC e inicialização local
+        run: |
+          npm run check
+          npm test
+  windows:
+    needs: [inspect,test]
+    if: needs.inspect.outputs.build == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 120
+    outputs:
+      signed: ${{ steps.signature.outputs.publish }}
+    steps:
+      - name: Código da Central de Apps
+        uses: actions/checkout@v4
+        with:
+          path: central
+      - name: Código-fonte LexisPredict da main
+        uses: actions/checkout@v4
+        with:
+          repository: W1CAPITAL/LexisPredict
+          ref: ${{ needs.inspect.outputs.lexis_sha }}
+          path: central/apps-src/lexispredict
+          persist-credentials: false
+      - name: Código-fonte INFINITUM da main
+        uses: actions/checkout@v4
+        with:
+          repository: ProjectW1SC/INFINITUM
+          ref: ${{ needs.inspect.outputs.infinitum_sha }}
+          path: central/apps-src/infinitum
+          persist-credentials: false
+      - name: Node 24 e pnpm 10
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Instalar dependências LexisPredict
+        working-directory: central/apps-src/lexispredict
+        run: pnpm install --frozen-lockfile
+      - name: Testes e tipos LexisPredict
+        working-directory: central/apps-src/lexispredict
+        run: |
+          pnpm run typecheck
+          pnpm test
+      - name: Compilar LexisPredict Next standalone (sem Vercel)
+        working-directory: central/apps-src/lexispredict
+        # package.json usa NODE_ENV=production (sintaxe Unix); no Windows o env é fornecido abaixo.
+        run: pnpm exec next build
+        env:
+          NODE_ENV: production
+          LEXIS_DESKTOP_STANDALONE: '1'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://segjskjlbeydlljnefai.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_yEX6mVid3dpC7o7eOzuB1g_Vh'
+          SUPABASE_SERVICE_ROLE_KEY: ''
+          CRON_SECRET: ''
+      - name: Instalar dependências INFINITUM
+        working-directory: central/apps-src/infinitum
+        run: npm install --no-audit --no-fund
+      - name: Testes e tipos INFINITUM
+        working-directory: central/apps-src/infinitum
+        run: |
+          npm test
+          npm run typecheck
+          npm run test:dom
+      - name: Compilar INFINITUM Next standalone (sem Vercel)
+        working-directory: central/apps-src/infinitum
+        run: npm run build
+        env:
+          NODE_ENV: production
+          KILLA_DESKTOP_STANDALONE: '1'
+          NEXT_PUBLIC_LEXIS_SHARED_DB: '1'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://segjskjlbeydlljnefai.supabase.co'
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_yEX6mVid3dpC7o7eOzuB1g_Vh'
+      - name: Preparar os dois servidores locais no instalador Central
+        working-directory: central
+        run: |
+          node scripts/stage-next.mjs apps-src/lexispredict lexispredict
+          node scripts/stage-next.mjs apps-src/infinitum infinitum
+      - name: Preparar EXE da Central e fixar versão
+        working-directory: central
+        shell: pwsh
+        run: |
+          $v = '0.1.' + $env:GITHUB_RUN_NUMBER
+          node -e "const fs=require('fs');let p=require('./package.json');p.version=process.argv[1];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')" $v
+          npm install --no-audit --no-fund
+          npm run check
+          npm test
+          "CENTRAL_VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Gerar EXE com LexisPredict e INFINITUM locais
+        working-directory: central
+        run: npm run pack:win
+        env:
+          WIN_CSC_LINK: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_P12 || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_PASSWORD || '' }}
+      - name: Smoke test real dos dois servidores no EXE
+        working-directory: central
+        run: node scripts/verify-products.mjs
+      - name: Gerar instalador Central de Apps Windows x64
+        working-directory: central
+        run: npm run dist:win
+        env:
+          WIN_CSC_LINK: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_P12 || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_PASSWORD || '' }}
+      - name: Guardar os commits de origem
+        working-directory: central
+        shell: pwsh
+        env:
+          LEXIS_SHA: ${{ needs.inspect.outputs.lexis_sha }}
+          INFINITUM_SHA: ${{ needs.inspect.outputs.infinitum_sha }}
+        run: |
+          $record = @{ lexispredict=$env:LEXIS_SHA; infinitum=$env:INFINITUM_SHA } | ConvertTo-Json -Compress
+          $record | Set-Content -Path 'source-commits.json' -Encoding utf8
+      - name: Arquivar instalador Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: W1-Central-de-Apps-Windows-x64-${{ env.CENTRAL_VERSION }}
+          path: |
+            central/dist/W1-Central-de-Apps-Setup-${{ env.CENTRAL_VERSION }}-x64.exe
+            central/source-commits.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Validar assinatura Authenticode antes de publicar release pública
+        id: signature
+        working-directory: central
+        shell: pwsh
+        env:
+          CENTRAL_VERSION: ${{ env.CENTRAL_VERSION }}
+        run: |
+          $installer = 'dist/W1-Central-de-Apps-Setup-' + $env:CENTRAL_VERSION + '-x64.exe'
+          $sig = Get-AuthenticodeSignature $installer
+          if ($sig.Status -eq 'Valid' -and $sig.SignerCertificate.Subject -match 'W1 Capital') {
+            'publish=true' | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            'publish=false' | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+            Write-Host 'Artefato de teste pronto; sem Authenticode W1 válido, nenhuma release executável será publicada automaticamente.'
+          }
+  publish:
+    needs: [windows]
+    if: github.ref == 'refs/heads/main' && needs.windows.outputs.signed == 'true'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Baixar somente instalador verificado do job Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: W1-Central-de-Apps-Windows-x64-0.1.${{ github.run_number }}
+          path: central
+      - name: Verificar assinatura novamente antes da publicação
+        shell: pwsh
+        run: |
+          $file = 'central/dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe'
+          if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw 'Instalador não encontrado no artefato autenticado.' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $file
+          if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'W1 Capital') {
+            throw 'A release não possui assinatura Authenticode W1 válida.'
+          }
+      - name: Publicar release oficial a partir do GitHub, sem Vercel
+        working-directory: central
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = 'v0.1.${{ github.run_number }}'
+          $installer = 'dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe'
+          $notes = "W1 Central de Apps $tag" + "`n" +
+            "LexisPredict e INFINITUM executados localmente a partir das branches main." + "`n" +
+            "GitHub Releases sem Vercel; atualização Authenticode verificada."
+          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes $installer source-commits.json

@@ -1,0 +1,27 @@
+name: Central W1 — verificações rápidas
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: central-fast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Conferir JavaScript e políticas de isolamento
+        run: npm run check
+      - name: Executar suíte de testes da Central
+        run: npm test

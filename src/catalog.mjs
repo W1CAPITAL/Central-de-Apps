@@ -1,0 +1,21 @@
+export const APPS=Object.freeze({
+ lexispredict:Object.freeze({
+  id:'lexispredict',name:'LexisPredict',subtitle:'Gabinete jurídico digital',
+  description:'Processos, prazos, publicações, DJEN, DataJud e atendimento.',
+  localHealth:'/api/desktop/health',localEntry:'/',
+  color:'#aa537e',badge:'JURÍDICO',
+  source:'https://github.com/W1CAPITAL/LexisPredict'
+ }),
+ infinitum:Object.freeze({
+  id:'infinitum',name:'INFINITUM',subtitle:'CRM operacional com Killa AI',
+  description:'Atendimentos, processos, agenda, automações e agentes.',
+  localHealth:'/api/desktop/health',localEntry:'/',
+  color:'#9b7195',badge:'CRM + IA',
+  source:'https://github.com/ProjectW1SC/INFINITUM'
+ })
+});
+export function resolveApp(id){
+ if(typeof id!=='string'||!Object.prototype.hasOwnProperty.call(APPS,id))
+  throw Error('Aplicativo não autorizado na Central W1.');
+ return APPS[id];
+}

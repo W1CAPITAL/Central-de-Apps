@@ -1,0 +1,71 @@
+{
+  "name": "w1-central-de-apps",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Central W1 desktop independente da Vercel",
+  "main": "src/main.mjs",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check src/main.mjs && node --check src/catalog.mjs && node --check src/runtime-policy.mjs && node --check src/update-security.mjs && node --check src/preload.cjs && node --check src/store.js && node --check scripts/stage-next.mjs && node --check scripts/verify-products.mjs",
+    "pack:win": "electron-builder --win dir --x64 --publish never",
+    "dist:win": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.3.2",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "br.com.w1capital.centraldeapps",
+    "productName": "W1 Central de Apps",
+    "asar": true,
+    "asarUnpack": [
+      "src/verify-signature.ps1"
+    ],
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "products/lexispredict",
+        "to": "products/lexispredict",
+        "filter": [
+          "**/*",
+          "!**/.env",
+          "!**/.env.*",
+          "!**/*service-role*",
+          "!**/private-key*",
+          "!**/*.pem"
+        ]
+      },
+      {
+        "from": "products/infinitum",
+        "to": "products/infinitum",
+        "filter": [
+          "**/*",
+          "!**/.env",
+          "!**/.env.*",
+          "!**/*service-role*",
+          "!**/private-key*",
+          "!**/*.pem"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "W1-Central-de-Apps-Setup-${version}-${arch}.exe",
+      "verifyUpdateCodeSignature": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "author": "W1 Capital"
+}
