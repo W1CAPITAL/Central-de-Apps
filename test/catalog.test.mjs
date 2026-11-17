@@ -15,7 +15,7 @@ test('loja exclusiva inicia fora do CRM com dois aplicativos locais permitidos',
  assert.throws(()=>resolveApp('https://evil.example/'));
  assert.match(read('src/store.html'),/Central de Apps/);
  assert.match(read('src/store.html'),/LexisPredict/);
- assert.match(read('src/store.html'),/INFINITUM/);
+ assert.match(read('src/store.html'),/Infinitum/);
  assert.doesNotMatch(read('src/store.html'),/agentinfinitum\.vercel\.app/);
 });
 
@@ -53,7 +53,9 @@ test('instalador empacota ambos os servidores e não baixa executáveis arbitrá
 test('build Windows compila fontes originais e não usa o deploy Vercel como backend de execução',()=>{
  const w=read('.github/workflows/windows.yml');
  assert.match(w,/W1CAPITAL\/LexisPredict/);
- assert.match(w,/ProjectW1SC\/INFINITUM/);
+ assert.match(w,/W1CAPITAL\/Infinitum/);
+ assert.doesNotMatch(w,/ProjectW1SC\/INFINITUM/);
+ assert.match(read('src/catalog.mjs'),/W1CAPITAL\/Infinitum/);
  assert.match(w,/LEXIS_DESKTOP_STANDALONE/);
  assert.match(w,/KILLA_DESKTOP_STANDALONE/);
  assert.match(w,/npm.*test/);
