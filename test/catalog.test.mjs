@@ -62,3 +62,10 @@ test('build Windows compila fontes originais e não usa o deploy Vercel como bac
  assert.match(w,/stage-next\.mjs/);
  assert.doesNotMatch(w,/vercel\s+(deploy|build)/i);
 });
+
+test('stage-next materializes pnpm symlinks before packaging Windows',()=>{
+ const stage=read('scripts/stage-next.mjs');
+ assert.match(stage,/dereference:true/);
+ assert.match(stage,/node_modules.*next.*package\.json/);
+ assert.match(stage,/start-server\.js/);
+});
