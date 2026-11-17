@@ -15,7 +15,7 @@ test('loja exclusiva inicia fora do CRM com dois aplicativos locais permitidos',
  assert.throws(()=>resolveApp('https://evil.example/'));
  assert.match(read('src/store.html'),/Central de Apps/);
  assert.match(read('src/store.html'),/LexisPredict/);
- assert.match(read('src/store.html'),/Infinitum/);
+ assert.match(read('src/store.html'),/INFINITUM/);
  assert.doesNotMatch(read('src/store.html'),/agentinfinitum\.vercel\.app/);
 });
 
