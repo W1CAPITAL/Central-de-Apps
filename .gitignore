@@ -1,0 +1,13 @@
+node_modules/
+dist/
+products/
+apps-src/
+*.log
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.key
+coverage/
+.next/
