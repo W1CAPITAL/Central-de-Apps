@@ -1,5 +1,6 @@
 import {cpSync,existsSync,mkdirSync,readFileSync,realpathSync,rmSync,readdirSync} from 'node:fs';
 import {resolve,join,dirname,relative} from 'node:path';
+import {createRequire} from 'node:module';
 import {resolveApp} from '../src/catalog.mjs';
 
 function findEntrypoint(base,depth=0){
@@ -18,16 +19,19 @@ function privateFile(path){
 function materializeNextDependencies(sourceModules,targetModules){
  const nextSource=realpathSync(join(sourceModules,'next'));
  const manifest=JSON.parse(readFileSync(join(nextSource,'package.json'),'utf8'));
- const dependencyRoot=dirname(nextSource);
+ const requireNext=createRequire(join(nextSource,'package.json'));
  for(const dependency of Object.keys(manifest.dependencies??{})){
-  const source=join(dependencyRoot,dependency);
   const rootTarget=join(targetModules,dependency);
   const nestedTarget=join(targetModules,'next','node_modules',dependency);
-  if(!existsSync(source))continue;
-  // pnpm keeps Next dependencies beside the real Next package. Once the Next
-  // junction is materialized, first turn each junction into a physical root
-  // directory (the path proven portable on Windows), then duplicate that
-  // directory inside Next so Electron cannot prune it as a root package.
+  // Standalone traces are also emitted as ordinary npm layouts on Windows.
+  // Resolve from Next itself: a dependency can live in next/node_modules or
+  // be hoisted higher than the directory containing the real Next package.
+  let source;
+  try{source=dirname(requireNext.resolve(dependency+'/package.json'))}
+  catch{
+   if(existsSync(join(rootTarget,'package.json')))source=rootTarget;
+   else throw Error('Dependência Next ausente do standalone: '+dependency);
+  }
   if(!existsSync(rootTarget))
    cpSync(source,rootTarget,{recursive:true,dereference:true,filter:path=>!privateFile(path)});
   if(!existsSync(nestedTarget))

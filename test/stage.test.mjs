@@ -53,3 +53,31 @@ test('standalone aninhado continua portátil após remover a origem pnpm',()=>{
   rmSync(output,{recursive:true,force:true});
  }
 });
+
+test('dependência hoisted fora da pasta real do Next continua resolvível sem a origem',async()=>{
+ const folder=mkdtempSync(join(tmpdir(),'w1-stage-hoisted-'));
+ const output=mkdtempSync(join(tmpdir(),'w1-stage-output-'));
+ try{
+  const standalone=join(folder,'.next','standalone');
+  const next=join(standalone,'node_modules','.pnpm','next@15','node_modules','next');
+  const styled=join(standalone,'node_modules','styled-jsx');
+  mkdirSync(join(standalone,'.next'),{recursive:true});
+  mkdirSync(join(next,'dist','server','lib'),{recursive:true});
+  mkdirSync(styled,{recursive:true});
+  writeFileSync(join(standalone,'server.js'),'');
+  writeFileSync(join(standalone,'.next','BUILD_ID'),'synthetic-build');
+  writeFileSync(join(next,'package.json'),'{"name":"next","dependencies":{"styled-jsx":"5"}}');
+  writeFileSync(join(next,'dist','server','lib','start-server.js'),"module.exports=require('styled-jsx')");
+  writeFileSync(join(styled,'package.json'),'{"name":"styled-jsx","main":"index.js"}');
+  writeFileSync(join(styled,'index.js'),"module.exports='portable styled-jsx'");
+  symlinkSync(next,join(standalone,'node_modules','next'),'junction');
+  const {target}=stageNext(folder,'lexispredict',{productsRoot:output});
+  rmSync(folder,{recursive:true,force:true});
+  const {createRequire}=await import('node:module');
+  const requireTarget=createRequire(join(target,'server.js'));
+  assert.equal(requireTarget('next/dist/server/lib/start-server.js'),'portable styled-jsx');
+ }finally{
+  rmSync(folder,{recursive:true,force:true});
+  rmSync(output,{recursive:true,force:true});
+ }
+});
