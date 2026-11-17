@@ -30,16 +30,24 @@ for(const id of ['lexispredict','infinitum']){
  const nonce=id==='lexispredict'?'a'.repeat(48):'b'.repeat(48);
  const env=safeEnvironment(id,p,nonce);
  const child=spawn(exe,[entry],{
-  cwd:root,env,windowsHide:true,stdio:['ignore','ignore','pipe'],shell:false
+  cwd:root,env,windowsHide:true,stdio:['ignore','pipe','pipe'],shell:false
  });
  let crashed=false;
- child.once('error',()=>{crashed=true});
- child.once('exit',()=>{crashed=true});
- child.stderr?.resume();
+ let output='',exitDetail='';
+ const capture=chunk=>{output=(output+String(chunk)).slice(-8000)};
+ child.stdout?.on('data',capture);
+ child.stderr?.on('data',capture);
+ child.once('error',error=>{crashed=true;exitDetail=String(error.code||'spawn_error')});
+ child.once('exit',(code,signal)=>{crashed=true;exitDetail='exit='+code+' signal='+(signal||'none')});
+ const diagnostic=()=>[exitDetail,output]
+  .filter(Boolean).join('\n').replaceAll(nonce,'[local nonce]')
+  .replace(/\bBearer\s+\S+/gi,'Bearer [redacted]')
+  .replace(/\b(?:sb_secret_|ghp_|github_pat_|sk-)[A-Za-z0-9_-]+/g,'[redacted]')
+  .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,'[redacted JWT]');
  let ready=false;
  try{
   for(let n=0;n<100;n++){
-   if(crashed)throw Error(id+' encerrou antes do teste HTTP.');
+   if(crashed)throw Error(id+' encerrou antes do teste HTTP.\n'+diagnostic());
    try{
     const res=await fetch('http://127.0.0.1:'+p+'/api/desktop/health',{
      redirect:'manual',signal:AbortSignal.timeout(1000)
@@ -51,7 +59,7 @@ for(const id of ['lexispredict','infinitum']){
    }catch{}
    await sleep(300);
   }
-  if(!ready)throw Error(id+' não iniciou localmente dentro do EXE.');
+  if(!ready)throw Error(id+' não iniciou localmente dentro do EXE.\n'+diagnostic());
   const page=await fetch('http://127.0.0.1:'+p+'/',{
    redirect:'follow',signal:AbortSignal.timeout(15000)
   });
