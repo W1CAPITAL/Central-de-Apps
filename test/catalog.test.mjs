@@ -40,8 +40,10 @@ test('spawn do Next usa localhost e apenas variáveis públicas',async()=>{
 test('instalador empacota ambos os servidores e não baixa executáveis arbitrários',()=>{
  const pkg=JSON.parse(read('package.json'));
  assert.equal(pkg.build.appId,'br.com.w1capital.centraldeapps');
+ const products=pkg.build.extraResources.find(r=>r.from==='products'&&r.to==='products');
+ assert.ok(products);
  for(const app of ['lexispredict','infinitum']){
-  assert.ok(pkg.build.extraResources.some(r=>r.to==='products/'+app));
+  assert.ok(products.filter.includes(app+'/**/*'));
  }
  assert.match(read('src/main.mjs'),/requestSingleInstanceLock/);
  assert.match(read('src/main.mjs'),/openStoreWindow/);
