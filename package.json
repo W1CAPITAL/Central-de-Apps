@@ -70,6 +70,6 @@
   },
   "author": "W1 Capital",
   "dependencies": {
-    "@w1capital/predictbot-opencode": "https://codeload.github.com/W1CAPITAL/PredictBot/tar.gz/865ce72d19f84d3e2f9b26a9aa9c4d921c2c7919"
+    "@w1capital/predictbot-opencode": "https://codeload.github.com/W1CAPITAL/PredictBot/tar.gz/b30ec78bc6c601ef3f85a4bb8f6007bcf28e9e2b"
   }
 }
