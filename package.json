@@ -7,13 +7,14 @@
   "main": "src/main.mjs",
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "check": "node --check src/main.mjs && node --check src/catalog.mjs && node --check src/runtime-policy.mjs && node --check src/update-security.mjs && node --check src/preload.cjs && node --check src/store.js && node --check scripts/stage-next.mjs && node --check scripts/verify-products.mjs",
+    "check": "node --check src/main.mjs && node --check src/catalog.mjs && node --check src/runtime-policy.mjs && node --check src/update-security.mjs && node --check src/preload.cjs && node --check src/store.js && node --check scripts/stage-next.mjs && node --check scripts/verify-products.mjs && node --check src/opencode-controller.mjs",
     "pack:win": "electron-builder --win dir --x64 --publish never",
     "dist:win": "electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {
     "electron": "45.3.2",
-    "electron-builder": "26.18.0"
+    "electron-builder": "26.18.0",
+    "jsdom": "26.1.0"
   },
   "build": {
     "appId": "br.com.w1capital.centraldeapps",
@@ -67,5 +68,8 @@
       "createStartMenuShortcut": true
     }
   },
-  "author": "W1 Capital"
+  "author": "W1 Capital",
+  "dependencies": {
+    "@w1capital/predictbot-opencode": "https://codeload.github.com/W1CAPITAL/PredictBot/tar.gz/865ce72d19f84d3e2f9b26a9aa9c4d921c2c7919"
+  }
 }

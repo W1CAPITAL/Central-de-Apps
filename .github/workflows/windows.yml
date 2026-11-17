@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           lexis_sha="$(git ls-remote https://github.com/W1CAPITAL/LexisPredict.git refs/heads/main | cut -f1)"
-          infinitum_sha="$(git ls-remote https://github.com/ProjectW1SC/INFINITUM.git refs/heads/main | cut -f1)"
+          infinitum_sha="$(git ls-remote https://github.com/W1CAPITAL/Infinitum.git refs/heads/main | cut -f1)"
           test "${#lexis_sha}" -eq 40
           test "${#infinitum_sha}" -eq 40
           echo "lexis_sha=$lexis_sha" >> "$GITHUB_OUTPUT"
@@ -60,6 +60,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - run: npm ci --ignore-scripts
       - name: Testar catálogo, escopo de IPC e inicialização local
         run: |
           npm run check
@@ -86,7 +87,7 @@ jobs:
       - name: Código-fonte INFINITUM da main
         uses: actions/checkout@v4
         with:
-          repository: ProjectW1SC/INFINITUM
+          repository: W1CAPITAL/Infinitum
           ref: ${{ needs.inspect.outputs.infinitum_sha }}
           path: central/apps-src/infinitum
           persist-credentials: false

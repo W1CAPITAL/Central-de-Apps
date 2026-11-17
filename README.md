@@ -7,7 +7,7 @@ A Central é um aplicativo Electron separado dos CRMs. Ao abrir o EXE, o operado
 | Produto | Código-fonte | Execução na Central |
 | --- | --- | --- |
 | LexisPredict | [W1CAPITAL/LexisPredict](https://github.com/W1CAPITAL/LexisPredict) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria |
-| INFINITUM Killa AI | [ProjectW1SC/INFINITUM](https://github.com/ProjectW1SC/INFINITUM) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria |
+| INFINITUM Killa AI | [W1CAPITAL/Infinitum](https://github.com/W1CAPITAL/Infinitum) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria |
 
 ## O que está implementado
 
@@ -97,3 +97,13 @@ A política de porta local rejeita conflitos, em vez de alternar silenciosamente
 - Suporte ao Windows SmartScreen, sem orientar desativar antivírus ou ignorar alertas.
 
 © W1 Capital · Todos os direitos reservados.
+
+## OpenCode e MCP
+
+A seção **OpenCode e MCP** conecta um executável OpenCode instalado ou um servidor existente autenticado. Informe a pasta do projeto e os identificadores locais de usuário e empresa. A senha fica somente em memória e é limpa da interface depois de conectar.
+
+O launcher permite criar/recuperar sessões, enviar tarefas com confirmação de consumo do provedor, consultar mensagens e alterações, interromper tarefas e gerenciar MCPs V2. Conexões MCP locais exibem o comando para aprovação. Para segredos, use referências `{env:NOME}`, resolvidas no ambiente do OpenCode. OAuth pendente é concluído no próprio OpenCode.
+
+O módulo pertence ao [PredictBot](https://github.com/W1CAPITAL/PredictBot/pull/1) e está fixado por SHA na dependência, evitando uma segunda implementação do executor. O padrão bloqueia ferramentas; sessões de revisão pedem aprovação nativa no OpenCode. Os identificadores locais não substituem autenticação ou permissões do CRM. A Central não abre a porta do OpenCode na internet e esta versão não conecta automaticamente um PredictBot hospedado ao PC.
+
+Após conectar uma sessão, as respostas reais são consultadas periodicamente. Um erro de conexão é exibido como erro. Não há atividade simulada do Hermes nem execução de modelo incluída na licença da Central.
