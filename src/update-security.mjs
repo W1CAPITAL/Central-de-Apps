@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {createWriteStream,existsSync,mkdirSync,renameSync,rmSync} from 'node:fs';
+import {createReadStream,createWriteStream,statSync,mkdirSync,renameSync,rmSync} from 'node:fs';
 import {join} from 'node:path';
 import {spawn} from 'node:child_process';
 import {Transform} from 'node:stream';
@@ -44,6 +44,13 @@ export async function verifyWindowsSignature(file,scriptPath){
   child.once('error',reject);
   child.once('close',code=>code===0?resolve(true):reject(Error('O Windows não confirmou o editor W1 Capital (código '+code+').')));
  });
+}
+export async function verifyFileDigest(file,asset){
+ if(statSync(file).size!==asset.size)throw Error('Instalador local mudou de tamanho.');
+ const hash=createHash('sha256');
+ for await(const chunk of createReadStream(file))hash.update(chunk);
+ if(hash.digest('hex')!==asset.sha256)throw Error('O instalador local não corresponde ao SHA-256 oficial.');
+ return true;
 }
 export async function downloadSignedRelease({asset,folder,signatureScript,onProgress=()=>{},fetchImpl=fetch}){
  if(!asset||!VERSION.test(asset.version)||asset.name!=='W1-Central-de-Apps-Setup-'+asset.version+'-x64.exe')
