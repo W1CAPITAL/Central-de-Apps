@@ -55,7 +55,7 @@ export async function downloadSignedRelease({asset,folder,signatureScript,onProg
  }]});
  mkdirSync(folder,{recursive:true});
  const file=join(folder,asset.name);
- const tmp=file+'.partial';
+ const tmp=file+'.partial.exe';
  rmSync(tmp,{force:true});
  let total=0;
  const hash=createHash('sha256');
