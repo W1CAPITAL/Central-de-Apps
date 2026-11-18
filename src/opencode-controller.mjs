@@ -11,7 +11,7 @@ export class OpenCodeController {
    this.disconnect();
    const {directory,userId,companyId}=input;
    const principal={userId,companyId};
-   const adapter=input.mode==='local'?(await this.#runtime.start({directory,principal,stateDirectory:this.#stateDirectory,executable:input.executable||undefined})).adapter:new OpenCodeAdapter({url:input.url,password:input.password,directory,principal,stateDirectory:this.#stateDirectory});
+   const adapter=input.mode==='local'?(await this.#runtime.start({directory,principal,stateDirectory:this.#stateDirectory,executable:input.executable||undefined,localAI:input.localAI})).adapter:new OpenCodeAdapter({url:input.url,password:input.password,directory,principal,stateDirectory:this.#stateDirectory});
    const health=await adapter.health();this.#adapter=adapter;
    return {connected:true,...health,sessions:await adapter.listSessions()};
   }catch(error){this.#runtime.stop();throw error;}finally{this.#connecting=false;}
