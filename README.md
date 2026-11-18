@@ -65,6 +65,7 @@ A Central oferece preparação automática de um modelo local para Windows x64 c
 - Confere SHA-256 e tamanho dos dois arquivos antes de instalar ou executar.
 - Usa CPU, duas threads, contexto de 1.024 tokens, uma geração por vez e API limitada a `127.0.0.1`.
 - Mantém o modelo e a chave em `%LOCALAPPDATA%\\W1 Capital\\Local AI` e passa a configuração isolada apenas ao OpenCode iniciado pela Central.
+- Aparece no seletor de modelo por sessão do PredictBot. Você pode usar BitNet em uma sessão e manter GPT 6.2 Astra em outra.
 - Não altera o modelo padrão nem as configurações globais existentes do OpenCode.
 - Após cinco minutos sem uso, o llama.cpp descarrega os pesos da memória para reduzir o consumo de RAM. O mesmo download é compartilhado entre a Central e o PredictBot independente.
 
