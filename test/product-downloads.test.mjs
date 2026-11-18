@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {ProductDownloads} from '../src/product-downloads.mjs';
-import {downloadSignedRelease} from '../src/update-security.mjs';
+import {downloadVerifiedRelease} from '../src/update-security.mjs';
 import {validateProductRelease} from '../src/distribution.mjs';
 
 test('download da loja verifica bytes, recupera arquivo e recusa adulteração sem executar nada',async()=>{
@@ -23,7 +23,7 @@ test('download da loja verifica bytes, recupera arquivo e recusa adulteração s
  try{
   downloads.update(releases);
   const preview=validateProductRelease(releases[0],'predictbot',{manual:true});
-  await assert.rejects(()=>downloadSignedRelease({asset:preview,folder,fetchImpl:async()=>{throw Error('Não deve buscar o arquivo');}}),/teste/);
+  await assert.rejects(()=>downloadVerifiedRelease({asset:preview,folder,fetchImpl:async()=>{throw Error('Não deve buscar o arquivo');}}),/teste/);
   assert.equal(downloads.snapshot('predictbot').preview,true);
   await Promise.all([downloads.download('predictbot'),downloads.download('predictbot')]);
   assert.equal(requests,1);
