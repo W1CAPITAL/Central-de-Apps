@@ -4,6 +4,7 @@ const VERSION=/^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$/;
 export const PRODUCTS=Object.freeze({
  central:Object.freeze({id:'central',name:'W1 Central de Apps',prefix:'W1-Central-de-Apps',appId:'br.com.w1capital.centraldeapps'}),
  lexispredict:Object.freeze({id:'lexispredict',name:'LexisPredict',prefix:'LexisPredict',appId:'br.com.w1capital.lexispredict'}),
+ infinitum:Object.freeze({id:'infinitum',name:'INFINITUM',prefix:'INFINITUM',appId:'br.com.w1capital.infinitum'}),
  predictbot:Object.freeze({id:'predictbot',name:'PredictBot',prefix:'PredictBot',appId:'br.com.w1capital.predictbot'})
 });
 export function productSpec(id){
