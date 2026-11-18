@@ -2,11 +2,11 @@
 
 **Repositório central do launcher Windows, da loja independente e dos instaladores locais.**
 
-A loja inclui **LexisPredict, INFINITUM e PredictBot**. LexisPredict e PredictBot têm botões de download com progresso e instaladores próprios, publicados junto com o instalador da Central em GitHub Releases. A cópia manual verifica SHA-256 e salva em `Downloads/W1 Capital`; mostrar a pasta não executa o arquivo.
+A loja inclui **LexisPredict, INFINITUM e PredictBot**. LexisPredict, INFINITUM e PredictBot têm botões de download com progresso e instaladores próprios, publicados junto com o instalador da Central, na mesma versão em GitHub Releases. A cópia manual verifica SHA-256 e salva em `Downloads/W1 Capital`; mostrar a pasta não executa o arquivo.
 
 O PredictBot desktop oferece os recursos OpenCode/MCP existentes: sessões, tarefas, respostas, alterações, cancelamento e pareamento remoto. OpenCode e seu provedor continuam sendo configurados separadamente. A migração de Hermes 3D, agentes e chats do CRM não está incluída nessa interface.
 
-Os três EXEs são compilados sem Vercel. A Central acompanha as `main` dos produtos a cada seis horas e recompila quando os commits mudam. Cada release registra os SHAs de origem; builds repetidos sem mudanças são evitados. O INFINITUM permanece incluso na Central.
+Os quatro EXEs (Central e três produtos) são compilados sem Vercel. A Central acompanha as `main` dos produtos a cada seis horas e recompila quando os commits mudam. Cada release registra os SHAs de origem; builds repetidos sem mudanças são evitados. O INFINITUM também permanece incluso na Central, mesmo tendo instalador independente.
 
 **Atualização automática:** ativada por padrão, pode ser desligada na Central ou no menu de cada aplicativo independente. Apenas uma release estável, com hash e Authenticode W1 válidos, pode ser baixada automaticamente e instalada depois que todas as janelas daquele programa forem fechadas. Arquivo e assinatura são verificados novamente antes da instalação. Pré-releases sem assinatura ficam disponíveis exclusivamente para download manual, identificadas como teste.
 
@@ -15,7 +15,7 @@ A Central é um aplicativo Electron separado dos CRMs. Ao abrir o EXE, o operado
 | Produto | Código-fonte | Execução na Central |
 | --- | --- | --- |
 | LexisPredict | [W1CAPITAL/LexisPredict](https://github.com/W1CAPITAL/LexisPredict) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria |
-| INFINITUM Killa AI | [W1CAPITAL/Infinitum](https://github.com/W1CAPITAL/Infinitum) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria |
+| INFINITUM Killa AI | [W1CAPITAL/Infinitum](https://github.com/W1CAPITAL/Infinitum) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria; EXE individual ou incluído na Central |
 | PredictBot | [W1CAPITAL/PredictBot](https://github.com/W1CAPITAL/PredictBot) | Interface desktop local, adaptador OpenCode e MCP, sem servidor Next ou Vercel |
 
 ## O que está implementado
@@ -95,7 +95,7 @@ node scripts/verify-products.mjs
 npm run dist:win
 ```
 
-A política de porta local rejeita conflitos, em vez de alternar silenciosamente o endereço e perder as sessões. Os dois produtos usam partições de sessão Electron separadas.
+A política de porta local rejeita conflitos, em vez de alternar silenciosamente o endereço e perder as sessões. LexisPredict e INFINITUM usam partições de sessão Electron separadas. Os três EXEs independentes possuem perfis Windows próprios.
 
 ## Segurança
 
