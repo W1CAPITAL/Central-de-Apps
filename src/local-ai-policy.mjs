@@ -34,9 +34,8 @@ export function createLocalAIProviderConfig({port=8765}={}){
   providers:{
    'w1-local':{
     name:'W1 Local AI',
-    env:['W1_LOCAL_AI_KEY'],
     package:'@opencode/ai/providers/openai-compatible',
-    settings:{baseURL:'http://127.0.0.1:'+port+'/v1',timeout:300000},
+    settings:{baseURL:'http://127.0.0.1:'+port+'/v1',apiKey:'{env:W1_LOCAL_AI_KEY}',timeout:300000},
     models:{
      'bitnet-2b':{
       name:LOCAL_AI_MODEL.name,
