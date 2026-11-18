@@ -31,7 +31,7 @@ if(bridge?.openCode){
    byId('oc-directory').value=found.directory;
    byId('oc-user').value=found.userId;
    byId('oc-company').value=found.companyId;
-   byId('opencode-form').requestSubmit();
+   byId('opencode-form').requestSubmit(byId('opencode-form').querySelector('button[type="submit"]'));
   }catch(error){status.textContent=String(error.message||'Não foi possível preparar a instalação.');}
   finally{button.disabled=false;}
  });
