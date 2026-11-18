@@ -15,6 +15,7 @@ test('assistente de um clique preenche o formulário e confirma conexão pelo su
  const dom=new JSDOM(html,{runScripts:'outside-only',url:'file:///w1/store.html'});
  const calls=[];
  dom.window.w1Central={
+  localAI:async(action)=>{calls.push({action:'localAI:'+action});return {phase:'ready',running:true};},
   openCode:async(action,input)=>{
    calls.push({action,input});
    if(action==='simpleSetup')return {installed:true,executable:'C:/OpenCode/opencode.exe',directory:'C:/Users/Test/Documents/W1 Capital/Projetos',userId:'windows-user-local',companyId:'w1-local-only'};
@@ -28,6 +29,8 @@ test('assistente de um clique preenche o formulário e confirma conexão pelo su
   dom.window.document.getElementById('oc-simple-setup').click();
   await new Promise(resolve=>setTimeout(resolve,60));
   assert.ok(calls.some(c=>c.action==='simpleSetup'));
+  assert.ok(calls.some(c=>c.action==='localAI:prepare'),'configuração simples deve preparar a IA local');
   assert.ok(calls.some(c=>c.action==='connect'),'configuração simples deve conectar, não apenas preencher campos');
+  assert.ok(calls.findIndex(c=>c.action==='localAI:prepare')<calls.findIndex(c=>c.action==='connect'),'a IA local deve estar pronta antes da conexão OpenCode');
  }finally{dom.window.close()}
 });
