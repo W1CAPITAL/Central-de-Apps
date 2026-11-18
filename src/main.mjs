@@ -16,6 +16,7 @@ import {validateReleaseAsset,downloadVerifiedRelease,verifyFileDigest} from './u
 import {createInPlaceUpdatePlan} from './update-install.mjs';
 import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distribution.mjs';
 import {ProductDownloads} from './product-downloads.mjs';
+import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
 
 const BUILD=productSpec(JSON.parse(readFileSync(new URL('./product-build.json',import.meta.url),'utf8')).id);
 const previousProfile=app.getPath('userData');
@@ -126,6 +127,47 @@ async function startProduct(id){
  catch(error){if(child.exitCode===null)child.kill();running.delete(id);throw error}
  return record;
 }
+const ZOOM_SETTINGS_FILE='zoom-preferences.json';
+function getProductZoom(id){
+ try{
+  const saved=JSON.parse(readFileSync(join(app.getPath('userData'),ZOOM_SETTINGS_FILE),'utf8'));
+  const factor=saved?.[id];
+  if(Number.isFinite(factor)&&factor>=.5&&factor<=2)return factor;
+ }catch{}
+ return 1;
+}
+function updateProductZoom(win,id,action){
+ const factor=zoomFactorForAction(win.webContents.getZoomFactor(),action);
+ win.webContents.setZoomFactor(factor);
+ const path=join(app.getPath('userData'),ZOOM_SETTINGS_FILE);
+ let settings={};
+ try{
+  const current=JSON.parse(readFileSync(path,'utf8'));
+  if(current&&typeof current==='object'&&!Array.isArray(current))settings=current;
+ }catch{}
+ writeFileSync(path,JSON.stringify({...settings,[id]:factor}));
+ return zoomPercent(factor);
+}
+function attachLexisZoomMenu(win,id){
+ if(id!=='lexispredict')return;
+ const action=value=>updateProductZoom(win,id,value);
+ win.setMenu(Menu.buildFromTemplate([
+  {label:'Visualizar',submenu:[
+   {label:'Aumentar zoom',accelerator:'CommandOrControl+Equal',click:()=>action('in')},
+   {label:'Aumentar zoom (+)',accelerator:'CommandOrControl+Shift+Equal',click:()=>action('in')},
+   {label:'Diminuir zoom',accelerator:'CommandOrControl+Minus',click:()=>action('out')},
+   {label:'Restaurar 100%',accelerator:'CommandOrControl+0',click:()=>action('reset')},
+  ]},
+  {label:'Aplicativo',submenu:[
+   {label:'Verificar atualizações',click:()=>void checkUpdates()},
+   {role:'quit',label:'Sair'}
+  ]}
+ ]));
+ win.webContents.on('did-finish-load',()=>{
+  if(!win.isDestroyed())win.webContents.setZoomFactor(getProductZoom(id));
+ });
+}
+
 function productBrowser(id,port){
  const productSession=session.fromPartition('persist:central-'+id);
  // Rewrite only the same-port loopback alias, before the request reaches DNS.
@@ -156,6 +198,7 @@ function productBrowser(id,port){
   // No background microphone, camera or clipboard access without a dedicated workflow.
   callback(false);
  });
+ attachLexisZoomMenu(win,id);
  win.once('ready-to-show',()=>win.show());
  win.on('closed',()=>{windows.delete(id);announce()});
  return win;
