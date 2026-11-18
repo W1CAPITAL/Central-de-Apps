@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <queries>
+        <package android:name="br.com.w1capital.lexispredict.android" />
+        <package android:name="br.com.w1capital.infinitum.android" />
+        <package android:name="br.com.w1capital.predictbot.android" />
+    </queries>
+    <application
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
+        android:label="W1 Capital · Central"
+        android:icon="@drawable/ic_w1"
+        android:roundIcon="@drawable/ic_w1"
+        android:theme="@style/AppTheme"
+        android:supportsRtl="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <provider
+            android:name=".VerifiedApkProvider"
+            android:authorities="${applicationId}.apks"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+    </application>
+</manifest>
