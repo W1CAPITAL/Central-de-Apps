@@ -56,6 +56,27 @@ jobs:
           "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           unzip -l "$APK" | grep -E 'classes.dex|AndroidManifest.xml'
           sha256sum "$APK"
+      - name: Habilitar aceleração do emulador Android
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Validar inicialização real do APK no Android emulado
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: Nexus 6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell am start -n br.com.w1capital.central.android/br.com.w1capital.central.MainActivity
+            sleep 6
+            adb shell uiautomator dump /sdcard/window.xml
+            adb shell cat /sdcard/window.xml | grep -q 'Central de Apps'
+
       - name: Guardar APK como artefato do GitHub
         uses: actions/upload-artifact@v4
         with:
