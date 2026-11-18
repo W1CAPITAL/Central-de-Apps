@@ -66,11 +66,11 @@
     <ul class="security-list"><li><span>✓</span>SHA-256 conferido no download</li><li><span>✓</span>Mesmo diretório da instalação atual</li><li><span>✓</span>Proteções do Windows preservadas</li></ul>
    </section>
    <section class="local-ai-card side-panel" id="local-ai" aria-labelledby="local-ai-title">
-    <div class="side-head"><span class="side-icon" aria-hidden="true">◈</span><div><h2 id="local-ai-title">IA local W1</h2><small>Microsoft BitNet · CPU · sem API paga</small></div></div>
+    <div class="side-head"><span class="side-icon" aria-hidden="true">◈</span><div><h2 id="local-ai-title">IA local W1</h2><small>Qwen3 1.7B · CPU · sem API paga</small></div></div>
     <p id="local-ai-message">Verificando compatibilidade deste computador...</p>
     <div class="local-ai-progress" id="local-ai-progress" hidden><div class="download-track"><div id="local-ai-bar"></div></div><span id="local-ai-percent">0%</span></div>
     <div class="update-actions"><button type="button" class="accent wide-button" id="local-ai-prepare">Preparar automaticamente</button><button type="button" class="secondary wide-button" id="local-ai-check">Verificar instalação</button></div>
-    <small class="local-ai-footnote">Primeira instalação: aproximadamente 1,22 GB. A IA usa a memória do PC e libera os pesos após 5 minutos sem uso. Não substitui o GPT 6.2 Astra.</small>
+    <small class="local-ai-footnote">Primeira instalação: aproximadamente 1,31 GB. A IA usa a memória do PC e libera os pesos após 5 minutos sem uso. Não substitui o GPT 6.2 Astra.</small>
     <span id="local-ai-status" role="status">Não instalada</span>
    </section>
    <section class="connection-panel side-panel" id="integracoes">
@@ -102,7 +102,7 @@
    <div id="oc-workspace" hidden>
     <div class="opencode-grid"><label>Sessão<select id="oc-session"></select></label><label>Permissões de nova sessão<select id="oc-permissions"><option value="restricted">Ferramentas bloqueadas</option><option value="review">Pedir aprovação no OpenCode</option></select></label></div>
     <div class="opencode-grid opencode-model-grid"><label>Modelo da sessão<select id="oc-model"><option value="" disabled selected>Selecione um modelo para esta sessão</option></select></label></div>
-    <small class="local-ai-footnote">O BitNet local aparece nesta lista após a preparação. Ele responde texto, mas não executa ferramentas; o Astra continua disponível para tarefas com agentes.</small>
+    <small class="local-ai-footnote">O Qwen3 local aparece nesta lista após a preparação. Ele responde texto, mas não executa ferramentas; o Astra continua disponível para tarefas com agentes.</small>
     <div class="update-actions"><button class="secondary" id="oc-create">Nova sessão</button><button class="secondary" id="oc-messages">Ver respostas</button><button class="secondary" id="oc-diff">Ver alterações</button><button class="secondary" id="oc-abort">Interromper tarefa</button></div>
     <label>Tarefa<textarea id="oc-prompt" maxlength="32000" rows="3" placeholder="Descreva a tarefa que o OpenCode deve executar"></textarea></label>
     <div class="oc-attachment-control"><button type="button" class="secondary" id="oc-attach">Adicionar documento, imagem, vídeo ou arquivo</button><ul id="oc-file-list" aria-label="Arquivos selecionados"></ul><p class="oc-note">Arquivos só serão referenciados na tarefa depois da sua confirmação. Não são enviados automaticamente, abertos ou descompactados.</p></div>
