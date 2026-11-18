@@ -39,3 +39,9 @@ test('seletor de modelo controla somente a sessão atual no PredictBot',()=>{
  assert.match(read('src/opencode-controller.mjs'),/case 'switchModel'/);
  assert.match(read('src/opencode-controller.mjs'),/case 'models'/);
 });
+
+test('seletor usa Model.Ref V2 com id e providerID, sem modelID legado',()=>{
+ const ui=read('src/opencode-ui.js');
+ assert.match(ui,/providerID:m\.providerID,id:m\.id/);
+ assert.match(ui,/model\?\.providerID&&model\?\.id/);
+});
