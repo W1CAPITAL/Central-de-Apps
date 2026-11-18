@@ -49,13 +49,18 @@ test('mantém apenas o instalador mais recente do mesmo aplicativo no cache',()=
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
 
-test('helper espera o aplicativo fechar, confere SHA-256 e instala no mesmo diretório',()=>{
+test('helper fecha a Central sozinho se ela continuar aberta, confere hash e instala no mesmo diretório',()=>{
  const script=readFileSync(new URL('../src/install-update.ps1',import.meta.url),'utf8');
- assert.ok(script.includes('Get-Process -Id $ParentProcessId'));
+ assert.ok(script.includes('Get-CimInstance -ClassName Win32_Process'));
+ assert.ok(script.includes('$candidate.ExecutablePath'));
+ assert.ok(script.includes('$window.CloseMainWindow()'));
+ assert.ok(script.includes('Stop-Process -Id $ParentProcessId -Force'));
+ assert.ok(script.includes('AddSeconds(12)'));
  assert.ok(script.includes('Get-FileHash'));
  assert.ok(script.includes('/D='));
  assert.ok(script.includes('Start-Process -FilePath $resolvedInstaller'));
  assert.ok(script.includes('Start-Process -FilePath $resolvedExecutable'));
+ assert.ok(!script.includes('O aplicativo não encerrou a tempo.'));
  assert.ok(!script.includes('New-Item')&&!script.includes('CreateDirectory'));
 });
 
