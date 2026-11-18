@@ -103,17 +103,24 @@ jobs:
         with:
           version: 10
       - name: Cache de dependências e compilação Next
+        id: next-build-cache
         uses: actions/cache@v4
         with:
           path: |
             ~\AppData\Local\pnpm\store
             ~\AppData\Local\npm-cache
-            central/apps-src/lexispredict/.next/cache
-            central/apps-src/infinitum/.next/cache
-          key: w1-win-${{ runner.os }}-node24-${{ hashFiles('central/package-lock.json') }}-${{ needs.inspect.outputs.lexis_sha }}-${{ needs.inspect.outputs.infinitum_sha }}
+            central/apps-src/lexispredict/.next
+            central/apps-src/infinitum/.next
+          key: w1-win-${{ runner.os }}-node24-${{ hashFiles('central/package-lock.json') }}-${{ needs.inspect.outputs.lexis_sha }}-${{ needs.inspect.outputs.infinitum_sha }}-supabase-config-v1
           restore-keys: |
             w1-win-${{ runner.os }}-node24-${{ hashFiles('central/package-lock.json') }}-
             w1-win-${{ runner.os }}-node24-
+      - name: Confirmar cache completo dos servidores Next
+        id: next-cache-check
+        shell: pwsh
+        run: |
+          $valid = (Test-Path 'central/apps-src/lexispredict/.next/standalone/server.js') -and (Test-Path 'central/apps-src/infinitum/.next/standalone/server.js')
+          "valid=$($valid.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - name: Instalar dependências LexisPredict
         working-directory: central/apps-src/lexispredict
         run: pnpm install --frozen-lockfile
@@ -131,6 +138,7 @@ jobs:
           pnpm run typecheck
           pnpm test
       - name: Compilar LexisPredict Next standalone (sem Vercel)
+        if: steps.next-cache-check.outputs.valid != 'true'
         working-directory: central/apps-src/lexispredict
         # package.json usa NODE_ENV=production (sintaxe Unix); no Windows o env é fornecido abaixo.
         run: pnpm exec next build
@@ -151,6 +159,7 @@ jobs:
           npm run typecheck
           npm run test:dom
       - name: Compilar INFINITUM Next standalone (sem Vercel)
+        if: steps.next-cache-check.outputs.valid != 'true'
         working-directory: central/apps-src/infinitum
         run: npm run build
         env:
