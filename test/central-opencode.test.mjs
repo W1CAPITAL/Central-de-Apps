@@ -31,3 +31,11 @@ test('PredictBot inicia a preparação local automaticamente no primeiro uso',()
  assert.match(read('src/predictbot.html'),/data-auto-setup="true"/);
  assert.match(read('src/local-ai-ui.js'),/autoSetup/);
 });
+
+test('seletor de modelo controla somente a sessão atual no PredictBot',()=>{
+ assert.match(read('src/store.html'),/id="oc-model"/);
+ assert.match(read('src/predictbot.html'),/id="oc-model"/);
+ assert.match(read('src/opencode-ui.js'),/request\('switchModel'/);
+ assert.match(read('src/opencode-controller.mjs'),/case 'switchModel'/);
+ assert.match(read('src/opencode-controller.mjs'),/case 'models'/);
+});
