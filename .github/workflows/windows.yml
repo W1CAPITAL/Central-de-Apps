@@ -359,10 +359,13 @@ jobs:
           )
           gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes @assets
           $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
+          $manifest = Get-Content -LiteralPath 'release-catalog.json' -Raw | ConvertFrom-Json
+          if ($manifest.tag_name -ne $tag) { throw "Manifesto não corresponde à versão publicada." }
           foreach ($file in $assets[0..3]) {
             $name = [IO.Path]::GetFileName($file)
-            $line = $sums | Where-Object { $_.EndsWith("  $name") }
-            $expected = ($line -split '\s+')[0]
+            $manifestAsset = $manifest.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
             $published = $release.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
-            if (-not $published -or $published.digest -ne ("sha256:"+$expected)) { throw "Digest publicado não confere: $name" }
+            if (-not $manifestAsset -or -not $published -or $published.digest -ne $manifestAsset.digest) {
+              throw "Digest publicado não confere: $name"
+            }
           }
