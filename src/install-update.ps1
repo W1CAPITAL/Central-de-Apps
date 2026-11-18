@@ -18,12 +18,38 @@ try {
  $root = [IO.Path]::GetPathRoot($resolvedInstallDirectory)
  if ($resolvedInstallDirectory.TrimEnd('\') -ieq $root.TrimEnd('\')) { throw 'Diretório de instalação inválido.' }
 
- # Wait until the current app has released its executable and resources.
- $deadline = (Get-Date).AddSeconds(120)
- while ($null -ne (Get-Process -Id $ParentProcessId -ErrorAction SilentlyContinue) -and (Get-Date) -lt $deadline) {
-  Start-Sleep -Milliseconds 250
+ # app.quit() is requested before this helper starts. Give it a short grace period,
+ # then close it ourselves if Windows still has the exact installed executable open.
+ function Get-TargetParentProcess {
+  $candidate = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $ParentProcessId" -ErrorAction SilentlyContinue
+  if ($null -eq $candidate) { return $null }
+  if (-not $candidate.ExecutablePath) { return $null }
+  if ([string]::Equals($candidate.ExecutablePath, $resolvedExecutable, [StringComparison]::OrdinalIgnoreCase)) {
+   return $candidate
+  }
+  return $null
  }
- if ($null -ne (Get-Process -Id $ParentProcessId -ErrorAction SilentlyContinue)) { throw 'O aplicativo não encerrou a tempo.' }
+ $parent = Get-TargetParentProcess
+ if ($null -ne $parent) {
+  try {
+   $window = Get-Process -Id $ParentProcessId -ErrorAction SilentlyContinue
+   if ($null -ne $window) { [void]$window.CloseMainWindow() }
+  } catch {}
+  $deadline = (Get-Date).AddSeconds(12)
+  while (($null -ne (Get-TargetParentProcess)) -and (Get-Date) -lt $deadline) {
+   Start-Sleep -Milliseconds 250
+  }
+  $parent = Get-TargetParentProcess
+  if ($null -ne $parent) {
+   Add-Content -LiteralPath $log -Value 'Central ainda estava aberta; encerrando o processo da instalação atual automaticamente.'
+   Stop-Process -Id $ParentProcessId -Force -ErrorAction SilentlyContinue
+   $deadline = (Get-Date).AddSeconds(8)
+   while (($null -ne (Get-TargetParentProcess)) -and (Get-Date) -lt $deadline) {
+    Start-Sleep -Milliseconds 250
+   }
+   if ($null -ne (Get-TargetParentProcess)) { throw 'O Windows não liberou o executável após o encerramento automático.' }
+  }
+ }
 
  # Recheck the exact bytes immediately before running the installer.
  $actualHash = (Get-FileHash -LiteralPath $resolvedInstaller -Algorithm SHA256).Hash.ToLowerInvariant()

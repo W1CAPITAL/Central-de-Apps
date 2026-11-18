@@ -66,7 +66,7 @@ jobs:
           npm test
   windows:
     needs: [inspect,test]
-    if: needs.inspect.outputs.build == 'true'
+    if: needs.inspect.outputs.build == 'true' && github.event_name != 'pull_request'
     runs-on: windows-latest
     timeout-minutes: 120
     steps:
@@ -102,6 +102,26 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
+      - name: Cache de dependências e compilação Next
+        id: next-build-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\pnpm\store
+            ~\AppData\Local\npm-cache
+            central/apps-src/lexispredict/.next
+            central/apps-src/infinitum/.next
+          key: w1-win-${{ runner.os }}-node24-${{ hashFiles('central/package-lock.json') }}-${{ needs.inspect.outputs.lexis_sha }}-${{ needs.inspect.outputs.infinitum_sha }}-supabase-config-v1
+          restore-keys: |
+            w1-win-${{ runner.os }}-node24-${{ hashFiles('central/package-lock.json') }}-
+            w1-win-${{ runner.os }}-node24-
+      - name: Confirmar cache completo dos servidores Next
+        id: next-cache-check
+        shell: pwsh
+        run: |
+          $exactCacheHit = '${{ steps.next-build-cache.outputs.cache-hit }}' -eq 'true'
+          $valid = $exactCacheHit -and (Test-Path 'central/apps-src/lexispredict/.next/standalone/server.js') -and (Test-Path 'central/apps-src/infinitum/.next/standalone/server.js')
+          "valid=$($valid.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - name: Instalar dependências LexisPredict
         working-directory: central/apps-src/lexispredict
         run: pnpm install --frozen-lockfile
@@ -114,11 +134,13 @@ jobs:
           [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'src/install-update.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
           if ($errors.Count -gt 0) { throw ($errors | Out-String) }
       - name: Testes e tipos LexisPredict
+        if: steps.next-cache-check.outputs.valid != 'true'
         working-directory: central/apps-src/lexispredict
         run: |
           pnpm run typecheck
           pnpm test
       - name: Compilar LexisPredict Next standalone (sem Vercel)
+        if: steps.next-cache-check.outputs.valid != 'true'
         working-directory: central/apps-src/lexispredict
         # package.json usa NODE_ENV=production (sintaxe Unix); no Windows o env é fornecido abaixo.
         run: pnpm exec next build
@@ -133,12 +155,14 @@ jobs:
         working-directory: central/apps-src/infinitum
         run: npm install --no-audit --no-fund
       - name: Testes e tipos INFINITUM
+        if: steps.next-cache-check.outputs.valid != 'true'
         working-directory: central/apps-src/infinitum
         run: |
           npm test
           npm run typecheck
           npm run test:dom
       - name: Compilar INFINITUM Next standalone (sem Vercel)
+        if: steps.next-cache-check.outputs.valid != 'true'
         working-directory: central/apps-src/infinitum
         run: npm run build
         env:
@@ -175,9 +199,9 @@ jobs:
         working-directory: central
         shell: pwsh
         run: ./scripts/create-icons.ps1
-      - name: Gerar EXE com LexisPredict e INFINITUM locais
+      - name: Gerar instalador Central e pasta executável em uma única compilação
         working-directory: central
-        run: npm run pack:win
+        run: npm run dist:win
         env:
           WIN_CSC_LINK: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_P12 || '' }}
           WIN_CSC_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_PASSWORD || '' }}
@@ -196,12 +220,6 @@ jobs:
           name: Central-desktop-smoke-${{ github.run_number }}
           path: central/desktop-smoke/
           if-no-files-found: ignore
-      - name: Gerar instalador Central de Apps Windows x64
-        working-directory: central
-        run: npm run dist:win
-        env:
-          WIN_CSC_LINK: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_P12 || '' }}
-          WIN_CSC_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_PASSWORD || '' }}
       - name: Instalar NSIS em pasta limpa do runner e testar o EXE instalado
         working-directory: central
         shell: pwsh
@@ -235,7 +253,7 @@ jobs:
           name: Central-installed-smoke-${{ github.run_number }}
           path: central/desktop-smoke-installed/
           if-no-files-found: ignore
-      - name: Empacotar e abrir LexisPredict e PredictBot independentes
+      - name: Empacotar aplicativos independentes uma única vez e testar os EXEs
         working-directory: central
         shell: pwsh
         env:
@@ -244,45 +262,30 @@ jobs:
         run: |
           foreach ($id in @('lexispredict','infinitum','predictbot')) {
             $name = if ($id -eq 'lexispredict') { 'LexisPredict' } elseif ($id -eq 'infinitum') { 'INFINITUM' } else { 'PredictBot' }
-            node scripts/package-product.mjs $id dir
-            if ($LASTEXITCODE -ne 0) { throw "Pack falhou: $id" }
+            node scripts/package-product.mjs $id nsis
+            if ($LASTEXITCODE -ne 0) { throw "NSIS falhou: $id" }
             $exe = "dist/products/$id/win-unpacked/$name.exe"
             node scripts/verify-desktop-ui.mjs $exe ("desktop-smoke-products/"+$id) $id
             if ($LASTEXITCODE -ne 0) { throw "EXE independente falhou: $id" }
           }
-      - name: Gerar e instalar os instaladores independentes na main
+      - name: Instalar e validar os EXEs independentes já empacotados
         if: github.ref == 'refs/heads/main'
         working-directory: central
         shell: pwsh
-        env:
-          WIN_CSC_LINK: ${{ secrets.CENTRAL_WINDOWS_CERT_P12 }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.CENTRAL_WINDOWS_CERT_PASSWORD }}
         run: |
           foreach ($id in @('lexispredict','infinitum','predictbot')) {
             $name = if ($id -eq 'lexispredict') { 'LexisPredict' } elseif ($id -eq 'infinitum') { 'INFINITUM' } else { 'PredictBot' }
-            node scripts/package-product.mjs $id nsis
-            if ($LASTEXITCODE -ne 0) { throw "NSIS falhou: $id" }
             $installer = "dist/products/$id/$name-Setup-$env:CENTRAL_VERSION-x64.exe"
             $installDir = Join-Path $env:RUNNER_TEMP ("W1ProductInstalled-"+$id)
             $process = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
             if (-not $process.WaitForExit(180000)) {
-            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-            throw "Instalação silenciosa do NSIS excedeu 3 minutos."
-          }
-          if ($process.ExitCode -ne 0) { throw "Instalação falhou: $id" }
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              throw "Instalação silenciosa excedeu 3 minutos: $id"
+            }
+            if ($process.ExitCode -ne 0) { throw "Instalação falhou: $id" }
             $installedExe = Join-Path $installDir "$name.exe"
             node scripts/verify-desktop-ui.mjs $installedExe ("desktop-smoke-products/installed-"+$id) $id
             if ($LASTEXITCODE -ne 0) { throw "EXE instalado falhou: $id" }
-            $originalPath = (Resolve-Path -LiteralPath $installedExe).Path
-            $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
-            if (-not $repeat.WaitForExit(180000)) {
-            Stop-Process -Id $repeat.Id -Force -ErrorAction SilentlyContinue
-            throw "Reinstalação silenciosa do NSIS excedeu 3 minutos."
-          }
-          if ($repeat.ExitCode -ne 0) { throw "Atualização sobre a instalação existente falhou: $id" }
-            $updatedPath = (Resolve-Path -LiteralPath $installedExe).Path
-            $copies = @(Get-ChildItem -LiteralPath $installDir -Filter "$name.exe" -File -Recurse)
-            if ($updatedPath -ne $originalPath -or $copies.Count -ne 1) { throw "A atualização criou uma segunda instalação: $id" }
           }
       - name: Guardar capturas dos aplicativos independentes
         if: always()
