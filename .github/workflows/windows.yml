@@ -105,6 +105,14 @@ jobs:
       - name: Instalar dependências LexisPredict
         working-directory: central/apps-src/lexispredict
         run: pnpm install --frozen-lockfile
+      - name: Validar sintaxe do helper de atualização
+        working-directory: central
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'src/install-update.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { throw ($errors | Out-String) }
       - name: Testes e tipos LexisPredict
         working-directory: central/apps-src/lexispredict
         run: |
@@ -206,6 +214,12 @@ jobs:
           if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) { throw 'NSIS não instalou o EXE.' }
           node scripts/verify-desktop-ui.mjs $installed desktop-smoke-installed
           if ($LASTEXITCODE -ne 0) { throw 'EXE instalado falhou no teste visual.' }
+          $originalPath = (Resolve-Path -LiteralPath $installed).Path
+          $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -Wait -PassThru
+          if ($repeat.ExitCode -ne 0) { throw 'A atualização sobre a instalação existente falhou.' }
+          $updatedPath = (Resolve-Path -LiteralPath $installed).Path
+          $copies = @(Get-ChildItem -LiteralPath $installDir -Filter 'W1 Central de Apps.exe' -File -Recurse)
+          if ($updatedPath -ne $originalPath -or $copies.Count -ne 1) { throw 'A atualização criou uma segunda instalação da Central.' }
       - name: Guardar capturas da instalação real no runner
         if: always()
         uses: actions/upload-artifact@v4
@@ -244,8 +258,15 @@ jobs:
             $installDir = Join-Path $env:RUNNER_TEMP ("W1ProductInstalled-"+$id)
             $process = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -Wait -PassThru
             if ($process.ExitCode -ne 0) { throw "Instalação falhou: $id" }
-            node scripts/verify-desktop-ui.mjs (Join-Path $installDir "$name.exe") ("desktop-smoke-products/installed-"+$id) $id
+            $installedExe = Join-Path $installDir "$name.exe"
+            node scripts/verify-desktop-ui.mjs $installedExe ("desktop-smoke-products/installed-"+$id) $id
             if ($LASTEXITCODE -ne 0) { throw "EXE instalado falhou: $id" }
+            $originalPath = (Resolve-Path -LiteralPath $installedExe).Path
+            $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -Wait -PassThru
+            if ($repeat.ExitCode -ne 0) { throw "Atualização sobre a instalação existente falhou: $id" }
+            $updatedPath = (Resolve-Path -LiteralPath $installedExe).Path
+            $copies = @(Get-ChildItem -LiteralPath $installDir -Filter "$name.exe" -File -Recurse)
+            if ($updatedPath -ne $originalPath -or $copies.Count -ne 1) { throw "A atualização criou uma segunda instalação: $id" }
           }
       - name: Guardar capturas dos aplicativos independentes
         if: always()
@@ -277,28 +298,6 @@ jobs:
           if-no-files-found: error
           retention-days: 30
   publish:
-    needs: [windows]
-    if: github.ref == 'refs/heads/main' && needs.windows.outputs.signed == 'true'
-    runs-on: windows-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Baixar somente instalador verificado do job Windows
-        uses: actions/download-artifact@v4
-        with:
-          name: W1-Central-de-Apps-Windows-x64-0.1.${{ github.run_number }}
-          path: central
-      - name: Verificar assinatura novamente antes da publicação
-        shell: pwsh
-        run: |
-          $file = 'central/dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe'
-          $files = @($file,
-            'central/dist/products/lexispredict/LexisPredict-Setup-0.1.${{ github.run_number }}-x64.exe',
-            'central/dist/products/infinitum/INFINITUM-Setup-0.1.${{ github.run_number }}-x64.exe',
-            'central/dist/products/predictbot/PredictBot-Setup-0.1.${{ github.run_number }}-x64.exe')
-          foreach ($item in $files) {
-            if (-not (Test-Path -LiteralPath $item -PathType Leaf)) { throw 'Instalador ausente do artefato.' }
-            $signature =   publish:
     needs: [windows]
     if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
