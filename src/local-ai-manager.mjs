@@ -129,7 +129,9 @@ export class LocalAIManager{
      const pid=Number(value.pid);
      if(!Number.isInteger(pid)||pid<1)stale=Date.now()-Number(value.startedAt||0)>60000;
      else try{process.kill(pid,0)}catch(check){if(check.code==='ESRCH'||check.code==='EINVAL')stale=true}
-    }catch{stale=true}
+    }catch{
+     try{const info=await stat(lockPath);stale=Date.now()-info.mtimeMs>60000}catch{stale=true}
+    }
     if(stale){await rm(lockPath,{force:true}).catch(()=>{});continue}
     if(attempt===0)this.#emit({phase:'checking',supported:true,percent:0,message:'Outra janela W1 está preparando a IA local. A instalação será compartilhada.'});
     await delay(1000);
