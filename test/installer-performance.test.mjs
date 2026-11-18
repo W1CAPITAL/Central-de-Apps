@@ -24,6 +24,7 @@ test('workflow gera cada instalador uma única vez e reutiliza win-unpacked nos 
  assert.match(workflow,/actions\/cache@v4/);
  assert.match(workflow,/\.next\/standalone\/server\.js/);
  assert.match(workflow,/id: next-build-cache/);
+ assert.match(workflow,/steps\.next-build-cache\.outputs\.cache-hit/);
  assert.equal((workflow.match(/if: steps\.next-cache-check\.outputs\.valid != 'true'/g)||[]).length,2);
  assert.match(workflow,/needs\.inspect\.outputs\.lexis_sha/);
  assert.match(workflow,/needs\.inspect\.outputs\.infinitum_sha/);
