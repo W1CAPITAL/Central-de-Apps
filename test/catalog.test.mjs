@@ -71,3 +71,17 @@ test('stage-next materializes pnpm symlinks before packaging Windows',()=>{
  assert.match(stage,/node_modules.*next.*package\.json/);
  assert.match(stage,/start-server\.js/);
 });
+
+
+test('INFINITUM pode iniciar e baixar pelo próprio EXE, sem reaproveitar o perfil da Central',()=>{
+ const main=read('src/main.mjs');
+ const build=read('scripts/package-product.mjs');
+ const ui=read('src/store.js');
+ const workflow=read('.github/workflows/windows.yml');
+ assert.match(main,/BUILD\.id==='infinitum'/);
+ assert.match(main,/downloads\(\)\.snapshot\(app\.id\)/);
+ assert.match(build,/\['lexispredict','infinitum','predictbot'\]/);
+ assert.match(ui,/app\.id==='infinitum'/);
+ assert.match(workflow,/INFINITUM-Setup-/);
+ assert.match(workflow,/@\(?.*'infinitum'.*'predictbot'/);
+});
