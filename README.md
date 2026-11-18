@@ -1,22 +1,45 @@
-# W1 Capital · Central de Apps
+<div align="center">
 
-**Repositório central do launcher Windows, da loja independente e dos instaladores locais.**
+<img src="./docs/assets/w1-central-brand.svg" alt="W1 Capital — Central de Aplicativos" width="100%" />
 
-A loja inclui **LexisPredict, INFINITUM e PredictBot**. LexisPredict, INFINITUM e PredictBot têm botões de download com progresso e instaladores próprios, publicados junto com o instalador da Central, na mesma versão em GitHub Releases. A cópia manual verifica SHA-256 e salva em `Downloads/W1 Capital`; mostrar a pasta não executa o arquivo.
+# Central de Aplicativos
 
-O PredictBot desktop oferece os recursos OpenCode/MCP existentes: sessões, tarefas, respostas, alterações, cancelamento e pareamento remoto. OpenCode e seu provedor continuam sendo configurados separadamente. A migração de Hermes 3D, agentes e chats do CRM não está incluída nessa interface.
+**Instalação, execução e atualização dos produtos W1 Capital para Windows.**
 
-Os quatro EXEs (Central e três produtos) são compilados sem Vercel. A Central acompanha as `main` dos produtos a cada seis horas e recompila quando os commits mudam. Cada release registra os SHAs de origem; builds repetidos sem mudanças são evitados. O INFINITUM também permanece incluso na Central, mesmo tendo instalador independente.
+[Instalador Windows](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/W1-Central-de-Apps-Setup-0.1.48-x64.exe) ·
+[Versões disponíveis](https://github.com/W1CAPITAL/Central-de-Apps/releases) ·
+[Catálogo do ecossistema](docs/ECOSSISTEMA-W1.md)
 
-**Atualização automática:** ativada por padrão, pode ser desligada na Central ou no menu de cada aplicativo independente. Apenas uma release estável, com hash e Authenticode W1 válidos, pode ser baixada automaticamente e instalada depois que todas as janelas daquele programa forem fechadas. Arquivo e assinatura são verificados novamente antes da instalação. Pré-releases sem assinatura ficam disponíveis exclusivamente para download manual, identificadas como teste.
+</div>
 
-A Central é um aplicativo Electron separado dos CRMs. Ao abrir o EXE, o operador vê a **loja diretamente**, sem passar pelo site ou pela rota `/app-store` do INFINITUM. Os produtos continuam com repositórios e ciclos de desenvolvimento próprios:
+---
 
-| Produto | Código-fonte | Execução na Central |
+## Download para Windows
+
+Os instaladores abaixo foram confirmados na [pré-release `preview-v0.1.48`](https://github.com/W1CAPITAL/Central-de-Apps/releases/tag/preview-v0.1.48) em 18 de novembro de 2026.
+
+| Aplicativo | Instalador | Situação |
 | --- | --- | --- |
-| LexisPredict | [W1CAPITAL/LexisPredict](https://github.com/W1CAPITAL/LexisPredict) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria |
-| INFINITUM Killa AI | [W1CAPITAL/Infinitum](https://github.com/W1CAPITAL/Infinitum) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria; EXE individual ou incluído na Central |
-| PredictBot | [W1CAPITAL/PredictBot](https://github.com/W1CAPITAL/PredictBot) | Interface desktop local, adaptador OpenCode e MCP, sem servidor Next ou Vercel |
+| **Central de Apps** | [W1-Central-de-Apps-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/W1-Central-de-Apps-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
+| **LexisPredict** | [LexisPredict-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/LexisPredict-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
+| **PredictBot** | [PredictBot-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/PredictBot-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
+| **INFINITUM** | [Instaladores e builds do projeto](https://github.com/W1CAPITAL/Infinitum/actions/workflows/killa-desktop-windows.yml) | Incluído no catálogo; não há EXE individual nesta pré-release |
+
+**Integridade:** [SHA256SUMS.txt](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/SHA256SUMS.txt) · [Manifesto das versões de código](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/source-commits.json).
+
+Esta publicação é uma **versão de teste**. Um instalador de pré-release sem assinatura Authenticode W1 válida não integra o canal automático de atualizações. Consulte sempre a página de Releases para ver versões posteriores; não é correto afirmar que um EXE foi publicado apenas porque existe um workflow de compilação.
+
+## Arquitetura da loja
+
+A Central é um aplicativo Electron independente dos CRMs. Abre diretamente no Windows, com identidade e sessões próprias para cada produto. O catálogo de código inclui **LexisPredict, INFINITUM e PredictBot**.
+
+- **LexisPredict:** executa o Next.js standalone no computador; banco, tribunais e serviços externos continuam dependentes de conectividade.
+- **INFINITUM:** executa sua aplicação local em uma instância própria; utiliza as permissões e os dados autorizados do Supabase.
+- **PredictBot:** interface desktop para sessões, tarefas e integração autenticada com OpenCode/MCP. O OpenCode e o provedor de IA são configurados separadamente.
+
+Downloads manuais são checados por SHA-256. Atualizações autenticadas exigem verificação de assinatura Windows; o usuário pode consultar as novas versões sem interromper os aplicativos abertos. A Central não distribui credenciais administrativas do Supabase ou de provedores de IA.
+
+Consulte [catálogo, requisitos e links dos projetos](docs/ECOSSISTEMA-W1.md).
 
 ## O que está implementado
 
