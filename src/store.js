@@ -90,8 +90,8 @@ function render(value){
  if(available){
   const phase=String(r.phase||'available');
   if(phase==='downloading')updateMessage.textContent='Baixando versão '+r.version+'. Pode continuar trabalhando.';
-  else if(phase==='downloaded')updateMessage.textContent='Versão '+r.version+' verificada. Instalação disponível.';
-  else if(phase==='error')updateMessage.textContent='Atualização bloqueada: '+String(r.error||'Pacote não validado.');
+  else if(phase==='downloaded')updateMessage.textContent='Versão '+r.version+' verificada. Será aplicada ao fechar o aplicativo, substituindo a instalação atual.';
+  else if(phase==='error')updateMessage.textContent='Atualização não concluída: '+String(r.error||'O pacote não passou na verificação.');
   else if(r.canDownload)updateMessage.textContent='Central v'+r.version+' disponível para atualização.';
   else updateMessage.textContent='Release identificada, mas sem instalador oficial validável.';
   notes.textContent=String(r.notes||'Detalhes no GitHub Releases.');
@@ -104,7 +104,7 @@ function render(value){
   byId('download-bar').style.width=pct+'%';
   byId('download-percent').textContent=Math.floor(pct)+'%';
  }else{
-  updateMessage.textContent=r.error?'Não foi possível consultar o GitHub agora. Os aplicativos locais continuam disponíveis.':'Nenhuma atualização oficial assinada detectada.';
+  updateMessage.textContent=r.error?'Não foi possível consultar o GitHub agora. Os aplicativos locais continuam disponíveis.':'Nenhuma atualização disponível. Os aplicativos continuam funcionando normalmente.';
   notes.hidden=true;releaseButton.hidden=true;downloadNow.hidden=true;downloadBackground.hidden=true;installUpdate.hidden=true;progress.hidden=true;
  }
 }
@@ -149,7 +149,7 @@ if(bridge){
  byId('install-update').addEventListener('click',async()=>{
   const btn=byId('install-update');btn.disabled=true;
   try{render(await bridge.installUpdate())}
-  catch{byId('update-message').textContent='A instalação foi bloqueada. O aplicativo atual foi preservado.'}
+  catch{byId('update-message').textContent='A atualização não pôde ser iniciada. A instalação atual foi preservada.'}
   finally{btn.disabled=false}
  });
 }else byId('update-message').textContent='A ponte local da Central não foi inicializada.';

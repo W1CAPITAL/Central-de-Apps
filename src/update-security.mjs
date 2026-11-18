@@ -1,23 +1,23 @@
 import {createHash} from 'node:crypto';
 import {createReadStream,createWriteStream,statSync,mkdirSync,renameSync,rmSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
-import {spawn} from 'node:child_process';
 import {Transform} from 'node:stream';
 import {pipeline} from 'node:stream/promises';
 import {Readable} from 'node:stream';
 import {validateProductRelease} from './distribution.mjs';
+import {pruneUpdateCache} from './update-install.mjs';
 
 const APP_REPO='W1CAPITAL/Central-de-Apps';
 const MAX_BYTES=2_000_000_000;
 const MIN_BYTES=10_000_000;
-const VERSION=/^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$/;
+const VERSION=/^(0|[1-9][0-9]{0,3})[.](0|[1-9][0-9]{0,3})[.](0|[1-9][0-9]{0,3})$/;
 const HOSTS=new Set(['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com']);
 
 export function validateReleaseAsset(release,product='central'){
  if(product!=='central')return validateProductRelease(release,product);
  if(release?.prerelease===true||release?.draft===true)throw Error('Versão de teste fora do canal oficial.');
  const tag=String(release?.tag_name||'');
- const version=tag.startsWith('v')?tag.slice(1):tag;
+ const version=tag.startsWith('v')?tag.slice(1):'';
  if(!VERSION.test(version))throw Error('Versão oficial inválida.');
  const name='W1-Central-de-Apps-Setup-'+version+'-x64.exe';
  const asset=release?.assets?.find(item=>item?.name===name);
@@ -29,24 +29,13 @@ export function validateReleaseAsset(release,product='central'){
  const digest=String(asset.digest||'');
  if(!/^sha256:[a-f0-9]{64}$/i.test(digest))
   throw Error('Release não possui hash SHA-256 válido.');
- return Object.freeze({version,name,url,size:asset.size,sha256:digest.slice(7).toLowerCase()});
+ return Object.freeze({product:'central',version,name,url,size:asset.size,sha256:digest.slice(7).toLowerCase()});
 }
 function trustedDownloadResponse(value){
  try{
   const u=new URL(value);
   return u.protocol==='https:'&&!u.username&&!u.password&&HOSTS.has(u.hostname.toLowerCase());
  }catch{return false}
-}
-export async function verifyWindowsSignature(file,scriptPath){
- if(process.platform!=='win32')throw Error('Verificação Authenticode exige Windows.');
- return new Promise((resolve,reject)=>{
-  const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-File',scriptPath,'-Installer',file],{
-   windowsHide:true,shell:false,stdio:['ignore','ignore','pipe']
-  });
-  child.stderr?.resume();
-  child.once('error',reject);
-  child.once('close',code=>code===0?resolve(true):reject(Error('O Windows não confirmou o editor W1 Capital (código '+code+').')));
- });
 }
 export async function verifyFileDigest(file,asset){
  if(statSync(file).size!==asset.size)throw Error('Instalador local mudou de tamanho.');
@@ -55,28 +44,28 @@ export async function verifyFileDigest(file,asset){
  if(hash.digest('hex')!==asset.sha256)throw Error('O instalador local não corresponde ao SHA-256 oficial.');
  return true;
 }
-export async function downloadSignedRelease(options){
- return downloadRelease({...options,requireSignature:true});
+
+// Automatic updates rely on the GitHub release SHA-256 and HTTPS origin.
+// Authenticode remains optional; it is not a prerequisite for replacing an installed build.
+export async function downloadVerifiedRelease(options){
+ return downloadRelease({...options,markOfWeb:false});
 }
-// A manual copy is inert: this function never launches an installer or grants
-// automatic-update eligibility. Its hash and exact product origin are checked.
+// Manual installers retain Windows' Internet-zone marking.
 export async function downloadProductCopy(options){
- return downloadRelease({...options,requireSignature:false});
+ return downloadRelease({...options,markOfWeb:true});
 }
-async function downloadRelease({asset,folder,signatureScript,onProgress=()=>{},fetchImpl=fetch,requireSignature}){
+async function downloadRelease({asset,folder,onProgress=()=>{},fetchImpl=fetch,markOfWeb}){
  if(asset?.product){
   const tag=(asset.preview?'preview-v':'v')+asset.version;
   validateProductRelease({tag_name:tag,prerelease:asset.preview,assets:[{
    name:asset.name,browser_download_url:asset.url,size:asset.size,digest:'sha256:'+asset.sha256
-  }]},asset.product,{manual:!requireSignature});
+  }]},asset.product,{manual:markOfWeb});
  }else{
- if(!asset||!VERSION.test(asset.version)||asset.name!=='W1-Central-de-Apps-Setup-'+asset.version+'-x64.exe')
-  throw Error('Instalador não passou pela validação do catálogo.');
- // Verify all metadata again before using it.
- validateReleaseAsset({tag_name:'v'+asset.version,assets:[{
-  name:asset.name,browser_download_url:asset.url,size:asset.size,
-  digest:'sha256:'+asset.sha256
- }]});
+  if(!asset||!VERSION.test(asset.version)||asset.name!=='W1-Central-de-Apps-Setup-'+asset.version+'-x64.exe')
+   throw Error('Instalador não passou pela validação do catálogo.');
+  validateReleaseAsset({tag_name:'v'+asset.version,assets:[{
+   name:asset.name,browser_download_url:asset.url,size:asset.size,digest:'sha256:'+asset.sha256
+  }]});
  }
  mkdirSync(folder,{recursive:true});
  const file=join(folder,asset.name);
@@ -91,7 +80,7 @@ async function downloadRelease({asset,folder,signatureScript,onProgress=()=>{},f
    throw Error('Falha no download HTTPS oficial.');
   const rawLength=Number(response.headers.get('content-length'));
   if(Number.isFinite(rawLength)&&rawLength>asset.size)
-   throw Error('Tamanho de download maior que a release assinada.');
+   throw Error('Tamanho de download maior que a release publicada.');
   const counter=new Transform({
    transform(chunk,enc,callback){
     total+=chunk.length;
@@ -104,12 +93,12 @@ async function downloadRelease({asset,folder,signatureScript,onProgress=()=>{},f
   await pipeline(Readable.fromWeb(response.body),counter,createWriteStream(tmp,{flags:'wx',mode:0o600}));
   if(total!==asset.size||hash.digest('hex')!==asset.sha256)
    throw Error('Hash SHA-256 do instalador não corresponde à release oficial.');
-  if(requireSignature)await verifyWindowsSignature(tmp,signatureScript);
-  // Keep Windows' Internet-zone protections on manually downloaded pilots.
-  // Write the ADS before renaming so an unmarked copy is never exposed as ready.
-  if(!requireSignature&&process.platform==='win32')
-   writeFileSync(tmp+':Zone.Identifier','[ZoneTransfer]\r\nZoneId=3\r\nHostUrl='+asset.url+'\r\n');
+  if(markOfWeb&&process.platform==='win32')
+   writeFileSync(tmp+':Zone.Identifier','[ZoneTransfer]\\r\\nZoneId=3\\r\\nHostUrl='+asset.url+'\\r\\n');
+  // Replace an older copy of this exact installer only after the new bytes pass verification.
+  rmSync(file,{force:true});
   renameSync(tmp,file);
+  try{pruneUpdateCache(folder,asset.name)}catch{}
   return file;
  }catch(error){
   rmSync(tmp,{force:true});

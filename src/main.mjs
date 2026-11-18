@@ -12,7 +12,8 @@ import {registerOpenCodeRelay,stopOpenCodeRelay} from './opencode-relay-ipc.mjs'
 import {OpenCodeController} from './opencode-controller.mjs';
 import {APPS,resolveApp} from './catalog.mjs';
 import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl,canonicalProductUrl} from './runtime-policy.mjs';
-import {validateReleaseAsset,downloadSignedRelease,verifyWindowsSignature,verifyFileDigest} from './update-security.mjs';
+import {validateReleaseAsset,downloadVerifiedRelease,verifyFileDigest} from './update-security.mjs';
+import {createInPlaceUpdatePlan} from './update-install.mjs';
 import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distribution.mjs';
 import {ProductDownloads} from './product-downloads.mjs';
 
@@ -30,7 +31,7 @@ const windows=new Map();
 const states=Object.fromEntries(Object.keys(APPS).map(id=>[id,{phase:'bundled',message:'Pronto para iniciar no Windows'}]));
 let storeWindow=null;
 let release={version:null,notes:'',url:null,checkedAt:null,error:null,phase:'none',canDownload:false,percent:0};
-let verifiedAsset=null,downloadedInstaller=null,downloadPromise=null,installing=false;
+let verifiedAsset=null,downloadedInstaller=null,downloadPromise=null,installing=false,handingOffUpdate=false;
 let checking=false,closing=false;
 let openCode;
 let productDownloads;
@@ -201,6 +202,7 @@ function compareVersion(v1,v2){
  return 0;
 }
 async function checkUpdates(){
+ if(!app.isPackaged)return publicState();
  if(checking)return publicState();
  checking=true;
  try{
@@ -228,37 +230,45 @@ async function checkUpdates(){
  if(automaticUpdates&&release.available&&release.canDownload&&release.phase==='available')void downloadUpdate();
  return publicState();
 }
-function signatureScript(){
- return app.isPackaged
-  ?join(process.resourcesPath,'app.asar.unpacked','src','verify-signature.ps1')
-  :join(import.meta.dirname,'verify-signature.ps1');
-}
 async function installUpdate(automatic=false){
- if(installing)return publicState();
+ if(installing||handingOffUpdate)return publicState();
  if(!downloadedInstaller||!verifiedAsset||release.phase!=='downloaded')
-  throw Error('Nenhum instalador W1 assinado está pronto.');
- if(!automatic){const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
-  type:'question',title:'Atualizar Central W1',
-  message:'A versão '+verifiedAsset.version+' está pronta para instalar.',
-  detail:'Para aplicar a atualização, todos os aplicativos abertos serão fechados. Salve seu trabalho antes de continuar.',
-  buttons:['Instalar e reiniciar','Depois'],defaultId:1,cancelId:1,noLink:true
- });
- if(choice.response!==0)return publicState();}
+  throw Error('Nenhum instalador verificado está pronto.');
+ if(!app.isPackaged)throw Error('Atualizações automáticas estão disponíveis na versão instalada.');
+ if(process.platform!=='win32')throw Error('A atualização automática está disponível no Windows.');
+ if(!automatic){
+  const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
+   type:'question',title:'Atualizar '+BUILD.name,
+   message:'A versão '+verifiedAsset.version+' está pronta para instalar.',
+   detail:'A atualização substituirá os arquivos na instalação atual, no mesmo diretório. Todos os aplicativos abertos serão fechados e reabertos após a atualização.',
+   buttons:['Atualizar e reiniciar','Depois'],defaultId:1,cancelId:1,noLink:true
+  });
+  if(choice.response!==0)return publicState();
+ }
  installing=true;
  try{
-  // Verify again immediately before execution: local update files are writable.
   await verifyFileDigest(downloadedInstaller,verifiedAsset);
-  await verifyWindowsSignature(downloadedInstaller,signatureScript());
-  if(automatic){
-   const child=spawn(downloadedInstaller,['/S'],{detached:true,shell:false,stdio:'ignore',windowsHide:true});
-   await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject)});child.unref();
-  }else{
-   const result=await shell.openPath(downloadedInstaller);
-   if(result)throw Error('O Windows recusou o instalador: '+result);
-  }
+  const plan=createInPlaceUpdatePlan({
+   installerPath:downloadedInstaller,executablePath:process.execPath,
+   parentProcessId:process.pid,expectedSha256:verifiedAsset.sha256
+  });
+  const helper=app.isPackaged
+   ?join(process.resourcesPath,'app.asar.unpacked','src','install-update.ps1')
+   :join(import.meta.dirname,'install-update.ps1');
+  if(!existsSync(helper))throw Error('Componente de atualização não encontrado.');
+  const child=spawn('powershell.exe',[
+   '-NoProfile','-NonInteractive','-WindowStyle','Hidden','-File',helper,...plan.helperArgs
+  ],{detached:true,shell:false,stdio:'ignore',windowsHide:true});
+  await new Promise((resolve,reject)=>{
+   child.once('spawn',resolve);
+   child.once('error',reject);
+  });
+  child.unref();
+  handingOffUpdate=true;
   app.quit();
  }catch(error){
-  release={...release,phase:'error',error:String(error?.message||'Instalação bloqueada.').slice(0,160)};
+  handingOffUpdate=false;
+  release={...release,phase:'error',error:String(error?.message||'A atualização não pôde ser iniciada.').slice(0,160)};
   announce();
  }finally{installing=false}
  return publicState();
@@ -274,9 +284,8 @@ async function downloadUpdate(mode='background'){
  release={...release,phase:'downloading',percent:0,error:null};
  announce();
  // Baixar em segundo plano nunca fecha o CRM; a instalação aguarda escolha.
- downloadPromise=downloadSignedRelease({
+ downloadPromise=downloadVerifiedRelease({
   asset,folder:join(app.getPath('userData'),'trusted-updates'),
-  signatureScript:signatureScript(),
   onProgress:percent=>{
    if(release.version===asset.version){
     release={...release,phase:'downloading',percent};
@@ -410,12 +419,12 @@ app.whenReady().then(()=>{
  registerOpenCodeRelay({ipcMain,dialog,shell,controller:getOpenCode,isTrusted:trustedOpenCodeEvent});
  Menu.setApplicationMenu(BUILD.id==='central'?null:Menu.buildFromTemplate([{label:BUILD.name,submenu:[
   {label:'Verificar atualizações',click:async()=>{await checkUpdates();await dialog.showMessageBox({type:'info',title:BUILD.name,
-   message:release.phase==='downloaded'?'Atualização assinada pronta para instalar ao fechar.':release.error||'As atualizações assinadas são consultadas automaticamente. Versões de teste podem ser baixadas na Central.'});}},
+   message:release.phase==='downloaded'?'Atualização verificada e pronta. Será aplicada ao fechar o aplicativo.':release.error||'As atualizações verificadas por SHA-256 são consultadas automaticamente.'});}},
   {label:'Atualizar automaticamente ao fechar',type:'checkbox',checked:automaticUpdates,click:item=>setAutomaticUpdates(item.checked)},
   {role:'quit',label:'Sair'}
  ]}]));
  void showHome();
- // Automatic discovery is non-interruptive. Never execute an unsigned download.
+ // Downloads are accepted only from official GitHub releases after SHA-256 validation.
  void checkUpdates();
  const timer=setInterval(()=>void checkUpdates(),30*60*1000);
  timer.unref?.();
@@ -428,6 +437,22 @@ app.on('before-quit',()=>{
  for(const record of running.values())if(record.child.exitCode===null)record.child.kill();
 });
 app.on('window-all-closed',()=>{
- if(automaticUpdates&&release.phase==='downloaded'&&!installing){void installUpdate(true).then(()=>{if(!installing)app.quit()});return;}
+ if(automaticUpdates&&release.phase==='downloading'&&downloadPromise){
+  const pending=downloadPromise;
+  void pending.then(()=>{
+   if(automaticUpdates&&release.phase==='downloaded'&&!installing&&!handingOffUpdate){
+    void installUpdate(true).then(()=>{
+     if(!handingOffUpdate&&process.platform!=='darwin')app.quit();
+    });
+   }else if(process.platform!=='darwin')app.quit();
+  });
+  return;
+ }
+ if(automaticUpdates&&release.phase==='downloaded'&&!installing&&!handingOffUpdate){
+  void installUpdate(true).then(()=>{
+   if(!handingOffUpdate&&process.platform!=='darwin')app.quit();
+  });
+  return;
+ }
  if(process.platform!=='darwin')app.quit();
 });

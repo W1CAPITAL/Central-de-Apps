@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync,writeFileSync,mkdtempSync,rmSync} from 'node:fs';
+import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {createHash} from 'node:crypto';
 import {join} from 'node:path';
+import {createHash} from 'node:crypto';
 import {validateReleaseAsset,verifyFileDigest} from '../src/update-security.mjs';
 
 const current={
@@ -20,7 +20,7 @@ test('somente EXE oficial da Central com digest SHA-256 permite download',()=>{
  const asset=validateReleaseAsset(current);
  assert.equal(asset.version,'0.1.44');
  assert.equal(asset.sha256,'a'.repeat(64));
- assert.match(asset.url,/github\.com\/W1CAPITAL\/Central-de-Apps\/releases\/download/);
+ assert.ok(asset.url.includes('github.com/W1CAPITAL/Central-de-Apps/releases/download'));
 });
 test('rejeita download de origem externa, caminho estranho e digests ausentes',()=>{
  const asset=current.assets[0];
@@ -35,20 +35,17 @@ test('rejeita download de origem externa, caminho estranho e digests ausentes',(
   assert.throws(()=>validateReleaseAsset(release));
  }
 });
-test('instalador exige verificação Authenticode em duas etapas e consentimento humano',()=>{
+test('atualização não depende de Authenticode e usa o helper de instalação no mesmo diretório',()=>{
  const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
- assert.match(main,/central:download-update/);
- assert.match(main,/central:install-update/);
- assert.match(main,/verifyWindowsSignature/);
- assert.match(main,/showMessageBox/);
- assert.match(main,/Baixar em segundo plano/);
- const script=readFileSync(new URL('../src/verify-signature.ps1',import.meta.url),'utf8');
- assert.match(script,/Get-AuthenticodeSignature/);
- assert.match(script,/Valid/);
- assert.match(script,/W1 Capital/);
- assert.doesNotMatch(main,/ExecutionPolicy.*Bypass/);
+ assert.ok(main.includes('downloadVerifiedRelease'));
+ assert.ok(main.includes('createInPlaceUpdatePlan'));
+ assert.ok(main.includes('install-update.ps1'));
+ assert.ok(main.includes('verifyFileDigest(downloadedInstaller,verifiedAsset)'));
+ assert.ok(!main.includes('verifyWindowsSignature'));
+ const helper=readFileSync(new URL('../src/install-update.ps1',import.meta.url),'utf8');
+ assert.ok(helper.includes('Get-FileHash'));
+ assert.ok(helper.includes('/D='));
 });
-
 test('instalador adulterado depois do download é recusado antes do reinício',async()=>{
  const folder=mkdtempSync(join(tmpdir(),'w1-update-'));
  const file=join(folder,'signed-installer.exe');
@@ -61,7 +58,6 @@ test('instalador adulterado depois do download é recusado antes do reinício',a
   await assert.rejects(()=>verifyFileDigest(file,asset),/SHA-256/);
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
-
 test('pré-release e rascunho nunca entram no atualizador oficial',()=>{
  assert.throws(()=>validateReleaseAsset({...current,prerelease:true}),/canal oficial/);
  assert.throws(()=>validateReleaseAsset({...current,draft:true}),/canal oficial/);

@@ -6,7 +6,7 @@
 
 **Instalação, execução e atualização dos produtos W1 Capital para Windows.**
 
-[Instalador Windows](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/W1-Central-de-Apps-Setup-0.1.48-x64.exe) ·
+[Instalador Windows](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest) ·
 [Versões disponíveis](https://github.com/W1CAPITAL/Central-de-Apps/releases) ·
 [Catálogo do ecossistema](docs/ECOSSISTEMA-W1.md)
 
@@ -16,30 +16,28 @@
 
 ## Download para Windows
 
-Os instaladores abaixo foram confirmados na [pré-release `preview-v0.1.48`](https://github.com/W1CAPITAL/Central-de-Apps/releases/tag/preview-v0.1.48) em 18 de novembro de 2026.
+A release estável mais recente reúne os quatro instaladores independentes da W1 Capital. Use os links abaixo para obter sempre a versão estável atual.
 
-| Aplicativo | Instalador | Situação |
+| Aplicativo | Instalador | Canal |
 | --- | --- | --- |
-| **Central de Apps** | [W1-Central-de-Apps-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/W1-Central-de-Apps-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
-| **LexisPredict** | [LexisPredict-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/LexisPredict-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
-| **PredictBot** | [PredictBot-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/PredictBot-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
-| **INFINITUM** | [Build Windows independente (GitHub Actions)](https://github.com/W1CAPITAL/Infinitum/actions/runs/44302707806) | Instalador de teste no artefato `infinitum-killa-windows-test-UNSIGNED`; não consta nesta pré-release |
+| **Central de Apps** | [Última release estável](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest) | Windows x64 |
+| **LexisPredict** | [Última release estável](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest) | Instalador independente |
+| **INFINITUM** | [Última release estável](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest) | Instalador independente |
+| **PredictBot** | [Última release estável](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest) | Instalador independente |
 
-**Build individual do INFINITUM:** a execução [GitHub Actions #44302707806](https://github.com/W1CAPITAL/Infinitum/actions/runs/44302707806) publicou um artefato ZIP contendo o instalador Windows. É um arquivo temporário, sem assinatura Authenticode W1 e com expiração em **2 de dezembro de 2026**; o download requer acesso ao GitHub. Não integra atualizações automáticas assinadas.
+Os quatro instaladores são publicados juntos na mesma GitHub Release estável. Cada aplicativo mantém seu próprio executável e perfil local.
 
-**Integridade:** [SHA256SUMS.txt](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/SHA256SUMS.txt) · [Manifesto das versões de código](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/source-commits.json).
-
-Esta publicação é uma **versão de teste**. Um instalador de pré-release sem assinatura Authenticode W1 válida não integra o canal automático de atualizações. Consulte sempre a página de Releases para ver versões posteriores; não é correto afirmar que um EXE foi publicado apenas porque existe um workflow de compilação.
+**Integridade:** [SHA256SUMS.txt](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest/download/SHA256SUMS.txt) · [Manifesto das versões de código](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest/download/source-commits.json).
 
 ## Arquitetura da loja
 
-A Central é um aplicativo Electron independente dos CRMs. Abre diretamente no Windows, com identidade e sessões próprias para cada produto. O catálogo de código inclui **LexisPredict, INFINITUM e PredictBot**.
+A Central é um aplicativo Electron independente dos CRMs. Abre diretamente no Windows, com identidade e sessões próprias para cada produto. O catálogo inclui **LexisPredict, INFINITUM e PredictBot**.
 
 - **LexisPredict:** executa o Next.js standalone no computador; banco, tribunais e serviços externos continuam dependentes de conectividade.
 - **INFINITUM:** executa sua aplicação local em uma instância própria; utiliza as permissões e os dados autorizados do Supabase.
 - **PredictBot:** interface desktop para sessões, tarefas e integração autenticada com OpenCode/MCP. O OpenCode e o provedor de IA são configurados separadamente.
 
-Downloads manuais são checados por SHA-256. Atualizações autenticadas exigem verificação de assinatura Windows; o usuário pode consultar as novas versões sem interromper os aplicativos abertos. A Central não distribui credenciais administrativas do Supabase ou de provedores de IA.
+Downloads e atualizações usam releases do GitHub por HTTPS e conferência de SHA-256. Authenticode não é requisito para publicar nem instalar atualizações. O SmartScreen do Windows permanece ativo; instaladores sem certificado podem continuar exibindo avisos.
 
 Consulte [catálogo, requisitos e links dos projetos](docs/ECOSSISTEMA-W1.md).
 
@@ -51,25 +49,30 @@ Consulte [catálogo, requisitos e links dos projetos](docs/ECOSSISTEMA-W1.md).
 - Isolamento de sessão Electron entre os dois aplicativos e portas estáveis por perfil Windows para preservar autenticação.
 - Acesso aos dados via Supabase compartilhado, com políticas RLS e login individual.
 - Validação privada da identidade dos servidores locais por nonce temporário.
-- Verificação não intrusiva de versões pelo GitHub Releases a cada 30 minutos; nunca executa binário baixado sem verificação da assinatura do editor.
-- Código e workflow de compilação Windows centralizados neste repositório, recebendo as versões das `main` dos dois sistemas.
+- Verificação de versões pelo GitHub Releases no início e a cada 30 minutos.
+- Download automático em segundo plano e instalação quando todas as janelas do aplicativo forem fechadas.
+- Atualização no diretório do executável existente; não cria pastas por versão nem uma segunda instalação.
+- Verificação SHA-256 antes de iniciar o instalador e nova conferência imediatamente antes da execução.
+- Cache de atualização limitado ao instalador mais recente de cada aplicativo; o arquivo é removido após instalação concluída.
+- Código e workflow de compilação Windows centralizados neste repositório, recebendo as versões das `main` dos três sistemas.
 - Testes de política de execução, isolamento, validação de caminhos e empacotamento.
 
 ## Como a instalação Windows é gerada
 
 Em [GitHub Actions → Central W1 — Windows](https://github.com/W1CAPITAL/Central-de-Apps/actions/workflows/windows.yml), o workflow:
 
-1. Obtém os códigos mais recentes das branches `main` dos dois repositórios de produto.
-2. Executa testes e compila **cada** Next.js em modo `standalone`.
+1. Obtém os códigos mais recentes das branches `main` dos três repositórios de produto.
+2. Executa testes e compila cada Next.js em modo `standalone`.
 3. Separa os servidores Next.js e as dependências do launcher.
-4. Cria o EXE Windows x64 da Central com ambos os produtos.
-5. Executa os servidores reais usando o próprio EXE em modo Node e verifica login/rotas/nonce em `127.0.0.1`.
-6. Gera o instalador NSIS e disponibiliza um artefato de teste.
-7. Publica uma GitHub Release automaticamente **somente se** houver assinatura Authenticode válida do editor W1 Capital.
+4. Cria o EXE Windows x64 da Central com LexisPredict e INFINITUM locais.
+5. Executa os servidores reais usando o próprio EXE e verifica login, rotas e nonce em `127.0.0.1`.
+6. Gera os instaladores NSIS independentes da Central, LexisPredict, INFINITUM e PredictBot.
+7. Instala cada aplicativo em uma pasta limpa e executa novamente o instalador no mesmo destino, verificando que não surge uma segunda cópia.
+8. Calcula SHA-256, publica os quatro instaladores e o manifesto de origem em uma GitHub Release estável.
 
-O workflow é acionado em pushes na `main`, manualmente, e faz verificações periódicas das versões dos dois produtos. Quando não há mudanças nos códigos e já há release publicada, evita recompilações desnecessárias. Sem certificado do editor no ambiente GitHub, a Central **não publica instaladores executáveis como releases oficiais**; o instalador de teste pode ser publicado em uma **pré-release**, identificada como sem assinatura W1, depois dos testes HTTP e da abertura real da loja e dos dois produtos no Windows. Essa pré-release não entra nas atualizações automáticas.
+O workflow é acionado em pushes na `main`, manualmente e por verificações periódicas das versões dos projetos. Quando não há mudanças nos códigos e já há release publicada, evita recompilações desnecessárias.
 
-O ambiente de assinatura usa apenas segredos privados do GitHub Actions: `CENTRAL_WINDOWS_CERT_P12` e `CENTRAL_WINDOWS_CERT_PASSWORD`. Não publicar certificados nem senhas neste repositório, nas variáveis `NEXT_PUBLIC_*`, no EXE ou em conversa.
+Authenticode é opcional e pode ser adicionado posteriormente para identificar a W1 Capital como editora reconhecida pelo Windows. Não é necessário para o fluxo de atualização baseado em SHA-256. Certificados e senhas, caso existam, devem permanecer exclusivamente nos segredos do GitHub Actions.
 
 ## Independência da Vercel — limites reais
 
@@ -81,17 +84,23 @@ Não são oferecidas respostas ou movimentações jurídicas fictícias quando u
 
 ## Atualizações
 
-A Central consulta a última GitHub Release oficial ao iniciar e a cada 30 minutos. Quando há uma versão superior, mostra **número, alterações e status** sem fechar nem bloquear os programas. Só habilita os botões de atualização quando a API do GitHub informa o instalador correto, tamanho permitido e `digest` SHA-256 válido.
+A Central consulta releases estáveis do GitHub ao iniciar e a cada 30 minutos. Quando há uma versão superior, baixa o instalador em segundo plano sem interromper os aplicativos abertos.
 
-O operador pode escolher:
+Com atualizações automáticas ativadas:
 
-- **Atualizar agora:** baixar a versão oficial validada, verificar SHA-256 e Authenticode, perguntar antes de fechar e reiniciar a Central.
-- **Baixar em segundo plano:** continuar trabalhando no LexisPredict ou INFINITUM; a instalação fica disponível para confirmação posterior.
-- **Depois:** manter a versão instalada. Também é possível abrir a página da release oficial.
+1. A Central confere a origem da release e o digest SHA-256 publicado pelo GitHub.
+2. O arquivo baixado é conferido localmente por SHA-256.
+3. Quando todas as janelas do aplicativo são fechadas, um helper aguarda o processo encerrar e confere novamente o hash.
+4. O instalador NSIS é executado com o caminho da instalação atual, obtido do próprio executável em uso.
+5. Os arquivos são substituídos nesse mesmo diretório e o aplicativo é reaberto.
 
-A verificação do editor W1 Capital usa o script local `Get-AuthenticodeSignature`, sem executar código remoto. O SHA-256 do arquivo local é conferido novamente imediatamente antes da instalação. Arquivos com hash divergente, assinatura inválida, downgrade ou endereço externo não são executados. Com atualização automática ativada, a instalação autenticada ocorre somente após fechar todas as janelas do programa. A opção manual continua pedindo confirmação antes de fechar o trabalho.
+**Não são criadas pastas por versão nem instalações paralelas.** Configurações, sessões e dados de usuário permanecem no perfil de dados do Windows, separado da pasta de instalação. O cache remove instaladores antigos do mesmo aplicativo e apaga o instalador usado depois de uma atualização concluída.
 
-**Limite de publicação:** o instalador do GitHub Actions só é disponibilizado como GitHub Release oficial quando o certificado Authenticode W1 Capital está configurado e válido. Sem o certificado, o instalador validado no runner é publicado como pré-release de teste e artefato. Esse instalador não entra no canal automático e pode sofrer avisos do SmartScreen. O teste no runner não comprova instalação em outro PC ou uso com conta real.
+A opção de atualizações automáticas vem ativada por padrão e pode ser desligada nas configurações. **Atualizar agora** permite iniciar a instalação manualmente, com confirmação antes de fechar o trabalho. **Baixar em segundo plano** deixa a versão pronta para ser aplicada ao fechar o aplicativo.
+
+**Migração da versão 0.1.74 e anteriores:** essas versões ainda usam o atualizador antigo, que exige Authenticode. Depois que a nova release estável for publicada, será necessária uma única instalação manual do novo instalador sobre a instalação atual, mantendo o mesmo destino. A partir dessa versão, as atualizações passam a ser automáticas.
+
+**SmartScreen:** sem certificado Authenticode, o Windows ainda pode exibir um aviso de editor desconhecido, especialmente na instalação manual inicial. A Central não desativa nem contorna o SmartScreen. O SHA-256 protege a integridade do pacote, mas não substitui a identidade de editor fornecida por um certificado.
 
 Os instaladores contêm o código dos produtos existente no momento do build. Novos códigos geram novos EXEs pelo workflow de distribuição. Dados em Supabase continuam sendo sincronizados separadamente.
 
@@ -161,6 +170,6 @@ O script de ícones gera no runner Windows ícones de identidade W1 com o mesmo 
 
 ### SmartScreen
 
-Preview sem Authenticode W1 válida **não pode ser anunciado como confiável pelo SmartScreen**. Uma versão estável sem alertas de editor desconhecido requer certificado de assinatura de código válido, instalação legítima e reputação do editor junto ao Windows. Não desative proteções nem contorne a verificação. O canal automático continua bloqueando EXEs sem assinatura válida.
+Preview sem Authenticode W1 válida **não pode ser anunciado como confiável pelo SmartScreen**. Uma versão estável sem alertas de editor desconhecido requer certificado de assinatura de código válido, instalação legítima e reputação do editor junto ao Windows. Não desative proteções nem contorne a verificação. O canal automático verifica o digest SHA-256 das releases oficiais do GitHub; a proteção do SmartScreen permanece ativa.
 
 A integração dos agentes LexisPredict/INFINITUM com a ponte remota depende das alterações revisadas e testadas nos respectivos repositórios; adicionar um botão na Central não autoriza acessos jurídicos automaticamente.
