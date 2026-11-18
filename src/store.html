@@ -65,6 +65,14 @@
     <p>Todos os instaladores são conferidos por SHA-256 antes da execução. As atualizações substituem a instalação existente, sem criar cópias por versão.</p>
     <ul class="security-list"><li><span>✓</span>SHA-256 conferido no download</li><li><span>✓</span>Mesmo diretório da instalação atual</li><li><span>✓</span>Proteções do Windows preservadas</li></ul>
    </section>
+   <section class="local-ai-card side-panel" id="local-ai" aria-labelledby="local-ai-title">
+    <div class="side-head"><span class="side-icon" aria-hidden="true">◈</span><div><h2 id="local-ai-title">IA local W1</h2><small>Microsoft BitNet · CPU · sem API paga</small></div></div>
+    <p id="local-ai-message">Verificando compatibilidade deste computador...</p>
+    <div class="local-ai-progress" id="local-ai-progress" hidden><div class="download-track"><div id="local-ai-bar"></div></div><span id="local-ai-percent">0%</span></div>
+    <div class="update-actions"><button type="button" class="accent wide-button" id="local-ai-prepare">Preparar automaticamente</button><button type="button" class="secondary wide-button" id="local-ai-check">Verificar instalação</button></div>
+    <small class="local-ai-footnote">Primeira instalação: aproximadamente 1,22 GB. A IA usa a memória do PC e libera os pesos após 5 minutos sem uso. Não substitui o GPT 6.2 Astra.</small>
+    <span id="local-ai-status" role="status">Não instalada</span>
+   </section>
    <section class="connection-panel side-panel" id="integracoes">
     <div class="side-head"><span class="side-icon" aria-hidden="true">⌁</span><div><h2>OpenCode e MCP</h2><small>Integrações para agentes</small></div></div>
     <p>Conecte o executor instalado para trabalhar com seus projetos, sempre com autorização.</p>
@@ -89,10 +97,12 @@
      <label>Identificador local da empresa<input id="oc-company" required autocomplete="off"/></label>
     </div>
     <p class="oc-note">Usuário e empresa separam o histórico desta conta do Windows. Esta conexão não autoriza acesso ao banco do CRM.</p>
-    <div class="update-actions"><button type="button" class="accent" id="oc-simple-setup">Configurar automaticamente</button><button type="button" class="secondary" id="oc-detect">Detectar instalação</button><button type="submit" class="accent">Conectar e testar</button><button type="button" class="secondary" id="oc-disconnect">Desconectar</button></div>
+    <div class="update-actions"><button type="button" class="accent" id="oc-simple-setup">Configurar OpenCode + IA local</button><button type="button" class="secondary" id="oc-detect">Detectar instalação</button><button type="submit" class="accent">Conectar e testar</button><button type="button" class="secondary" id="oc-disconnect">Desconectar</button></div>
    </form>
    <div id="oc-workspace" hidden>
     <div class="opencode-grid"><label>Sessão<select id="oc-session"></select></label><label>Permissões de nova sessão<select id="oc-permissions"><option value="restricted">Ferramentas bloqueadas</option><option value="review">Pedir aprovação no OpenCode</option></select></label></div>
+    <div class="opencode-grid opencode-model-grid"><label>Modelo da sessão<select id="oc-model"><option value="">Modelo padrão da sessão</option></select></label></div>
+    <small class="local-ai-footnote">O BitNet local aparece nesta lista após a preparação. Ele responde texto, mas não executa ferramentas; o Astra continua disponível para tarefas com agentes.</small>
     <div class="update-actions"><button class="secondary" id="oc-create">Nova sessão</button><button class="secondary" id="oc-messages">Ver respostas</button><button class="secondary" id="oc-diff">Ver alterações</button><button class="secondary" id="oc-abort">Interromper tarefa</button></div>
     <label>Tarefa<textarea id="oc-prompt" maxlength="32000" rows="3" placeholder="Descreva a tarefa que o OpenCode deve executar"></textarea></label>
     <div class="oc-attachment-control"><button type="button" class="secondary" id="oc-attach">Adicionar documento, imagem, vídeo ou arquivo</button><ul id="oc-file-list" aria-label="Arquivos selecionados"></ul><p class="oc-note">Arquivos só serão referenciados na tarefa depois da sua confirmação. Não são enviados automaticamente, abertos ou descompactados.</p></div>
@@ -121,7 +131,7 @@
   <footer><span>© 2026 W1 Capital · Central de Apps</span><span id="store-version"></span></footer>
  </main>
 </div>
-<script src="./store.js"></script>
+<script src="./store.js"></script>\n<script src="./local-ai-ui.js"></script>
 <script src="./opencode-ui.js"></script>
 <script src="./opencode-relay-ui.js"></script>
 </body>
