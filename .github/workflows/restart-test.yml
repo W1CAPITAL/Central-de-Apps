@@ -44,6 +44,6 @@ jobs:
           } while ((Get-Date) -lt $end)
           if (-not $active) { throw 'A janela não reabriu.' }
           $actual = (Get-Item -LiteralPath $exe).VersionInfo.ProductVersion
-          if ($actual -ne '1.0.1') { throw "Versão incorreta após reiniciar: $actual" }
+          if (([version]$actual).ToString(3) -ne '1.0.1') { throw "Versão incorreta após reiniciar: $actual" }
           Write-Host "Reinício confirmado: 0.1.1 para $actual, PID $($active.Id)."
           [void]$active.CloseMainWindow()
