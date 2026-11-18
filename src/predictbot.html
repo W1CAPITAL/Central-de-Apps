@@ -1,5 +1,12 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'"/><title>PredictBot · W1 Capital</title><link rel="stylesheet" href="./store.css"/></head><body><main class="shell"><header class="top"><div class="brand"><span class="brandmark">W1</span><span><strong>PredictBot</strong><small>OPENCODE E MCP</small></span></div></header><p>Sessões, tarefas e ponte remota. Conecte o OpenCode instalado ou seu servidor autenticado.</p>
+  <section class="opencode-card local-ai-card" id="local-ai" aria-labelledby="local-ai-title">
+   <div class="section-title"><div><small>EXECUÇÃO NO COMPUTADOR</small><h2 id="local-ai-title">IA local W1 · Microsoft BitNet</h2></div><span id="local-ai-status" role="status">Não instalada</span></div>
+   <p id="local-ai-message">Modelo local para uso sem créditos de API. A Central baixa o motor CPU e os pesos oficiais, confere os hashes e configura o OpenCode sem alterar seu modelo padrão.</p>
+   <div class="local-ai-progress" id="local-ai-progress" hidden><div class="download-track"><div id="local-ai-bar"></div></div><span id="local-ai-percent">0%</span></div>
+   <div class="update-actions"><button type="button" class="accent" id="local-ai-prepare">Preparar automaticamente</button><button type="button" class="secondary" id="local-ai-check">Verificar instalação</button></div>
+   <p class="local-ai-footnote">Primeira instalação: aproximadamente 1,22 GB. Perfil econômico: 2 threads, contexto de 1.024 tokens e suspensão de memória após 5 minutos sem uso. O BitNet 2B não equivale ao GPT 6.2 Astra nem ao Grok 4.6.</p>
+  </section>
   <section class="opencode-card" aria-labelledby="opencode-title">
    <div class="section-title"><div><small>INTEGRAÇÕES</small><h2 id="opencode-title">OpenCode e MCP</h2></div><span id="opencode-status" role="status">Desconectado</span></div>
    <p>Conecte o OpenCode instalado ou seu próprio servidor. Tarefas usam os modelos configurados nele.</p>
@@ -40,4 +47,4 @@
     <pre id="oc-output" role="log" aria-live="polite"></pre>
    </div>
   </section>
-<footer>W1 Capital · PredictBot</footer></main><script src="./opencode-ui.js"></script><script src="./opencode-relay-ui.js"></script></body></html>
+<footer>W1 Capital · PredictBot</footer></main><script src="./local-ai-ui.js"></script><script src="./opencode-ui.js"></script><script src="./opencode-relay-ui.js"></script></body></html>
