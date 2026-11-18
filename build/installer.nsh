@@ -1,8 +1,10 @@
 ; Electron Builder's KILL_PROCESS fallback excludes the installer PID.
-; The uninstaller build does not include the app-running hook, so avoid an
-; unused-variable warning when electron-builder compiles BUILD_UNINSTALLER.
-!ifndef BUILD_UNINSTALLER
-  Var pid
+; Electron Builder also compiles this include while building the uninstaller.
+; KILL_PROCESS still references $pid there, so keep the variable and suppress
+; only NSIS's harmless unused-variable warning for that specific build.
+Var pid
+!ifdef BUILD_UNINSTALLER
+  !pragma warning disable 6001
 !endif
 
 ; W1 Capital — close only processes belonging to this installation.
