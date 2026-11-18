@@ -52,3 +52,16 @@ test('anexos locais só incluem tipos permitidos e nunca são executados pelo se
  assert.throws(()=>classifyAttachment('arquivo.zip',200_000_000),/tamanho/);
 });
 async function requireAttachmentPolicy(){return await import('../src/attachment-policy.mjs')}
+
+
+test('modo simples configura OpenCode local sem IDs empresariais do CRM',()=>{
+ const html=read('src/store.html');
+ const bot=read('src/predictbot.html');
+ const js=read('src/opencode-ui.js');
+ const main=read('src/main.mjs');
+ assert.match(html,/id="oc-simple-setup"/);
+ assert.match(bot,/id="oc-simple-setup"/);
+ assert.match(js,/openCode\('simpleSetup'\)|request\('simpleSetup'\)/);
+ assert.match(main,/action==='simpleSetup'/);
+ assert.match(main,/app\.getPath\('documents'\)/);
+});
