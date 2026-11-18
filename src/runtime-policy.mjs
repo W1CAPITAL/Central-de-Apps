@@ -20,6 +20,15 @@ export function isLocalUrl(value,port){
    url.username===''&&url.password==='';
  }catch{return false}
 }
+// Next middleware can emit absolute localhost redirects even when bound to
+// 127.0.0.1. Preserve the authenticated origin for this exact private server.
+export function canonicalProductUrl(value,port){
+ try{
+  const url=new URL(value);
+  if(url.hostname==='localhost')url.hostname='127.0.0.1';
+  return isLocalUrl(url.href,port)?url.href:null;
+ }catch{return null}
+}
 export function safeEnvironment(id,port,nonce,systemEnv=process.env){
  resolveApp(id);
  if(!Number.isInteger(port)||port<PORT_MIN||port>PORT_MAX)throw Error('Porta local inválida.');

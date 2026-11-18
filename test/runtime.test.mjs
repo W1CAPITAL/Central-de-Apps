@@ -26,3 +26,14 @@ test('porta local já ocupada falha fechada, sem trocar origem de autenticação
   await assert.rejects(()=>reserveStablePort(dir,'lexispredict'),/ocupad|reservad/i);
  }finally{await new Promise(resolve=>server.close(resolve));rmSync(dir,{recursive:true,force:true})}
 });
+
+test('redirecionamento localhost do Next preserva a origem privada e a porta do aplicativo',async()=>{
+ const {canonicalProductUrl}=await import('../src/runtime-policy.mjs');
+ assert.equal(canonicalProductUrl('http://localhost:51234/login?next=%2Fprocessos',51234),
+  'http://127.0.0.1:51234/login?next=%2Fprocessos');
+ assert.equal(canonicalProductUrl('http://127.0.0.1:51234/login',51234),'http://127.0.0.1:51234/login');
+ for(const url of ['http://localhost:51235/login','http://localhost.evil.test:51234/login',
+  'http://user:pass@localhost:51234/login','https://localhost:51234/login','http://[::1]:51234/login'])
+  assert.equal(canonicalProductUrl(url,51234),null,url);
+ assert.equal(canonicalProductUrl('http://localhost:51234/login',0),null);
+});
