@@ -3,11 +3,30 @@
 const bridge=window.w1Central;
 if(bridge?.openCode){
  const byId=id=>document.getElementById(id);
- const status=byId('opencode-status'),output=byId('oc-output'),sessions=byId('oc-session');
+ const status=byId('opencode-status'),output=byId('oc-output'),sessions=byId('oc-session'),modelSelect=byId('oc-model');
  let connected=false,polling=false,timer,generation=0,view='messages';
  const show=value=>{output.textContent=typeof value==='string'?value:JSON.stringify(value,null,2);};
  const request=(action,input={})=>bridge.openCode(action,input);
- async function refreshSessions(){const items=await request('sessions');const selected=sessions.value;sessions.replaceChildren(...items.map(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.id;return o;}));if(items.some(s=>s.id===selected))sessions.value=selected;}
+ async function refreshSessions(){const items=await request('sessions');const selected=sessions.value;sessions.replaceChildren(...items.map(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.id;return o;}));if(items.some(s=>s.id===selected))sessions.value=selected;await syncModelSelection();}
+ async function refreshModels(){
+  if(!modelSelect)return;
+  const items=await request('models');
+  const previous=modelSelect.value;
+  const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Modelo padrão da sessão';
+  const options=(Array.isArray(items)?items:[]).filter(m=>m&&m.providerID&&m.modelID&&m.enabled!==false).map(m=>{const o=document.createElement('option');o.value=JSON.stringify({providerID:m.providerID,modelID:m.modelID});o.textContent=(m.name||m.modelID)+' · '+m.providerID+'/'+m.modelID;return o;});
+  modelSelect.replaceChildren(placeholder,...options);
+  if(options.some(o=>o.value===previous))modelSelect.value=previous;
+  await syncModelSelection();
+ }
+ async function syncModelSelection(){
+  if(!modelSelect||!sessions.value)return;
+  try{
+   const session=await request('get',{sessionId:sessions.value});
+   const model=session?.model;
+   const value=model?.providerID&&model?.modelID?JSON.stringify({providerID:model.providerID,modelID:model.modelID}):'';
+   modelSelect.value=[...modelSelect.options].some(o=>o.value===value)?value:'';
+  }catch{}
+ }
  async function run(action,input){const current=generation;view=action==='prompt'?'messages':action;try{const result=await request(action,input);if(current===generation)show(result);return result;}catch(error){show(String(error.message||'Operação falhou.'));throw error;}}
  function bind(id,action,build){byId(id).addEventListener('click',async()=>{const button=byId(id);button.disabled=true;try{await run(action,build?build():{sessionId:sessions.value});}catch{}finally{button.disabled=false;}});}
  byId('opencode-form').addEventListener('submit',async event=>{
@@ -15,7 +34,7 @@ if(bridge?.openCode){
   clearInterval(timer);connected=false;generation++;const current=generation;output.textContent='';byId('oc-workspace').hidden=true;
   try{
    const result=await request('connect',{mode:byId('oc-mode').value,executable:byId('oc-executable').value.trim(),directory:byId('oc-directory').value.trim(),url:byId('oc-url').value.trim(),password:byId('oc-password').value,userId:byId('oc-user').value.trim(),companyId:byId('oc-company').value.trim()});
-   byId('oc-password').value='';connected=true;byId('oc-workspace').hidden=false;status.textContent='Conectado · OpenCode '+result.version;await refreshSessions();show({version:result.version,capabilities:result.capabilities});
+   byId('oc-password').value='';connected=true;byId('oc-workspace').hidden=false;status.textContent='Conectado · OpenCode '+result.version;await refreshSessions();await refreshModels();show({version:result.version,capabilities:result.capabilities});
    // Poll real responses; never fabricate progress from an animation.
    timer=setInterval(async()=>{if(!connected||polling||!sessions.value||document.hidden||!['messages','prompt'].includes(view))return;polling=true;try{const result=await request('messages',{sessionId:sessions.value});if(current===generation&&view==='messages')show(result);}catch{status.textContent='Falha ao atualizar respostas. Reconecte para testar.';}finally{polling=false;}},5000);
   }catch(error){status.textContent=String(error.message||'Falha de conexão.');}finally{button.disabled=false;}
@@ -32,6 +51,9 @@ if(bridge?.openCode){
    byId('oc-directory').value=found.directory;
    byId('oc-user').value=found.userId;
    byId('oc-company').value=found.companyId;
+   status.textContent='Preparando o modelo local da Microsoft. O primeiro download é de aproximadamente 1,22 GB...';
+   await bridge.localAI('prepare');
+   status.textContent='IA local pronta. Conectando OpenCode sem alterar o modelo padrão...';
    byId('opencode-form').requestSubmit(byId('opencode-form').querySelector('button[type="submit"]'));
   }catch(error){status.textContent=String(error.message||'Não foi possível preparar a instalação.');}
   finally{button.disabled=false;}
@@ -47,7 +69,13 @@ if(bridge?.openCode){
  });
  byId('oc-detect').addEventListener('click',async()=>{try{const found=await request('detect',{executable:byId('oc-executable').value.trim()});status.textContent=found.installed?'OpenCode '+found.version+' encontrado':found.message;if(found.installed)byId('oc-executable').value=found.executable;}catch{status.textContent='Não foi possível detectar a instalação.';}});
  byId('oc-disconnect').addEventListener('click',async()=>{connected=false;generation++;clearInterval(timer);await request('disconnect');output.textContent='';byId('oc-workspace').hidden=true;status.textContent='Desconectado';byId('oc-password').value='';});
- byId('oc-create').addEventListener('click',async()=>{try{const session=await run('create',{title:'Tarefa W1 Capital',mode:byId('oc-permissions').value});await refreshSessions();sessions.value=session.id;}catch{}});
+ byId('oc-create').addEventListener('click',async()=>{try{const session=await run('create',{title:'Tarefa W1 Capital',mode:byId('oc-permissions').value});await refreshSessions();sessions.value=session.id;await syncModelSelection();}catch{}});
+ sessions.addEventListener('change',()=>{void syncModelSelection()});
+ modelSelect?.addEventListener('change',async()=>{
+  if(!modelSelect.value||!sessions.value)return;
+  try{const model=JSON.parse(modelSelect.value);await request('switchModel',{sessionId:sessions.value,model});status.textContent='Modelo da sessão: '+model.providerID+'/'+model.modelID;}
+  catch(error){status.textContent=String(error.message||'Não foi possível trocar o modelo da sessão.');await syncModelSelection();}
+ });
 
  byId('oc-attach')?.addEventListener('click',async()=>{
   const button=byId('oc-attach');button.disabled=true;
