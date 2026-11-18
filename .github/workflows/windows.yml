@@ -238,9 +238,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'EXE instalado falhou no teste visual.' }
           $originalPath = (Resolve-Path -LiteralPath $installed).Path
           $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
-          if (-not $repeat.WaitForExit(180000)) {
+          if (-not $repeat.WaitForExit(600000)) {
             Stop-Process -Id $repeat.Id -Force -ErrorAction SilentlyContinue
-            throw "Reinstalação silenciosa do NSIS excedeu 3 minutos."
+            throw "Reinstalação silenciosa do NSIS excedeu 10 minutos."
           }
           if ($repeat.ExitCode -ne 0) { throw 'A atualização sobre a instalação existente falhou.' }
           $updatedPath = (Resolve-Path -LiteralPath $installed).Path

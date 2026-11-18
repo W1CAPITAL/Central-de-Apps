@@ -18,7 +18,7 @@ Var pid
     Sleep 700
     !insertmacro FIND_PROCESS "${APP_EXECUTABLE_FILENAME}" $R0
     ${if} $R0 == 0
-      MessageBox MB_OK|MB_ICONSTOP "O Windows ainda está encerrando o W1 Capital. Tente novamente em alguns segundos."
+      MessageBox MB_OK|MB_ICONSTOP "O Windows ainda está encerrando o W1 Capital. Tente novamente em alguns segundos." /SD IDOK
       SetErrorLevel 2
       Quit
     ${endIf}
