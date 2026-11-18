@@ -30,8 +30,13 @@ try{
  desktop.on('console',message=>console.log('Electron: '+message.text()));
  const page=await desktop.firstWindow();
  page.on('console',message=>console.log('Central: '+message.text()));
+ page.on('pageerror',error=>console.error('Central: '+error.message));
  await page.waitForURL('file:///**/store.html');
- await page.waitForFunction(()=>window.w1Central.getState().then(s=>Boolean(s.release.checkedAt)),undefined,{timeout:60000});
+ const deadline=Date.now()+60000;
+ while(!(await page.evaluate(()=>window.w1Central.getState().then(s=>s.release.checkedAt)))){
+  if(Date.now()>deadline)throw Error('A consulta inicial ao catálogo não terminou.');
+  await new Promise(resolve=>setTimeout(resolve,200));
+ }
  const state=await page.evaluate(()=>window.w1Central.getState());
  assert.equal(state.storeVersion,buildVersion);
  assert.equal(state.automaticUpdates,false);
@@ -53,13 +58,13 @@ try{
  const before=await page.evaluate(()=>window.w1Central.getState());
  assert.equal(before.release.phase,'downloaded');
  const closed=page.waitForEvent('close',{timeout:90000});
- const error=page.waitForFunction(()=>window.w1Central.getState().then(s=>
-  s.release.phase==='error'?s.release.error:null),undefined,{timeout:90000}).then(async handle=>{
-  throw Error('Falha ao iniciar NSIS: '+await handle.jsonValue());
+ const message=page.locator('#update-message').filter({hasText:/Atualização não concluída|não pôde ser iniciada/i});
+ const error=message.waitFor({state:'visible',timeout:90000}).then(async()=>{
+  throw Error('Falha ao iniciar NSIS: '+await message.textContent());
  });
  await Promise.all([
   Promise.race([closed,error.catch(cause=>{if(!/closed/i.test(cause.message))throw cause;return closed;})]),
-  page.locator('#install-update').click({noWaitAfter:true}).catch(cause=>{if(!/closed/i.test(cause.message))throw cause;})
+  page.locator('#install-update').click({noWaitAfter:true,timeout:15000}).catch(cause=>{if(!/closed/i.test(cause.message))throw cause;})
  ]);
  assert.equal(JSON.parse(readFileSync(join(profile,'last-install-attempt.json'),'utf8')).sha256,sha256);
  console.log('O botão confirmou o pacote em cache e a Central fechou para o NSIS.');
