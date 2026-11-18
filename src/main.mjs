@@ -1,7 +1,9 @@
 import {app,BrowserWindow,ipcMain,Menu,shell,dialog,session} from 'electron';
 import {spawn} from 'node:child_process';
 import {join} from 'node:path';
-import {existsSync,readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {existsSync,readFileSync,writeFileSync,mkdirSync,lstatSync} from 'node:fs';
+import {classifyAttachment,ATTACHMENT_FILTERS} from './attachment-policy.mjs';
+import {officialToolUrl} from './official-tools.mjs';
 import {createServer} from 'node:net';
 import {randomBytes} from 'node:crypto';
 import {setTimeout as sleep} from 'node:timers/promises';
@@ -348,6 +350,29 @@ ipcMain.handle('central:download-update',(event,mode)=>{
 ipcMain.handle('central:install-update',event=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
  return installUpdate();
+});
+ipcMain.handle('central:open-official-tool',async(event,provider)=>{
+  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+  const url=officialToolUrl(provider);
+  await shell.openExternal(url);
+  return {opened:true,provider};
+});
+ipcMain.handle('central:pick-opencode-files',async event=>{
+  if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
+  const result=await dialog.showOpenDialog({
+   title:'Escolher arquivos para a tarefa OpenCode',
+   buttonLabel:'Selecionar arquivos',
+   properties:['openFile','multiSelections'],
+   filters:ATTACHMENT_FILTERS
+  });
+  if(result.canceled)return [];
+  if(result.filePaths.length>8)throw Error('Selecione no máximo 8 arquivos por tarefa.');
+  return result.filePaths.map(path=>{
+   const stat=lstatSync(path);
+   if(!stat.isFile()||stat.isSymbolicLink())throw Error('Selecione arquivos normais, sem atalhos.');
+   const info=classifyAttachment(path,stat.size);
+   return {...info,path};
+  });
 });
 ipcMain.handle('central:open-release',async event=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
