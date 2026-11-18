@@ -26,8 +26,10 @@ test('fixa executável CPU e pesos oficiais da Microsoft com hashes verificados'
  assert.equal(LOCAL_AI_ENGINE.version,'b12521');
  assert.match(LOCAL_AI_ENGINE.url,/ggml-org\/llama\.cpp\/releases\/download\/b12521\/llama-b12521-bin-win-cpu-x64\.zip$/);
  assert.equal(LOCAL_AI_ENGINE.sha256,'bd4e093bce292452248c318d4b176fbfebe1ca43a7f3779ebb3846fe7753653e');
+ assert.equal(LOCAL_AI_ENGINE.size,25555594);
  assert.equal(LOCAL_AI_MODEL.revision,'a1f2f1c765812aa8af3f6eda4a313707064bba15');
  assert.equal(LOCAL_AI_MODEL.sha256,'4221b252fdd5fd25e15847adfeb5ee88886506ba50b8a34548374492884c2162');
+ assert.equal(LOCAL_AI_MODEL.size,1187801280);
  assert.match(LOCAL_AI_MODEL.url,/huggingface\.co\/microsoft\/bitnet-b1\.58-2B-4T-gguf\/resolve\/a1f2f1c765812aa8af3f6eda4a313707064bba15\/ggml-model-i2_s\.gguf$/);
 });
 
