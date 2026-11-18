@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {createReadStream,createWriteStream,statSync,mkdirSync,renameSync,rmSync} from 'node:fs';
+import {createReadStream,createWriteStream,statSync,mkdirSync,renameSync,rmSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {spawn} from 'node:child_process';
 import {Transform} from 'node:stream';
@@ -105,6 +105,10 @@ async function downloadRelease({asset,folder,signatureScript,onProgress=()=>{},f
   if(total!==asset.size||hash.digest('hex')!==asset.sha256)
    throw Error('Hash SHA-256 do instalador não corresponde à release oficial.');
   if(requireSignature)await verifyWindowsSignature(tmp,signatureScript);
+  // Keep Windows' Internet-zone protections on manually downloaded pilots.
+  // Write the ADS before renaming so an unmarked copy is never exposed as ready.
+  if(!requireSignature&&process.platform==='win32')
+   writeFileSync(tmp+':Zone.Identifier','[ZoneTransfer]\r\nZoneId=3\r\nHostUrl='+asset.url+'\r\n');
   renameSync(tmp,file);
   return file;
  }catch(error){

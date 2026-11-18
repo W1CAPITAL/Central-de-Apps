@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdtempSync,rmSync,writeFileSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -29,6 +29,7 @@ test('download da loja verifica bytes, recupera arquivo e recusa adulteração s
   assert.equal(requests,1);
   assert.equal(downloads.snapshot('predictbot').phase,'downloaded');
   const path=await downloads.verifiedPath('predictbot');
+  if(process.platform==='win32')assert.match(readFileSync(path+':Zone.Identifier','utf8'),/ZoneId=3/);
   writeFileSync(path,Buffer.alloc(bytes.length,8));
   await assert.rejects(()=>downloads.verifiedPath('predictbot'),/SHA-256/);
   await assert.rejects(()=>downloads.download('lexispredict'),/Nenhum instalador/);
