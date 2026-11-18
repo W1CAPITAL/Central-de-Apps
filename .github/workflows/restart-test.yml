@@ -1,0 +1,49 @@
+name: Testar atualização entre duas versões instaladas
+on:
+  push:
+    branches: [test/reinicio-windows-entre-versoes]
+permissions:
+  contents: read
+jobs:
+  restart:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Gerar dois instaladores da Central sem os servidores de CRM
+        shell: pwsh
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --prefix ../desktop-test --no-package-lock --ignore-scripts --no-audit --no-fund playwright-core@1.65.1
+          ./scripts/create-icons.ps1
+          foreach ($version in @('0.1.1','1.0.1')) {
+            node -e "const fs=require('fs');const p=require('./package.json');p.version=process.argv[1];p.build.extraResources=[];fs.writeFileSync('package.json',JSON.stringify(p))" $version
+            npm run dist:win
+            if ($LASTEXITCODE -ne 0) { throw 'Falha no empacotamento.' }
+            Copy-Item "dist/W1-Central-de-Apps-Setup-$version-x64.exe" "$env:RUNNER_TEMP/W1-Central-de-Apps-Setup-$version-x64.exe"
+          }
+      - name: Instalar 0.1.1 e atualizar para 1.0.1 pela janela
+        shell: pwsh
+        run: |
+          $folder = Join-Path $env:RUNNER_TEMP 'W1 Central Test'
+          $initial = Join-Path $env:RUNNER_TEMP 'W1-Central-de-Apps-Setup-0.1.1-x64.exe'
+          $next = Join-Path $env:RUNNER_TEMP 'W1-Central-de-Apps-Setup-1.0.1-x64.exe'
+          $proc = Start-Process $initial -ArgumentList ('/S /D='+$folder) -PassThru
+          if (-not $proc.WaitForExit(180000) -or $proc.ExitCode -ne 0) { throw 'Falha na instalação inicial.' }
+          $exe = Join-Path $folder 'W1 Central de Apps.exe'
+          node scripts/verify-update-restart.mjs "$exe" "$next" 0.1.1
+          if ($LASTEXITCODE -ne 0) { throw 'O botão de atualização não concluiu.' }
+          $end = (Get-Date).AddMinutes(4)
+          do {
+            $active = Get-Process -Name 'W1 Central de Apps' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+            if ($active) { break }
+            Start-Sleep -Seconds 2
+          } while ((Get-Date) -lt $end)
+          if (-not $active) { throw 'A janela não reabriu.' }
+          $actual = (Get-Item -LiteralPath $exe).VersionInfo.ProductVersion
+          if ($actual -ne '1.0.1') { throw "Versão incorreta após reiniciar: $actual" }
+          Write-Host "Reinício confirmado: 0.1.1 para $actual, PID $($active.Id)."
+          [void]$active.CloseMainWindow()
