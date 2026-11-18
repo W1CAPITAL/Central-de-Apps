@@ -64,9 +64,9 @@ A Central oferece preparação automática de um modelo local para Windows x64 c
 - Baixa o executável CPU pré-compilado do llama.cpp (25,6 MB) e o modelo oficial Microsoft BitNet b1.58 2B-4T GGUF (1,19 GB).
 - Confere SHA-256 e tamanho dos dois arquivos antes de instalar ou executar.
 - Usa CPU, duas threads, contexto de 1.024 tokens, uma geração por vez e API limitada a `127.0.0.1`.
-- Mantém a chave da API local no perfil Windows e passa a configuração isolada apenas ao OpenCode iniciado pela Central.
+- Mantém o modelo e a chave em `%LOCALAPPDATA%\\W1 Capital\\Local AI` e passa a configuração isolada apenas ao OpenCode iniciado pela Central.
 - Não altera o modelo padrão nem as configurações globais existentes do OpenCode.
-- Após cinco minutos sem uso, o llama.cpp descarrega os pesos da memória para reduzir o consumo de RAM.
+- Após cinco minutos sem uso, o llama.cpp descarrega os pesos da memória para reduzir o consumo de RAM. O mesmo download é compartilhado entre a Central e o PredictBot independente.
 
 A primeira instalação exige cerca de 1,22 GB de download e espaço em disco adicional. Depois disso, a inferência é local e não consome créditos de API. Não requer Python, CMake, Visual Studio, Vercel ou servidor remoto. O processo local pode continuar ativo em segundo plano e reutiliza o mesmo modelo pelos aplicativos W1.
 
