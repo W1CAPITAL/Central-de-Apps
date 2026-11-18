@@ -202,6 +202,7 @@ function compareVersion(v1,v2){
  return 0;
 }
 async function checkUpdates(){
+ if(!app.isPackaged)return publicState();
  if(checking)return publicState();
  checking=true;
  try{
@@ -233,6 +234,7 @@ async function installUpdate(automatic=false){
  if(installing||handingOffUpdate)return publicState();
  if(!downloadedInstaller||!verifiedAsset||release.phase!=='downloaded')
   throw Error('Nenhum instalador verificado está pronto.');
+ if(!app.isPackaged)throw Error('Atualizações automáticas estão disponíveis na versão instalada.');
  if(process.platform!=='win32')throw Error('A atualização automática está disponível no Windows.');
  if(!automatic){
   const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
