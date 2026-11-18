@@ -50,7 +50,7 @@ else app.on('second-instance',()=>{void app.whenReady().then(showHome)});
 
 function publicState(){
  return {
-  apps:Object.values(APPS).map(app=>({...app,status:{...states[app.id]},download:app.id==='infinitum'?null:downloads().snapshot(app.id)})),
+  apps:Object.values(APPS).map(app=>({...app,status:{...states[app.id]},download:downloads().snapshot(app.id)})),
   release:{...release},
   storeVersion:app.getVersion(),automaticUpdates
  };
@@ -372,7 +372,7 @@ ipcMain.handle('central:opencode',async(event,action,input={})=>{
  }
  return getOpenCode().act(action,input);
 });
-function showHome(){return BUILD.id==='lexispredict'?openProduct('lexispredict'):openStoreWindow();}
+function showHome(){return BUILD.id==='lexispredict'||BUILD.id==='infinitum'?openProduct(BUILD.id):openStoreWindow();}
 app.whenReady().then(()=>{
  try{const prefs=JSON.parse(readFileSync(join(app.getPath('userData'),'automatic-updates.json'),'utf8'));automaticUpdates=prefs.enabled!==false;}catch{}
  registerOpenCodeRelay({ipcMain,dialog,shell,controller:getOpenCode,isTrusted:trustedOpenCodeEvent});
