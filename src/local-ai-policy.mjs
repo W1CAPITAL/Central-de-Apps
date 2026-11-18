@@ -15,7 +15,7 @@ export const LOCAL_AI_MODEL=Object.freeze({
  fileName:'ggml-model-i2_s.gguf',
  url:'https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/a1f2f1c765812aa8af3f6eda4a313707064bba15/ggml-model-i2_s.gguf',
  sha256:'4221b252fdd5fd25e15847adfeb5ee88886506ba50b8a34548374492884c2162',
- approximateBytes:1277750000
+ size:1187801280
 });
 
 export function selectLocalAIProfile({platform,arch,totalMemory,logicalCores}={}){
