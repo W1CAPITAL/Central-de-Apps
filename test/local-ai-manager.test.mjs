@@ -10,9 +10,9 @@ const payload=Buffer.from('W1 local AI verified payload');
 const digest=createHash('sha256').update(payload).digest('hex');
 const asset={url:'https://github.com/ggml-org/llama.cpp/releases/download/test/runtime.zip',sha256:digest,maxBytes:1024};
 
-function response({url='https://release-assets.githubusercontent.com/runtime.zip',bytes=payload,status=200}={}){
+function response({url='https://release-assets.githubusercontent.com/runtime.zip',bytes=payload,status=200,includeLength=true}={}){
  const body=new ReadableStream({start(controller){controller.enqueue(new Uint8Array(bytes));controller.close();}});
- return {ok:status===200,status,url,headers:new Headers({'content-length':String(bytes.length)}),body};
+ return {ok:status===200,status,url,headers:new Headers(includeLength?{'content-length':String(bytes.length)}:{}),body};
 }
 
 test('downloadVerifiedAsset grava somente conteúdo com SHA-256 correto',async()=>{
@@ -49,7 +49,16 @@ test('downloadVerifiedAsset limita o tamanho recebido mesmo sem Content-Length',
  try{
   const destination=join(root,'large.zip');
   const large=Buffer.alloc(2048,7);
-  await assert.rejects(()=>downloadVerifiedAsset({asset:{...asset,maxBytes:100},destination,assetType:'engine',fetchImpl:async()=>response({bytes:large})}),/limite|tamanho/i);
+  await assert.rejects(()=>downloadVerifiedAsset({asset:{...asset,maxBytes:100},destination,assetType:'engine',fetchImpl:async()=>response({bytes:large,includeLength:false})}),/limite|tamanho/i);
+  await assert.rejects(()=>stat(destination),{code:'ENOENT'});
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('downloadVerifiedAsset confere também o tamanho exato publicado no manifesto',async()=>{
+ const root=await mkdtemp(join(tmpdir(),'w1-local-ai-'));
+ try{
+  const destination=join(root,'wrong-size.zip');
+  await assert.rejects(()=>downloadVerifiedAsset({asset:{...asset,size:payload.length+1},destination,assetType:'engine',fetchImpl:async()=>response()}),/tamanho|manifesto/i);
   await assert.rejects(()=>stat(destination),{code:'ENOENT'});
  }finally{await rm(root,{recursive:true,force:true});}
 });
