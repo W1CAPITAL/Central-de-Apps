@@ -9,7 +9,7 @@ Este documento reúne os repositórios mantidos na estrutura W1 e seus caminhos 
 | Central de Apps | [W1CAPITAL/Central-de-Apps](https://github.com/W1CAPITAL/Central-de-Apps) | [Instalador Windows v0.1.48 (prévia)](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/W1-Central-de-Apps-Setup-0.1.48-x64.exe) |
 | LexisPredict | [W1CAPITAL/LexisPredict](https://github.com/W1CAPITAL/LexisPredict) | [Instalador Windows v0.1.48 (prévia)](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/LexisPredict-Setup-0.1.48-x64.exe) |
 | PredictBot | [W1CAPITAL/PredictBot](https://github.com/W1CAPITAL/PredictBot) | [Instalador Windows v0.1.48 (prévia)](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/PredictBot-Setup-0.1.48-x64.exe) |
-| INFINITUM | [W1CAPITAL/Infinitum](https://github.com/W1CAPITAL/Infinitum) | Presente no catálogo; [workflow Windows](https://github.com/W1CAPITAL/Infinitum/actions/workflows/killa-desktop-windows.yml), sem EXE individual na prévia consultada |
+| INFINITUM | [W1CAPITAL/Infinitum](https://github.com/W1CAPITAL/Infinitum) | Presente no catálogo; [instalador de teste via GitHub Actions](https://github.com/W1CAPITAL/Infinitum/actions/runs/44302707806), fora da pré-release da Central |
 | PredictLM | [W1CAPITAL/predictlm](https://github.com/W1CAPITAL/predictlm) | Projeto web/servidor; sem executável Windows publicado |
 | SheetsPredict | [W2CAPITAL/SheetsPredict](https://github.com/W2CAPITAL/SheetsPredict) | Aplicação web/PWA; sem executável Windows publicado |
 | Site W1 | [W1CAPITAL/SITE](https://github.com/W1CAPITAL/SITE) | Site institucional; sem instalador Windows |
@@ -25,6 +25,8 @@ Demais projetos e estudos mantêm repositórios próprios e não devem ser apres
 - **Release verificada:** [preview-v0.1.48](https://github.com/W1CAPITAL/Central-de-Apps/releases/tag/preview-v0.1.48)
 - **Integridade:** [SHA-256](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/SHA256SUMS.txt)
 - **Código utilizado no empacotamento:** [source-commits.json](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/source-commits.json)
+
+O **INFINITUM** publicou o artefato temporário `infinitum-killa-windows-test-UNSIGNED` na [execução #44302707806](https://github.com/W1CAPITAL/Infinitum/actions/runs/44302707806), a partir da `main` de 18/11/2026. O ZIP inclui um instalador Windows não assinado, separado dos assets publicados na Central; sua retenção vai até **02/12/2026**. O download do artefato pode exigir autenticação GitHub.
 
 Pré-release não equivale a distribuição estável assinada. O aplicativo desktop empacota a interface e o servidor local; dados na nuvem, autenticação, APIs de terceiros e provedores de IA podem continuar exigindo internet.
 

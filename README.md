@@ -23,7 +23,9 @@ Os instaladores abaixo foram confirmados na [pré-release `preview-v0.1.48`](htt
 | **Central de Apps** | [W1-Central-de-Apps-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/W1-Central-de-Apps-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
 | **LexisPredict** | [LexisPredict-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/LexisPredict-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
 | **PredictBot** | [PredictBot-Setup-0.1.48-x64.exe](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/PredictBot-Setup-0.1.48-x64.exe) | Prévia Windows x64 |
-| **INFINITUM** | [Instaladores e builds do projeto](https://github.com/W1CAPITAL/Infinitum/actions/workflows/killa-desktop-windows.yml) | Incluído no catálogo; não há EXE individual nesta pré-release |
+| **INFINITUM** | [Build Windows independente (GitHub Actions)](https://github.com/W1CAPITAL/Infinitum/actions/runs/44302707806) | Instalador de teste no artefato `infinitum-killa-windows-test-UNSIGNED`; não consta nesta pré-release |
+
+**Build individual do INFINITUM:** a execução [GitHub Actions #44302707806](https://github.com/W1CAPITAL/Infinitum/actions/runs/44302707806) publicou um artefato ZIP contendo o instalador Windows. É um arquivo temporário, sem assinatura Authenticode W1 e com expiração em **2 de dezembro de 2026**; o download requer acesso ao GitHub. Não integra atualizações automáticas assinadas.
 
 **Integridade:** [SHA256SUMS.txt](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/SHA256SUMS.txt) · [Manifesto das versões de código](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/source-commits.json).
 
