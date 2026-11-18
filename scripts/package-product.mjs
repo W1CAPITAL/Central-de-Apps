@@ -14,7 +14,7 @@ const temporary=mkdtempSync(join(tmpdir(),'w1-product-config-'));
 const config=JSON.parse(readFileSync(join(root,'package.json'),'utf8')).build;
 config.appId=spec.appId;config.productName=spec.name;
 config.directories={output:join(root,'dist','products',id)};
-config.win={...config.win,artifactName:spec.prefix+'-Setup-${version}-${arch}.exe'};
+config.win={...config.win,artifactName:spec.prefix+'-Setup-${version}-${arch}.exe',icon:join(root,'assets',id+'.ico')};
 config.extraResources=id==='predictbot'?[]:[{from:'products',to:'products',filter:[id+'/**/*',
  '!**/.env','!**/.env.*','!**/*service-role*','!**/private-key*','!**/*.pem']}];
 const path=join(temporary,'product.json');
