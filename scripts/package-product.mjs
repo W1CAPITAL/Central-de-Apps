@@ -6,7 +6,7 @@ import {productSpec} from '../src/distribution.mjs';
 
 const [id,target='nsis']=process.argv.slice(2);
 const spec=productSpec(id);
-if(!['lexispredict','predictbot'].includes(id)||!['dir','nsis'].includes(target))throw Error('Produto ou alvo não permitido.');
+if(!['lexispredict','infinitum','predictbot'].includes(id)||!['dir','nsis'].includes(target))throw Error('Produto ou alvo não permitido.');
 const root=resolve(import.meta.dirname,'..');
 const descriptor=join(root,'src','product-build.json');
 const original=readFileSync(descriptor);
