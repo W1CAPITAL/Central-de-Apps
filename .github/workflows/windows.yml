@@ -165,6 +165,10 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm run check
           npm test
+      - name: Criar logo W1 Capital nos ícones dos quatro EXEs
+        working-directory: central
+        shell: pwsh
+        run: ./scripts/create-icons.ps1
       - name: Gerar EXE com LexisPredict e INFINITUM locais
         working-directory: central
         run: npm run pack:win
