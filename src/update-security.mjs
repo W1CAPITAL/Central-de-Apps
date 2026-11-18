@@ -10,7 +10,7 @@ import {pruneUpdateCache} from './update-install.mjs';
 const APP_REPO='W1CAPITAL/Central-de-Apps';
 const MAX_BYTES=2_000_000_000;
 const MIN_BYTES=10_000_000;
-const VERSION=/^(0|[1-9]\\d{0,3})\\.(0|[1-9]\\d{0,3})\\.(0|[1-9]\\d{0,3})$/;
+const VERSION=/^(0|[1-9][0-9]{0,3})[.](0|[1-9][0-9]{0,3})[.](0|[1-9][0-9]{0,3})$/;
 const HOSTS=new Set(['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com']);
 
 export function validateReleaseAsset(release,product='central'){
