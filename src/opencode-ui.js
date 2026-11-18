@@ -24,8 +24,9 @@ if(bridge?.openCode){
   const button=byId('oc-simple-setup');button.disabled=true;
   status.textContent='Preparando OpenCode no computador...';
   try{
-   const found=await request('simpleSetup');
-   if(!found.installed){status.textContent='OpenCode não está instalado. Use o botão Baixar OpenCode oficial na Central W1.';return;}
+   const executable=byId('oc-executable').value.trim();
+   const found=executable?await request('simpleSetup',{executable}):await request('simpleSetup');
+   if(!found.installed){status.textContent=found.message || 'Não encontrei a CLI do OpenCode. Escolha o executável ou baixe o OpenCode.';return;}
    byId('oc-mode').value='local';
    byId('oc-executable').value=found.executable;
    byId('oc-directory').value=found.directory;
@@ -34,6 +35,15 @@ if(bridge?.openCode){
    byId('opencode-form').requestSubmit(byId('opencode-form').querySelector('button[type="submit"]'));
   }catch(error){status.textContent=String(error.message||'Não foi possível preparar a instalação.');}
   finally{button.disabled=false;}
+ });
+ byId('oc-pick-exe')?.addEventListener('click',async()=>{
+  try{
+   const path=await request('pickExecutable');
+   if(path){byId('oc-executable').value=path;byId('oc-detect').click();}
+  }catch{status.textContent='Não foi possível abrir a seleção de arquivo.';}
+ });
+ byId('oc-download')?.addEventListener('click',async()=>{
+  try{await request('officialDownload');}catch{status.textContent='Não foi possível abrir o site do OpenCode.';}
  });
  byId('oc-detect').addEventListener('click',async()=>{try{const found=await request('detect',{executable:byId('oc-executable').value.trim()});status.textContent=found.installed?'OpenCode '+found.version+' encontrado':found.message;if(found.installed)byId('oc-executable').value=found.executable;}catch{status.textContent='Não foi possível detectar a instalação.';}});
  byId('oc-disconnect').addEventListener('click',async()=>{connected=false;generation++;clearInterval(timer);await request('disconnect');output.textContent='';byId('oc-workspace').hidden=true;status.textContent='Desconectado';byId('oc-password').value='';});

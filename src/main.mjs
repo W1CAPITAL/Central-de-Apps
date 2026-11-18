@@ -435,10 +435,18 @@ ipcMain.handle('central:open-release',async event=>{
 ipcMain.handle('central:opencode',async(event,action,input={})=>{
  if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
  if(!input||typeof input!=='object'||JSON.stringify(input).length>50000)throw Error('Solicitação OpenCode inválida.');
+ if(action==='pickExecutable'){
+  const result=await dialog.showOpenDialog({title:'Escolher a CLI do OpenCode',properties:['openFile'],filters:[{name:'Executável do OpenCode',extensions:['exe']}]});
+  return result.canceled?'':result.filePaths[0];
+ }
+ if(action==='officialDownload'){
+  await shell.openExternal(officialToolUrl('opencode'));
+  return;
+ }
  if(action==='simpleSetup'){
   const folder=join(app.getPath('documents'),'W1 Capital','Projetos');
   mkdirSync(folder,{recursive:true});
-  const found=await getOpenCode().detect();
+  const found=await getOpenCode().detect(input.executable);
   return {installed:found.installed===true,executable:found.executable||'',
    directory:folder,userId:'windows-user-local',companyId:'w1-local-only',message:found.message||''};
  }
