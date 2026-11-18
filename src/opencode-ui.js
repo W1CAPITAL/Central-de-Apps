@@ -12,8 +12,8 @@ if(bridge?.openCode){
   if(!modelSelect)return;
   const items=await request('models');
   const previous=modelSelect.value;
-  const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Modelo padrão da sessão';
-  const options=(Array.isArray(items)?items:[]).filter(m=>m&&m.providerID&&m.modelID&&m.enabled!==false).map(m=>{const o=document.createElement('option');o.value=JSON.stringify({providerID:m.providerID,modelID:m.modelID});o.textContent=(m.name||m.modelID)+' · '+m.providerID+'/'+m.modelID;return o;});
+  const placeholder=document.createElement('option');placeholder.value='';placeholder.disabled=true;placeholder.textContent='Selecione um modelo para esta sessão';
+  const options=(Array.isArray(items)?items:[]).filter(m=>m&&m.providerID&&m.modelID&&m.enabled!==false).map(m=>{const o=document.createElement('option');o.value=JSON.stringify({providerID:m.providerID,id:m.id});o.textContent=(m.name||m.modelID||m.id)+' · '+m.providerID+'/'+(m.modelID||m.id);return o;});
   modelSelect.replaceChildren(placeholder,...options);
   if(options.some(o=>o.value===previous))modelSelect.value=previous;
   await syncModelSelection();
@@ -23,7 +23,7 @@ if(bridge?.openCode){
   try{
    const session=await request('get',{sessionId:sessions.value});
    const model=session?.model;
-   const value=model?.providerID&&model?.modelID?JSON.stringify({providerID:model.providerID,modelID:model.modelID}):'';
+   const value=model?.providerID&&model?.id?JSON.stringify({providerID:model.providerID,id:model.id}):'';
    modelSelect.value=[...modelSelect.options].some(o=>o.value===value)?value:'';
   }catch{}
  }
@@ -73,7 +73,7 @@ if(bridge?.openCode){
  sessions.addEventListener('change',()=>{void syncModelSelection()});
  modelSelect?.addEventListener('change',async()=>{
   if(!modelSelect.value||!sessions.value)return;
-  try{const model=JSON.parse(modelSelect.value);await request('switchModel',{sessionId:sessions.value,model});status.textContent='Modelo da sessão: '+model.providerID+'/'+model.modelID;}
+  try{const model=JSON.parse(modelSelect.value);await request('switchModel',{sessionId:sessions.value,model});status.textContent='Modelo da sessão: '+model.providerID+'/'+model.id;}
   catch(error){status.textContent=String(error.message||'Não foi possível trocar o modelo da sessão.');await syncModelSelection();}
  });
 
