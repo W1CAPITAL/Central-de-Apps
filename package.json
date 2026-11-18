@@ -21,7 +21,7 @@
     "productName": "W1 Central de Apps",
     "asar": true,
     "asarUnpack": [
-      "src/verify-signature.ps1"
+      "src/install-update.ps1"
     ],
     "files": [
       "src/**/*",
@@ -47,7 +47,6 @@
         "nsis"
       ],
       "artifactName": "W1-Central-de-Apps-Setup-${version}-${arch}.exe",
-      "verifyUpdateCodeSignature": true,
       "icon": "assets/central.ico"
     },
     "nsis": {
