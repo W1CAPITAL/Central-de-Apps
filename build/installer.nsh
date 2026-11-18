@@ -24,3 +24,50 @@ Var pid
     ${endIf}
   ${endIf}
 !macroend
+
+!ifndef BUILD_UNINSTALLER
+; The previous uninstaller stages files in its own temporary directory before
+; removing the old version. Across volumes this becomes copy-and-delete.
+Var updateTemp
+!macro customInit
+  StrCpy $updateTemp ""
+  IfFileExists "$INSTDIR\${APP_EXECUTABLE_FILENAME}" 0 w1_temp_done
+  ${GetRoot} "$INSTDIR" $0
+  ${GetRoot} "$TEMP" $1
+  StrCmp $0 $1 w1_temp_done
+  ${GetParent} "$INSTDIR" $2
+  ClearErrors
+  GetTempFileName $3 "$2"
+  IfErrors w1_temp_done
+  Delete "$3"
+  ClearErrors
+  CreateDirectory "$3"
+  IfErrors w1_temp_done
+  StrCpy $updateTemp "$3"
+  System::Call 'kernel32::SetEnvironmentVariable(t "TMP", t r3) i .r0'
+  System::Call 'kernel32::SetEnvironmentVariable(t "TEMP", t r3) i .r0'
+w1_temp_done:
+!macroend
+
+!macro customInstall
+  ${If} $updateTemp != ""
+    RMDir "$updateTemp"
+  ${EndIf}
+!macroend
+
+; A silent updater cannot acknowledge electron-builder's uninstall error dialog.
+!macro w1UninstallResult
+  ${If} $R0 != 0
+    MessageBox MB_OK|MB_ICONSTOP "$(uninstallFailed): $R0" /SD IDOK
+    SetErrorLevel 2
+    Quit
+  ${EndIf}
+!macroend
+
+!macro customUnInstallCheck
+  !insertmacro w1UninstallResult
+!macroend
+!macro customUnInstallCheckCurrentUser
+  !insertmacro w1UninstallResult
+!macroend
+!endif
