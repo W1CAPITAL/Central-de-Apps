@@ -66,8 +66,8 @@ export async function downloadVerifiedAsset({asset,destination,assetType,fetchIm
   const response=await fetchImpl(asset.url,{redirect:'follow',cache:'no-store',headers:{'User-Agent':'W1-Capital-Local-AI'},signal:AbortSignal.timeout(timeoutMs)});
   if(!response?.ok||!response.body)throw Error('Download oficial respondeu HTTP '+String(response?.status||0)+'.');
   validateAssetRedirect(response.url||asset.url,assetType);
-  const totalBytes=Number(response.headers?.get?.('content-length'))||0;
-  if(totalBytes>asset.maxBytes)throw Error('Download excedeu o tamanho permitido.');
+  const totalBytes=Number(response.headers?.get?.('content-length'))||asset.size||0;
+  if(totalBytes>asset.maxBytes||(asset.size&&totalBytes&&totalBytes!==asset.size))throw Error('Download excedeu o tamanho permitido.');
   const hash=createHash('sha256');
   const meter=new Transform({
    transform(chunk,encoding,callback){
@@ -80,6 +80,7 @@ export async function downloadVerifiedAsset({asset,destination,assetType,fetchIm
   });
   await pipeline(Readable.fromWeb(response.body),meter,createWriteStream(temporary,{flags:'wx'}));
   const actual=hash.digest('hex');
+  if(asset.size&&received!==asset.size)throw Error('Tamanho do arquivo não corresponde ao manifesto oficial.');
   if(actual.toLowerCase()!==asset.sha256.toLowerCase())throw Error('SHA-256 do download não corresponde ao manifesto oficial.');
   await rename(temporary,destination);
   return {destination,sha256:actual,bytes:received};
@@ -179,7 +180,7 @@ export class LocalAIManager{
  }
  async #ensureModel(){
   const paths=this.#paths();
-  return this.#ensureAsset({...LOCAL_AI_MODEL,maxBytes:2_000_000_000},paths.model,'model','downloading-model','Baixando o modelo oficial Microsoft BitNet (aproximadamente 1,19 GB).');
+  return this.#ensureAsset({...LOCAL_AI_MODEL,maxBytes:1_300_000_000},paths.model,'model','downloading-model','Baixando o modelo oficial Microsoft BitNet (aproximadamente 1,19 GB).');
  }
  async #isReady(port,key){
   try{
