@@ -35,3 +35,20 @@ test('download da loja verifica bytes, recupera arquivo e recusa adulteração s
   await assert.rejects(()=>downloads.download('lexispredict'),/Nenhum instalador/);
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
+
+
+test('catálogo unificado permite baixar também o INFINITUM sem disparar instalação',()=>{
+ const folder=mkdtempSync(join(tmpdir(),'w1-infinitum-'));
+ try{
+  const name='INFINITUM-Setup-0.1.53-x64.exe';
+  const url='https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.53/'+name;
+  const downloads=new ProductDownloads({folder});
+  downloads.update([{tag_name:'preview-v0.1.53',prerelease:true,draft:false,assets:[{
+   name,size:60_000_000,digest:'sha256:'+'a'.repeat(64),browser_download_url:url
+  }]}]);
+  assert.equal(downloads.snapshot('infinitum').version,'0.1.53');
+  assert.equal(downloads.snapshot('infinitum').preview,true);
+  assert.equal(downloads.snapshot('infinitum').phase,'available');
+  assert.equal(downloads.snapshot('predictbot').phase,'unavailable');
+ }finally{rmSync(folder,{recursive:true,force:true})}
+});
