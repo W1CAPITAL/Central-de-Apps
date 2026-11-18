@@ -61,7 +61,7 @@ function announceLocalAI(state){
 }
 function getLocalAI(){
  return localAIManager||(localAIManager=new LocalAIManager({
-  rootDirectory:join(app.getPath('appData'),'W1 Capital','Local AI'),
+  rootDirectory:join(process.env.LOCALAPPDATA||app.getPath('appData'),'W1 Capital','Local AI'),
   configPath:join(app.getPath('userData'),'local-ai','opencode.json'),
   onProgress:announceLocalAI
  }));
@@ -487,7 +487,7 @@ ipcMain.handle('central:opencode',async(event,action,input={})=>{
  if(action==='detect')return getOpenCode().detect(input.executable);
  if(action==='connect'){
   stopOpenCodeRelay();
-  const {localAI:untrustedLocalAI,...safeInput}=input;
+  const safeInput={...input};delete safeInput.localAI;
   const managedLocalAI=safeInput.mode==='local'?await getLocalAI().openCodeEnvironment():null;
   return getOpenCode().connect({...safeInput,...(managedLocalAI?{localAI:managedLocalAI}:{})});
  }
