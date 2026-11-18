@@ -55,7 +55,7 @@ async function portAvailable(port){
 }
 
 export async function downloadVerifiedAsset({asset,destination,assetType,fetchImpl=fetch,onProgress=()=>{},timeoutMs=60*60*1000}={}){
- if(!asset||typeof asset.url!=='string'||!/^sha256:[a-f0-9]{64}$/i.test('sha256:'+String(asset.sha256||'')))throw Error('Manifesto de download inválido.');
+ if(!asset||typeof asset.url!=='string'||!/^[a-f0-9]{64}$/i.test(String(asset.sha256||'')))throw Error('Manifesto de download inválido.');
  if(typeof destination!=='string'||!(isAbsolute(destination)||win32.isAbsolute(destination)))throw Error('Destino absoluto obrigatório.');
  if(!Number.isSafeInteger(asset.maxBytes)||asset.maxBytes<1||asset.maxBytes>2_000_000_000)throw Error('Limite de download inválido.');
  validateAssetRedirect(asset.url,assetType);
@@ -118,6 +118,7 @@ export class LocalAIManager{
  async #ensureKey(){
   const paths=this.#paths();await mkdir(this.#root,{recursive:true});
   const existing=await this.#readKey();if(existing)return existing;
+  await rm(paths.key,{force:true}).catch(()=>{});
   const key=randomBytes(32).toString('hex');
   try{await writeFile(paths.key,key+'\n',{flag:'wx',mode:0o600});return key}
   catch(error){if(error.code!=='EEXIST')throw error;const raced=await this.#readKey();if(raced)return raced;throw Error('Não foi possível criar a chave local protegida.')}
