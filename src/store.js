@@ -21,7 +21,7 @@ function el(tag,className,text){
 function productCard(app){
  const card=el('article','product-card '+app.id);
  const top=el('div','card-top');
- const mark=el('span','app-mark',app.id==='lexispredict'?'L':'∞');
+ const mark=el('span','app-mark',app.id==='lexispredict'?'L':app.id==='predictbot'?'P':'∞');
  const badge=el('span','product-badge',app.badge);
  top.append(mark,badge);
  const copy=el('div','card-copy');
@@ -42,6 +42,21 @@ function productCard(app){
  });
  lower.append(status,btn);
  card.append(top,copy,lower);
+ if(app.id==='lexispredict'||app.id==='predictbot'){
+  const d=app.download||{};
+  const area=el('div','product-download');
+  area.append(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · versão de teste sem assinatura W1':' · versão estável'):'Consultando instalador Windows...'));
+  const download=el('button','secondary',d.phase==='downloading'?'Baixando '+(d.percent||0)+'%':'Baixar '+app.name+' para Windows');
+  download.type='button';download.disabled=!d.version||d.phase==='downloading';
+  download.addEventListener('click',async()=>{download.disabled=true;try{await bridge.downloadProduct(app.id)}catch{}finally{download.disabled=false;}});
+  area.append(download);
+  if(d.phase==='downloaded'){
+   const show=el('button','secondary','Mostrar instalador baixado');show.type='button';
+   show.addEventListener('click',()=>bridge.showDownload(app.id).catch(()=>{}));area.append(show);
+  }
+  if(d.error)area.append(el('p','card-error',d.error));
+  card.append(area);
+ }
  if(app.status?.phase==='error')card.append(el('p','card-error',app.status.message));
  return card;
 }
@@ -50,6 +65,7 @@ function render(value){
  appList.replaceChildren(...value.apps.map(productCard));
  document.getElementById('apps-count').textContent=value.apps.length+' produtos';
  document.getElementById('store-version').textContent='Central v'+String(value.storeVersion||'0.0.0');
+ const automatic=document.getElementById('automatic-updates');if(automatic)automatic.checked=value.automaticUpdates!==false;
  const r=value.release||{};
  const available=r.available===true;
  if(available){
@@ -86,6 +102,7 @@ function render(value){
  }
 }
 if(bridge){
+ document.getElementById('automatic-updates')?.addEventListener('change',event=>bridge.setAutomaticUpdates(event.target.checked).catch(()=>{}));
  bridge.onState(render);
  bridge.getState().then(render).catch(()=>{
   updateMessage.textContent='A ponte local está indisponível. Reinicie a Central de Apps.';
@@ -116,33 +133,4 @@ if(bridge){
  });
 }else{
  updateMessage.textContent='A inicialização segura do aplicativo falhou.';
-}
-
-if(bridge?.openCode){
- const byId=id=>document.getElementById(id);
- const status=byId('opencode-status'),output=byId('oc-output'),sessions=byId('oc-session');
- let connected=false,polling=false,timer,generation=0,view='messages';
- const show=value=>{output.textContent=typeof value==='string'?value:JSON.stringify(value,null,2);};
- const request=(action,input={})=>bridge.openCode(action,input);
- async function refreshSessions(){const items=await request('sessions');const selected=sessions.value;sessions.replaceChildren(...items.map(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.id;return o;}));if(items.some(s=>s.id===selected))sessions.value=selected;}
- async function run(action,input){const current=generation;view=action==='prompt'?'messages':action;try{const result=await request(action,input);if(current===generation)show(result);return result;}catch(error){show(String(error.message||'Operação falhou.'));throw error;}}
- function bind(id,action,build){byId(id).addEventListener('click',async()=>{const button=byId(id);button.disabled=true;try{await run(action,build?build():{sessionId:sessions.value});}catch{}finally{button.disabled=false;}});}
- byId('opencode-form').addEventListener('submit',async event=>{
-  event.preventDefault();const button=event.submitter;button.disabled=true;status.textContent='Conectando...';
-  clearInterval(timer);connected=false;generation++;const current=generation;output.textContent='';byId('oc-workspace').hidden=true;
-  try{
-   const result=await request('connect',{mode:byId('oc-mode').value,executable:byId('oc-executable').value.trim(),directory:byId('oc-directory').value.trim(),url:byId('oc-url').value.trim(),password:byId('oc-password').value,userId:byId('oc-user').value.trim(),companyId:byId('oc-company').value.trim()});
-   byId('oc-password').value='';connected=true;byId('oc-workspace').hidden=false;status.textContent='Conectado · OpenCode '+result.version;await refreshSessions();show({version:result.version,capabilities:result.capabilities});
-   // Poll real responses; never fabricate progress from an animation.
-   timer=setInterval(async()=>{if(!connected||polling||!sessions.value||document.hidden||!['messages','prompt'].includes(view))return;polling=true;try{const result=await request('messages',{sessionId:sessions.value});if(current===generation&&view==='messages')show(result);}catch{status.textContent='Falha ao atualizar respostas. Reconecte para testar.';}finally{polling=false;}},5000);
-  }catch(error){status.textContent=String(error.message||'Falha de conexão.');}finally{button.disabled=false;}
- });
- byId('oc-detect').addEventListener('click',async()=>{try{const found=await request('detect',{executable:byId('oc-executable').value.trim()});status.textContent=found.installed?'OpenCode '+found.version+' encontrado':found.message;if(found.installed)byId('oc-executable').value=found.executable;}catch{status.textContent='Não foi possível detectar a instalação.';}});
- byId('oc-disconnect').addEventListener('click',async()=>{connected=false;generation++;clearInterval(timer);await request('disconnect');output.textContent='';byId('oc-workspace').hidden=true;status.textContent='Desconectado';byId('oc-password').value='';});
- byId('oc-create').addEventListener('click',async()=>{try{const session=await run('create',{title:'Tarefa W1 Capital',mode:byId('oc-permissions').value});await refreshSessions();sessions.value=session.id;}catch{}});
- bind('oc-send','prompt',()=>({sessionId:sessions.value,text:byId('oc-prompt').value}));
- bind('oc-messages','messages');bind('oc-diff','diff');bind('oc-abort','abort');
- bind('oc-mcp-list','mcp');
- bind('oc-mcp-save','mcpSave',()=>({name:byId('oc-mcp-name').value.trim(),config:JSON.parse(byId('oc-mcp-config').value)}));
- for(const [id,action] of [['oc-mcp-connect','mcpConnect'],['oc-mcp-disconnect','mcpDisconnect'],['oc-mcp-remove','mcpRemove']])bind(id,action,()=>({name:byId('oc-mcp-name').value.trim()}));
 }

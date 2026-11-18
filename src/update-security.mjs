@@ -5,6 +5,7 @@ import {spawn} from 'node:child_process';
 import {Transform} from 'node:stream';
 import {pipeline} from 'node:stream/promises';
 import {Readable} from 'node:stream';
+import {validateProductRelease} from './distribution.mjs';
 
 const APP_REPO='W1CAPITAL/Central-de-Apps';
 const MAX_BYTES=2_000_000_000;
@@ -12,7 +13,8 @@ const MIN_BYTES=10_000_000;
 const VERSION=/^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$/;
 const HOSTS=new Set(['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com']);
 
-export function validateReleaseAsset(release){
+export function validateReleaseAsset(release,product='central'){
+ if(product!=='central')return validateProductRelease(release,product);
  if(release?.prerelease===true||release?.draft===true)throw Error('Versão de teste fora do canal oficial.');
  const tag=String(release?.tag_name||'');
  const version=tag.startsWith('v')?tag.slice(1):tag;
@@ -53,7 +55,21 @@ export async function verifyFileDigest(file,asset){
  if(hash.digest('hex')!==asset.sha256)throw Error('O instalador local não corresponde ao SHA-256 oficial.');
  return true;
 }
-export async function downloadSignedRelease({asset,folder,signatureScript,onProgress=()=>{},fetchImpl=fetch}){
+export async function downloadSignedRelease(options){
+ return downloadRelease({...options,requireSignature:true});
+}
+// A manual copy is inert: this function never launches an installer or grants
+// automatic-update eligibility. Its hash and exact product origin are checked.
+export async function downloadProductCopy(options){
+ return downloadRelease({...options,requireSignature:false});
+}
+async function downloadRelease({asset,folder,signatureScript,onProgress=()=>{},fetchImpl=fetch,requireSignature}){
+ if(asset?.product){
+  const tag=(asset.preview?'preview-v':'v')+asset.version;
+  validateProductRelease({tag_name:tag,prerelease:asset.preview,assets:[{
+   name:asset.name,browser_download_url:asset.url,size:asset.size,digest:'sha256:'+asset.sha256
+  }]},asset.product,{manual:!requireSignature});
+ }else{
  if(!asset||!VERSION.test(asset.version)||asset.name!=='W1-Central-de-Apps-Setup-'+asset.version+'-x64.exe')
   throw Error('Instalador não passou pela validação do catálogo.');
  // Verify all metadata again before using it.
@@ -61,6 +77,7 @@ export async function downloadSignedRelease({asset,folder,signatureScript,onProg
   name:asset.name,browser_download_url:asset.url,size:asset.size,
   digest:'sha256:'+asset.sha256
  }]});
+ }
  mkdirSync(folder,{recursive:true});
  const file=join(folder,asset.name);
  const tmp=file+'.partial.exe';
@@ -87,7 +104,7 @@ export async function downloadSignedRelease({asset,folder,signatureScript,onProg
   await pipeline(Readable.fromWeb(response.body),counter,createWriteStream(tmp,{flags:'wx',mode:0o600}));
   if(total!==asset.size||hash.digest('hex')!==asset.sha256)
    throw Error('Hash SHA-256 do instalador não corresponde à release oficial.');
-  await verifyWindowsSignature(tmp,signatureScript);
+  if(requireSignature)await verifyWindowsSignature(tmp,signatureScript);
   renameSync(tmp,file);
   return file;
  }catch(error){

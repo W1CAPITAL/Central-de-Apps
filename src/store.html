@@ -18,12 +18,12 @@
    <div class="hero-copy">
     <span class="eyebrow">SEU ESPAÇO DE TRABALHO</span>
     <h1>Um lugar para todos<br/><em>os seus aplicativos.</em></h1>
-    <p>Abra o LexisPredict e o INFINITUM diretamente no computador. A loja fica disponível sem abrir nenhum CRM nem depender da Vercel.</p>
+    <p>Abra e baixe LexisPredict, INFINITUM e PredictBot. A loja funciona diretamente no computador, sem depender da Vercel.</p>
     <div class="hero-badges"><span>✓ Inicialização local</span><span>✓ Contas separadas</span><span>✓ Atualizações GitHub</span></div>
    </div>
    <div class="hero-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="core">W1</div><div class="spark s1"></div><div class="spark s2"></div></div>
   </div>
-  <div class="section-title"><span><small>EXPLORAR</small><h2>Aplicativos da W1 Capital</h2></span><span class="section-count" id="apps-count">2 produtos</span></div>
+  <div class="section-title"><span><small>EXPLORAR</small><h2>Aplicativos da W1 Capital</h2></span><span class="section-count" id="apps-count">3 produtos</span></div>
   <section class="apps-grid" id="app-list" aria-label="Aplicativos disponíveis">
    <div class="loading">Carregando a central local...</div>
   </section>
@@ -70,6 +70,7 @@
    <section class="update-card" aria-label="Versões e atualizações">
     <div class="update-head"><div class="update-glyph">↻</div><div><strong>Atualizações</strong><p>Distribuídas pelo GitHub Releases, não pela Vercel.</p></div></div>
     <p id="update-message">Consultando versões oficiais...</p>
+    <label class="oc-note"><input id="automatic-updates" type="checkbox" checked/> Baixar atualizações assinadas automaticamente e instalar ao fechar os aplicativos</label>
     <pre id="release-notes" hidden></pre>
     <div class="download-progress" id="download-progress" hidden><div class="download-track"><div id="download-bar"></div></div><span id="download-percent">0%</span></div>
     <div class="update-actions"><button id="check-updates" type="button" class="secondary">Verificar versões</button><button id="download-now" type="button" class="accent" hidden>Atualizar agora</button><button id="download-background" type="button" class="secondary" hidden>Baixar em segundo plano</button><button id="install-update" type="button" class="accent" hidden>Instalar e reiniciar</button><button id="open-release" type="button" class="secondary" hidden>Ver release</button></div>
@@ -80,6 +81,7 @@
  <footer><span>© 2026 W1 Capital · Central de Apps</span><span id="store-version"></span></footer>
 </div>
 <script src="./store.js"></script>
+<script src="./opencode-ui.js"></script>
 <script src="./opencode-relay-ui.js"></script>
 </body>
 </html>

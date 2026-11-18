@@ -1,7 +1,7 @@
 import {app,BrowserWindow,ipcMain,Menu,shell,dialog,session} from 'electron';
 import {spawn} from 'node:child_process';
 import {join} from 'node:path';
-import {existsSync} from 'node:fs';
+import {existsSync,readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {createServer} from 'node:net';
 import {randomBytes} from 'node:crypto';
 import {setTimeout as sleep} from 'node:timers/promises';
@@ -11,9 +11,17 @@ import {OpenCodeController} from './opencode-controller.mjs';
 import {APPS,resolveApp} from './catalog.mjs';
 import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl,canonicalProductUrl} from './runtime-policy.mjs';
 import {validateReleaseAsset,downloadSignedRelease,verifyWindowsSignature,verifyFileDigest} from './update-security.mjs';
+import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distribution.mjs';
+import {ProductDownloads} from './product-downloads.mjs';
 
-const STORE_FILE=join(import.meta.dirname,'store.html');
-const UPDATE_API='https://api.github.com/repos/W1CAPITAL/Central-de-Apps/releases/latest';
+const BUILD=productSpec(JSON.parse(readFileSync(new URL('./product-build.json',import.meta.url),'utf8')).id);
+app.setName(BUILD.name);
+if(!app.commandLine.hasSwitch('user-data-dir')){
+ const profile=join(app.getPath('appData'),BUILD.id==='central'?'w1-central-de-apps':BUILD.appId);
+ mkdirSync(profile,{recursive:true});app.setPath('userData',profile);
+}
+const STORE_FILE=join(import.meta.dirname,BUILD.id==='predictbot'?'predictbot.html':'store.html');
+const BOT_FILE=join(import.meta.dirname,'predictbot.html');
 const running=new Map();
 const windows=new Map();
 const states=Object.fromEntries(Object.keys(APPS).map(id=>[id,{phase:'bundled',message:'Pronto para iniciar no Windows'}]));
@@ -22,16 +30,28 @@ let release={version:null,notes:'',url:null,checkedAt:null,error:null,phase:'non
 let verifiedAsset=null,downloadedInstaller=null,downloadPromise=null,installing=false;
 let checking=false,closing=false;
 let openCode;
+let productDownloads;
+function downloads(){return productDownloads||(productDownloads=new ProductDownloads({folder:join(app.getPath('downloads'),'W1 Capital'),onState:announce}));}
+let automaticUpdates=true;
+function setAutomaticUpdates(enabled){
+ automaticUpdates=enabled;
+ writeFileSync(join(app.getPath('userData'),'automatic-updates.json'),JSON.stringify({enabled}));
+ announce();return publicState();
+}
+function trustedOpenCodeEvent(event){
+ const bot=windows.get('predictbot');
+ return trustedStoreEvent(event)||!!(bot&&!bot.isDestroyed()&&event.sender===bot.webContents&&event.senderFrame?.url===pathToFileURL(BOT_FILE).href);
+}
 function getOpenCode(){return openCode||(openCode=new OpenCodeController({stateDirectory:join(app.getPath('userData'),'opencode-sessions')}));}
 
 if(!app.requestSingleInstanceLock())app.quit();
-else app.on('second-instance',()=>{void app.whenReady().then(openStoreWindow)});
+else app.on('second-instance',()=>{void app.whenReady().then(showHome)});
 
 function publicState(){
  return {
-  apps:Object.values(APPS).map(app=>({...app,status:{...states[app.id]}})),
+  apps:Object.values(APPS).map(app=>({...app,status:{...states[app.id]},download:app.id==='infinitum'?null:downloads().snapshot(app.id)})),
   release:{...release},
-  storeVersion:app.getVersion()
+  storeVersion:app.getVersion(),automaticUpdates
  };
 }
 function announce(){
@@ -140,6 +160,17 @@ async function openProduct(id){
  resolveApp(id);
  const current=windows.get(id);
  if(current&&!current.isDestroyed()){current.show();current.focus();return publicState()}
+ if(id==='predictbot'){
+  const bot=new BrowserWindow({width:1100,height:850,title:'PredictBot · W1 Capital',
+   webPreferences:{preload:join(import.meta.dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});
+  windows.set(id,bot);
+  bot.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+  bot.webContents.on('will-navigate',event=>event.preventDefault());
+  bot.webContents.session.setPermissionRequestHandler((_sender,_permission,callback)=>callback(false));
+  bot.on('closed',()=>{windows.delete(id);announce();});
+  await bot.loadFile(BOT_FILE);setStatus(id,'running','PredictBot aberto no computador.');
+  return publicState();
+ }
  setStatus(id,'starting','Iniciando '+resolveApp(id).name+' no seu computador, sem Vercel...');
  try{
   const record=await startProduct(id);
@@ -170,27 +201,19 @@ async function checkUpdates(){
  if(checking)return publicState();
  checking=true;
  try{
-  const response=await fetch(UPDATE_API,{
-   headers:{'Accept':'application/vnd.github+json','User-Agent':'W1-Central-de-Apps'},
-   cache:'no-store',redirect:'error',signal:AbortSignal.timeout(7000)
-  });
-  if(!response.ok)throw Error('GitHub Releases indisponível ('+response.status+').');
-  const body=await response.text();
-  if(body.length>24000)throw Error('Resposta de atualização muito grande.');
-  const payload=JSON.parse(body);
-  const version=typeof payload.tag_name==='string'?payload.tag_name.replace(/^v/,''):'';
-  const html=typeof payload.html_url==='string'?payload.html_url:'';
-  if(!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(version)||!/^https:\/\/github\.com\/W1CAPITAL\/Central-de-Apps\/releases\/tag\/v?[\d.]+$/.test(html))
-   throw Error('Release GitHub inválida.');
+  const catalog=await fetchReleaseCatalog();
+  downloads().update(catalog);
+  const candidate=selectProductRelease(catalog,BUILD.id);
+  if(!candidate){release={...release,error:null,phase:'none',canDownload:false,available:false,checkedAt:new Date().toISOString()};return publicState();}
+  const version=candidate.version,html=candidate.releaseUrl;
   const available=compareVersion(version,app.getVersion())>0;
-  let asset=null;
-  if(available){try{asset=validateReleaseAsset(payload)}catch{}}
+  const asset=available?candidate:null;
   const preserved=available&&verifiedAsset?.version===version&&downloadedInstaller;
   if(!preserved){
    downloadedInstaller=null;
    verifiedAsset=asset;
   }
-  release={version,notes:String(payload.body||'').replace(/<[^>]*>/g,'').slice(0,5000),
+  release={version,notes:'Nova versão de '+BUILD.name+' disponível no GitHub.',
    url:html,checkedAt:new Date().toISOString(),error:null,available,
    canDownload:!!asset,phase:preserved?'downloaded':available?'available':'none',
    percent:preserved?100:0};
@@ -199,6 +222,7 @@ async function checkUpdates(){
   release={...release,checkedAt:new Date().toISOString(),
    error:String(error?.message||'Não foi possível consultar versões.').slice(0,160)};
  }finally{checking=false;announce()}
+ if(automaticUpdates&&release.available&&release.canDownload&&release.phase==='available')void downloadUpdate();
  return publicState();
 }
 function signatureScript(){
@@ -206,24 +230,29 @@ function signatureScript(){
   ?join(process.resourcesPath,'app.asar.unpacked','src','verify-signature.ps1')
   :join(import.meta.dirname,'verify-signature.ps1');
 }
-async function installUpdate(){
+async function installUpdate(automatic=false){
  if(installing)return publicState();
  if(!downloadedInstaller||!verifiedAsset||release.phase!=='downloaded')
   throw Error('Nenhum instalador W1 assinado está pronto.');
- const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
+ if(!automatic){const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
   type:'question',title:'Atualizar Central W1',
   message:'A versão '+verifiedAsset.version+' está pronta para instalar.',
   detail:'Para aplicar a atualização, todos os aplicativos abertos serão fechados. Salve seu trabalho antes de continuar.',
   buttons:['Instalar e reiniciar','Depois'],defaultId:1,cancelId:1,noLink:true
  });
- if(choice.response!==0)return publicState();
+ if(choice.response!==0)return publicState();}
  installing=true;
  try{
   // Verify again immediately before execution: local update files are writable.
   await verifyFileDigest(downloadedInstaller,verifiedAsset);
   await verifyWindowsSignature(downloadedInstaller,signatureScript());
-  const result=await shell.openPath(downloadedInstaller);
-  if(result)throw Error('O Windows recusou o instalador: '+result);
+  if(automatic){
+   const child=spawn(downloadedInstaller,['/S'],{detached:true,shell:false,stdio:'ignore',windowsHide:true});
+   await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject)});child.unref();
+  }else{
+   const result=await shell.openPath(downloadedInstaller);
+   if(result)throw Error('O Windows recusou o instalador: '+result);
+  }
   app.quit();
  }catch(error){
   release={...release,phase:'error',error:String(error?.message||'Instalação bloqueada.').slice(0,160)};
@@ -274,7 +303,7 @@ function openStoreWindow(){
  storeWindow=new BrowserWindow({
   width:1240,height:850,minWidth:840,minHeight:590,
   show:false,backgroundColor:'#0d0c13',
-  title:'W1 Capital · Central de Apps',
+  title:BUILD.name+' · W1 Capital',
   webPreferences:{
    preload:join(import.meta.dirname,'preload.cjs'),
    nodeIntegration:false,contextIsolation:true,sandbox:true
@@ -290,6 +319,18 @@ function openStoreWindow(){
 ipcMain.handle('central:get-state',event=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
  return publicState();
+});
+ipcMain.handle('central:download-product',(event,id)=>{
+ if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ return downloads().download(id);
+});
+ipcMain.handle('central:show-download',async(event,id)=>{
+ if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ shell.showItemInFolder(await downloads().verifiedPath(id));return {shown:true};
+});
+ipcMain.handle('central:auto-updates',(event,enabled)=>{
+ if(!trustedStoreEvent(event)||typeof enabled!=='boolean')throw Error('Solicitação inválida.');
+ return setAutomaticUpdates(enabled);
 });
 ipcMain.handle('central:launch',async(event,id)=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
@@ -314,7 +355,7 @@ ipcMain.handle('central:open-release',async event=>{
  return true;
 });
 ipcMain.handle('central:opencode',async(event,action,input={})=>{
- if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
  if(!input||typeof input!=='object'||JSON.stringify(input).length>50000)throw Error('Solicitação OpenCode inválida.');
  if(action==='detect')return getOpenCode().detect(input.executable);
  if(action==='connect'){stopOpenCodeRelay();return getOpenCode().connect(input);}
@@ -330,10 +371,17 @@ ipcMain.handle('central:opencode',async(event,action,input={})=>{
  }
  return getOpenCode().act(action,input);
 });
+function showHome(){return BUILD.id==='lexispredict'?openProduct('lexispredict'):openStoreWindow();}
 app.whenReady().then(()=>{
- registerOpenCodeRelay({ipcMain,dialog,shell,controller:getOpenCode,isTrusted:trustedStoreEvent});
- Menu.setApplicationMenu(null);
- openStoreWindow();
+ try{const prefs=JSON.parse(readFileSync(join(app.getPath('userData'),'automatic-updates.json'),'utf8'));automaticUpdates=prefs.enabled!==false;}catch{}
+ registerOpenCodeRelay({ipcMain,dialog,shell,controller:getOpenCode,isTrusted:trustedOpenCodeEvent});
+ Menu.setApplicationMenu(BUILD.id==='central'?null:Menu.buildFromTemplate([{label:BUILD.name,submenu:[
+  {label:'Verificar atualizações',click:async()=>{await checkUpdates();await dialog.showMessageBox({type:'info',title:BUILD.name,
+   message:release.phase==='downloaded'?'Atualização assinada pronta para instalar ao fechar.':release.error||'As atualizações assinadas são consultadas automaticamente. Versões de teste podem ser baixadas na Central.'});}},
+  {label:'Atualizar automaticamente ao fechar',type:'checkbox',checked:automaticUpdates,click:item=>setAutomaticUpdates(item.checked)},
+  {role:'quit',label:'Sair'}
+ ]}]));
+ void showHome();
  // Automatic discovery is non-interruptive. Never execute an unsigned download.
  void checkUpdates();
  const timer=setInterval(()=>void checkUpdates(),30*60*1000);
@@ -346,4 +394,7 @@ app.on('before-quit',()=>{
  openCode?.disconnect();
  for(const record of running.values())if(record.child.exitCode===null)record.child.kill();
 });
-app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit()});
+app.on('window-all-closed',()=>{
+ if(automaticUpdates&&release.phase==='downloaded'&&!installing){void installUpdate(true).then(()=>{if(!installing)app.quit()});return;}
+ if(process.platform!=='darwin')app.quit();
+});

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'"/><title>PredictBot · W1 Capital</title><link rel="stylesheet" href="./store.css"/></head><body><main class="shell"><header class="top"><div class="brand"><span class="brandmark">W1</span><span><strong>PredictBot</strong><small>OPENCODE E MCP</small></span></div></header><p>Sessões, tarefas e ponte remota. Conecte o OpenCode instalado ou seu servidor autenticado.</p>
+  <section class="opencode-card" aria-labelledby="opencode-title">
+   <div class="section-title"><div><small>INTEGRAÇÕES</small><h2 id="opencode-title">OpenCode e MCP</h2></div><span id="opencode-status" role="status">Desconectado</span></div>
+   <p>Conecte o OpenCode instalado ou seu próprio servidor. Tarefas usam os modelos configurados nele.</p>
+   <form id="opencode-form">
+    <div class="opencode-grid">
+     <label>Conexão<select id="oc-mode"><option value="local">Iniciar OpenCode instalado</option><option value="remote">Conectar a servidor existente</option></select></label>
+     <label>Executável (opcional)<input id="oc-executable" placeholder="C:\Programas\OpenCode\opencode.exe" autocomplete="off"/></label>
+     <label>Pasta do projeto<input id="oc-directory" required placeholder="C:\Projetos\Infinitum" autocomplete="off"/></label>
+     <label>Endereço do servidor<input id="oc-url" value="http://127.0.0.1:4096" autocomplete="off"/></label>
+     <label>Senha do servidor<input id="oc-password" type="password" autocomplete="off"/></label>
+     <label>Identificador local do usuário<input id="oc-user" required autocomplete="off"/></label>
+     <label>Identificador local da empresa<input id="oc-company" required autocomplete="off"/></label>
+    </div>
+    <p class="oc-note">Usuário e empresa separam o histórico desta conta do Windows. Esta conexão não autoriza acesso ao banco do CRM.</p>
+    <div class="update-actions"><button type="button" class="secondary" id="oc-detect">Detectar instalação</button><button type="submit" class="accent">Conectar e testar</button><button type="button" class="secondary" id="oc-disconnect">Desconectar</button></div>
+   </form>
+   <div id="oc-workspace" hidden>
+    <div class="opencode-grid"><label>Sessão<select id="oc-session"></select></label><label>Permissões de nova sessão<select id="oc-permissions"><option value="restricted">Ferramentas bloqueadas</option><option value="review">Pedir aprovação no OpenCode</option></select></label></div>
+    <div class="update-actions"><button class="secondary" id="oc-create">Nova sessão</button><button class="secondary" id="oc-messages">Ver respostas</button><button class="secondary" id="oc-diff">Ver alterações</button><button class="secondary" id="oc-abort">Interromper tarefa</button></div>
+    <label>Tarefa<textarea id="oc-prompt" maxlength="32000" rows="3" placeholder="Descreva a tarefa que o OpenCode deve executar"></textarea></label>
+    <button class="accent" id="oc-send">Enviar tarefa</button>
+    <details><summary>Gerenciar servidores MCP no OpenCode</summary>
+     <label>Nome<input id="oc-mcp-name" maxlength="64" placeholder="meu-servidor"/></label>
+     <label>Configuração (JSON)<textarea id="oc-mcp-config" rows="4" placeholder='{"type":"remote","url":"https://exemplo.com/mcp"}'></textarea></label>
+     <p class="oc-note">Para credenciais, use referências {env:NOME}. Complete o login OAuth no OpenCode.</p>
+     <div class="update-actions"><button class="secondary" id="oc-mcp-list">Consultar conexões</button><button class="secondary" id="oc-mcp-save">Registrar MCP</button><button class="secondary" id="oc-mcp-connect">Conectar MCP</button><button class="secondary" id="oc-mcp-disconnect">Desconectar MCP</button><button class="secondary" id="oc-mcp-remove">Remover MCP</button></div>
+    </details>
+    <details><summary>Usar este OpenCode à distância</summary>
+     <p>Abra a página de conexão, entre com sua conta e confirme o autenticador. Gere um código e cole abaixo. Depois confirme o nome e o código deste computador na página.</p>
+     <button type="button" class="secondary" id="oc-relay-portal">Abrir página de conexão</button>
+     <label>Nome deste computador<input id="oc-relay-name" maxlength="80" value="Meu computador"/></label>
+     <label>Código de pareamento<textarea id="oc-relay-code" rows="3" maxlength="2000" autocomplete="off" spellcheck="false"></textarea></label>
+     <div class="update-actions"><button type="button" class="accent" id="oc-relay-pair">Parear computador</button><button type="button" class="secondary" id="oc-relay-stop">Desligar ponte</button></div>
+     <p id="oc-relay-state" role="status">Ponte remota desligada</p><p id="oc-relay-confirmation"></p>
+     <p class="oc-note">O computador precisa ficar ligado. A ponte recebe apenas operações autorizadas e não publica portas locais. A página de conexão permite revogar o dispositivo.</p>
+    </details>
+    <pre id="oc-output" role="log" aria-live="polite"></pre>
+   </div>
+  </section>
+<footer>W1 Capital · PredictBot</footer></main><script src="./opencode-ui.js"></script><script src="./opencode-relay-ui.js"></script></body></html>
