@@ -6,7 +6,7 @@
 
 **Instalação, execução e atualização dos produtos W1 Capital para Windows.**
 
-[Instalador Windows](https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.48/W1-Central-de-Apps-Setup-0.1.48-x64.exe) ·
+[Instalador Windows](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest) ·
 [Versões disponíveis](https://github.com/W1CAPITAL/Central-de-Apps/releases) ·
 [Catálogo do ecossistema](docs/ECOSSISTEMA-W1.md)
 
@@ -16,7 +16,7 @@
 
 ## Download para Windows
 
-Os instaladores abaixo foram confirmados na [pré-release `preview-v0.1.48`](https://github.com/W1CAPITAL/Central-de-Apps/releases/tag/preview-v0.1.48) em 18 de novembro de 2026.
+A release estável mais recente reúne os quatro instaladores independentes da W1 Capital. Use os links abaixo para obter sempre a versão estável atual.
 
 | Aplicativo | Instalador | Canal |
 | --- | --- | --- |
