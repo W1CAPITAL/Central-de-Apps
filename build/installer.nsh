@@ -1,3 +1,7 @@
+; Electron Builder's KILL_PROCESS fallback excludes the installer PID.
+; A custom app-running hook disables Electron Builder's automatic declaration.
+Var pid
+
 ; W1 Capital — close only processes belonging to this installation.
 ; electron-builder calls this hook instead of showing its default "close the app" prompt.
 !macro customCheckAppRunning
