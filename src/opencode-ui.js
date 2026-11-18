@@ -12,7 +12,7 @@ if(bridge?.openCode){
   if(!modelSelect)return;
   const items=await request('models');
   const previous=modelSelect.value;
-  const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Modelo padrão da sessão';
+  const placeholder=document.createElement('option');placeholder.value='';placeholder.disabled=true;placeholder.textContent='Selecione um modelo para esta sessão';
   const options=(Array.isArray(items)?items:[]).filter(m=>m&&m.providerID&&m.modelID&&m.enabled!==false).map(m=>{const o=document.createElement('option');o.value=JSON.stringify({providerID:m.providerID,id:m.id});o.textContent=(m.name||m.modelID||m.id)+' · '+m.providerID+'/'+(m.modelID||m.id);return o;});
   modelSelect.replaceChildren(placeholder,...options);
   if(options.some(o=>o.value===previous))modelSelect.value=previous;
