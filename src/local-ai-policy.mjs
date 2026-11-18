@@ -40,6 +40,8 @@ export function createLocalAIProviderConfig({port=8765}={}){
     models:{
      'bitnet-2b':{
       name:LOCAL_AI_MODEL.name,
+      modelID:'w1-bitnet-2b',
+      capabilities:{tools:false,input:['text'],output:['text']},
       limit:{context:1024,output:512}
      }
     }
