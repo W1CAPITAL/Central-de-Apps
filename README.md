@@ -55,7 +55,7 @@ Consulte [catálogo, requisitos e links dos projetos](docs/ECOSSISTEMA-W1.md).
 
 ## Como a instalação Windows é gerada
 
-Em [GitHub Actions → Central W1 — Windows](../../actions/workflows/windows.yml), o workflow:
+Em [GitHub Actions → Central W1 — Windows](https://github.com/W1CAPITAL/Central-de-Apps/actions/workflows/windows.yml), o workflow:
 
 1. Obtém os códigos mais recentes das branches `main` dos dois repositórios de produto.
 2. Executa testes e compila **cada** Next.js em modo `standalone`.
@@ -118,7 +118,7 @@ node scripts/verify-products.mjs
 npm run dist:win
 ```
 
-A política de porta local rejeita conflitos, em vez de alternar silenciosamente o endereço e perder as sessões. LexisPredict e INFINITUM usam partições de sessão Electron separadas. Os três EXEs independentes possuem perfis Windows próprios.
+A política de porta local rejeita conflitos, em vez de alternar silenciosamente o endereço e perder as sessões. LexisPredict e INFINITUM usam partições de sessão Electron separadas. Os aplicativos desktop independentes publicados possuem perfis Windows próprios. A disponibilidade de um instalador individual depende dos arquivos realmente publicados em cada release.
 
 ## Segurança
 
