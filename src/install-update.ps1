@@ -42,7 +42,7 @@ try {
   $parent = Get-TargetParentProcess
   if ($null -ne $parent) {
    Add-Content -LiteralPath $log -Value 'Central ainda estava aberta; encerrando o processo da instalação atual automaticamente.'
-   Stop-Process -Id $ParentProcessId -Force -ErrorAction Stop
+   Stop-Process -Id $ParentProcessId -Force -ErrorAction SilentlyContinue
    $deadline = (Get-Date).AddSeconds(8)
    while (($null -ne (Get-TargetParentProcess)) -and (Get-Date) -lt $deadline) {
     Start-Sleep -Milliseconds 250
