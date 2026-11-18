@@ -135,3 +135,17 @@ footer{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;colo
 @media(max-width:720px){.workspace{grid-template-columns:1fr}.primary,.insights,.integration-zone,footer{grid-column:1}.insights{grid-row:auto}.apps-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top{padding:0 15px}.top-divider{margin:0 4px}.hero-art{display:none}.hero-copy{max-width:100%}.catalog-head{flex-wrap:wrap}.searchbox{max-width:none;width:100%}.integration-details>summary{flex-direction:column;align-items:start}.opencode-grid{grid-template-columns:1fr}}
 @media(max-width:490px){.brand-name{font-size:10px}.brandmark{font-size:33px}.header-title{font-size:12px}.top-right{display:none}.workspace{padding:12px}.hero{min-height:125px;padding:20px}.hero h1{font-size:25px}.metrics{margin:15px 0}.apps-grid,.coming-grid{grid-template-columns:1fr}.coming-soon{min-height:100px}.side-panel{padding:15px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+.local-ai-card{border-color:#76505d;background:linear-gradient(145deg,#291720,#171217 82%)}
+.local-ai-card #local-ai-status{display:block;margin-top:9px;color:#e8bdca;font-size:11px}
+.local-ai-card .local-ai-footnote{display:block;margin:12px 0 0;color:#a997a0;font-size:10px;line-height:1.55}
+.local-ai-progress{display:flex;align-items:center;gap:10px;margin:12px 0}
+.local-ai-progress .download-track{height:8px;flex:1;border-radius:20px;background:#49323d;overflow:hidden}
+#local-ai-bar{height:100%;width:0;background:linear-gradient(90deg,#8d2c46,#d48b9b);transition:width .2s ease}
+#local-ai-percent{min-width:105px;text-align:right;color:#d8c3cb;font-size:10px}
+.local-ai-card .update-actions{display:flex;gap:8px;flex-wrap:wrap}
+.local-ai-card .update-actions button{flex:1;min-width:130px}
+@media(max-width:1100px){.local-ai-card .update-actions{flex-direction:column}.local-ai-card .update-actions button{width:100%}}
+
+.opencode-model-grid{grid-template-columns:minmax(0,1fr)}
+.opencode-model-grid select{width:100%}

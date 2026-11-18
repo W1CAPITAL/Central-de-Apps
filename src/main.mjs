@@ -16,6 +16,7 @@ import {validateReleaseAsset,downloadVerifiedRelease,verifyFileDigest} from './u
 import {createInPlaceUpdatePlan} from './update-install.mjs';
 import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distribution.mjs';
 import {ProductDownloads} from './product-downloads.mjs';
+import {LocalAIManager} from './local-ai-manager.mjs';
 import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
 
 const BUILD=productSpec(JSON.parse(readFileSync(new URL('./product-build.json',import.meta.url),'utf8')).id);
@@ -40,6 +41,7 @@ function previousInstallAttempt(asset){
  catch{return false;}
 }
 let openCode;
+let localAIManager;
 let productDownloads;
 function downloads(){return productDownloads||(productDownloads=new ProductDownloads({folder:join(app.getPath('downloads'),'W1 Capital'),onState:announce}));}
 let automaticUpdates=true;
@@ -53,6 +55,17 @@ function trustedOpenCodeEvent(event){
  return trustedStoreEvent(event)||!!(bot&&!bot.isDestroyed()&&event.sender===bot.webContents&&event.senderFrame?.url===pathToFileURL(BOT_FILE).href);
 }
 function getOpenCode(){return openCode||(openCode=new OpenCodeController({stateDirectory:join(app.getPath('userData'),'opencode-sessions')}));}
+function announceLocalAI(state){
+ const targets=new Set([storeWindow,windows.get('predictbot')]);
+ for(const target of targets)if(target&&!target.isDestroyed())target.webContents.send('central:local-ai-state',state);
+}
+function getLocalAI(){
+ return localAIManager||(localAIManager=new LocalAIManager({
+  rootDirectory:join(process.env.LOCALAPPDATA||app.getPath('appData'),'W1 Capital','Local AI'),
+  configPath:join(app.getPath('userData'),'local-ai','opencode.json'),
+  onProgress:announceLocalAI
+ }));
+}
 
 if(!app.requestSingleInstanceLock())app.quit();
 else app.on('second-instance',()=>{void app.whenReady().then(showHome)});
@@ -452,6 +465,13 @@ ipcMain.handle('central:open-release',async event=>{
  await shell.openExternal(release.url);
  return true;
 });
+ipcMain.handle('central:local-ai',async(event,action)=>{
+ if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
+ const manager=getLocalAI();
+ if(action==='status')return manager.status();
+ if(action==='prepare')return manager.prepare();
+ throw Error('Operação de IA local não autorizada.');
+});
 ipcMain.handle('central:opencode',async(event,action,input={})=>{
  if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
  if(!input||typeof input!=='object'||JSON.stringify(input).length>50000)throw Error('Solicitação OpenCode inválida.');
@@ -471,7 +491,12 @@ ipcMain.handle('central:opencode',async(event,action,input={})=>{
    directory:folder,userId:'windows-user-local',companyId:'w1-local-only',message:found.message||''};
  }
  if(action==='detect')return getOpenCode().detect(input.executable);
- if(action==='connect'){stopOpenCodeRelay();return getOpenCode().connect(input);}
+ if(action==='connect'){
+  stopOpenCodeRelay();
+  const safeInput={...input};delete safeInput.localAI;
+  const managedLocalAI=safeInput.mode==='local'?await getLocalAI().openCodeEnvironment():null;
+  return getOpenCode().connect({...safeInput,...(managedLocalAI?{localAI:managedLocalAI}:{})});
+ }
  if(action==='disconnect'){stopOpenCodeRelay();return getOpenCode().disconnect();}
  if(action==='prompt'||action==='mcpSave'||action==='mcpRemove'){
   const choice=await dialog.showMessageBox(storeWindow,{
