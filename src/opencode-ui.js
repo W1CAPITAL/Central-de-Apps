@@ -23,6 +23,19 @@ if(bridge?.openCode){
  byId('oc-detect').addEventListener('click',async()=>{try{const found=await request('detect',{executable:byId('oc-executable').value.trim()});status.textContent=found.installed?'OpenCode '+found.version+' encontrado':found.message;if(found.installed)byId('oc-executable').value=found.executable;}catch{status.textContent='Não foi possível detectar a instalação.';}});
  byId('oc-disconnect').addEventListener('click',async()=>{connected=false;generation++;clearInterval(timer);await request('disconnect');output.textContent='';byId('oc-workspace').hidden=true;status.textContent='Desconectado';byId('oc-password').value='';});
  byId('oc-create').addEventListener('click',async()=>{try{const session=await run('create',{title:'Tarefa W1 Capital',mode:byId('oc-permissions').value});await refreshSessions();sessions.value=session.id;}catch{}});
+
+ byId('oc-attach')?.addEventListener('click',async()=>{
+  const button=byId('oc-attach');button.disabled=true;
+  try{
+   const files=await bridge.pickOpenCodeFiles();
+   if(!files?.length)return;
+   const list=byId('oc-file-list');
+   list.replaceChildren(...files.map(f=>{const item=document.createElement('li');item.textContent=f.name+' · '+f.kind;return item;}));
+   const note='\n\nArquivos locais selecionados. Leia apenas com autorização do operador (referências, não anexos enviados):\n'+files.map(f=>'- '+JSON.stringify(f.path)).join('\n');
+   byId('oc-prompt').value=(byId('oc-prompt').value+note).slice(0,32000);
+  }catch(error){status.textContent=String(error.message||'Não foi possível selecionar arquivos.');}
+  finally{button.disabled=false;}
+ });
  bind('oc-send','prompt',()=>({sessionId:sessions.value,text:byId('oc-prompt').value}));
  bind('oc-messages','messages');bind('oc-diff','diff');bind('oc-abort','abort');
  bind('oc-mcp-list','mcp');
