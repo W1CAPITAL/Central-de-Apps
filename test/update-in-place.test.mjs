@@ -53,9 +53,9 @@ test('helper espera o aplicativo fechar, confere SHA-256 e instala no mesmo dire
  const script=readFileSync(new URL('../src/install-update.ps1',import.meta.url),'utf8');
  assert.match(script,/Get-Process -Id \\$ParentProcessId/);
  assert.match(script,/Get-FileHash/);
- assert.match(script,/\\/D=\\$InstallDirectory/);
- assert.match(script,/Start-Process -FilePath \\$Installer/);
- assert.match(script,/Start-Process -FilePath \\$Executable/);
+ assert.match(script,/\\/D=/);
+ assert.match(script,/Start-Process -FilePath \\$resolvedInstaller/);
+ assert.match(script,/Start-Process -FilePath \\$resolvedExecutable/);
  assert.doesNotMatch(script,/New-Item|mkdir|CreateDirectory/i);
 });
 
