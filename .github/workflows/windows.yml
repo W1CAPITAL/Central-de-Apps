@@ -119,7 +119,8 @@ jobs:
         id: next-cache-check
         shell: pwsh
         run: |
-          $valid = (Test-Path 'central/apps-src/lexispredict/.next/standalone/server.js') -and (Test-Path 'central/apps-src/infinitum/.next/standalone/server.js')
+          $exactCacheHit = '${{ steps.next-build-cache.outputs.cache-hit }}' -eq 'true'
+          $valid = $exactCacheHit -and (Test-Path 'central/apps-src/lexispredict/.next/standalone/server.js') -and (Test-Path 'central/apps-src/infinitum/.next/standalone/server.js')
           "valid=$($valid.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
       - name: Instalar dependências LexisPredict
         working-directory: central/apps-src/lexispredict
