@@ -24,7 +24,7 @@
   statusEl.textContent=labels[phase]||phase;
   messageEl.textContent=String(state.message||'');
   if(phase==='ready'&&state.endpoint){
-   messageEl.textContent='IA local pronta em '+state.endpoint+'. Modelo disponível no OpenCode como w1-local/bitnet-2b; seu modelo padrão não foi alterado.';
+   messageEl.textContent='IA local pronta em '+state.endpoint+'. Modelo w1-local/bitnet-2b disponível para chat e tarefas simples, sem uso de ferramentas. Seu modelo padrão não foi alterado.';
   }
   const downloading=active.has(phase);
   if(progressEl)progressEl.hidden=!downloading;
