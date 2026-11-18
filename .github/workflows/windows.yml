@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   group: central-windows-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   inspect:
@@ -159,12 +159,43 @@ jobs:
       - name: Smoke test real dos dois servidores no EXE
         working-directory: central
         run: node scripts/verify-products.mjs
+      - name: Abrir a loja e os dois aplicativos no EXE real
+        working-directory: central
+        run: |
+          npm install --prefix ../desktop-test --no-package-lock --ignore-scripts --no-audit --no-fund playwright-core@1.65.1
+          node scripts/verify-desktop-ui.mjs
+      - name: Guardar capturas do teste visual
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Central-desktop-smoke-${{ github.run_number }}
+          path: central/desktop-smoke/
+          if-no-files-found: ignore
       - name: Gerar instalador Central de Apps Windows x64
         working-directory: central
         run: npm run dist:win
         env:
           WIN_CSC_LINK: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_P12 || '' }}
           WIN_CSC_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_PASSWORD || '' }}
+      - name: Instalar NSIS em pasta limpa do runner e testar o EXE instalado
+        working-directory: central
+        shell: pwsh
+        run: |
+          $installer = 'dist/W1-Central-de-Apps-Setup-' + $env:CENTRAL_VERSION + '-x64.exe'
+          $installDir = Join-Path $env:RUNNER_TEMP 'W1CentralInstalled'
+          $process = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "NSIS falhou: $($process.ExitCode)" }
+          $installed = Join-Path $installDir 'W1 Central de Apps.exe'
+          if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) { throw 'NSIS não instalou o EXE.' }
+          node scripts/verify-desktop-ui.mjs $installed desktop-smoke-installed
+          if ($LASTEXITCODE -ne 0) { throw 'EXE instalado falhou no teste visual.' }
+      - name: Guardar capturas da instalação real no runner
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Central-installed-smoke-${{ github.run_number }}
+          path: central/desktop-smoke-installed/
+          if-no-files-found: ignore
       - name: Guardar os commits de origem
         working-directory: central
         shell: pwsh
@@ -231,3 +262,39 @@ jobs:
             "LexisPredict e INFINITUM executados localmente a partir das branches main." + "`n" +
             "GitHub Releases sem Vercel; atualização Authenticode verificada."
           gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes $installer source-commits.json
+
+  preview:
+    needs: [windows]
+    if: github.ref == 'refs/heads/main' && needs.windows.outputs.signed == 'false'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: W1-Central-de-Apps-Windows-x64-0.1.${{ github.run_number }}
+          path: central
+      - name: Publicar instalador de teste separado das atualizações oficiais
+        working-directory: central
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = 'preview-v0.1.${{ github.run_number }}'
+          $installer = 'dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe'
+          if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) { throw 'Instalador ausente.' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $installer
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $installer).Hash.ToLowerInvariant()
+          "$hash  $([IO.Path]::GetFileName($installer))" | Set-Content SHA256SUMS.txt -Encoding ascii
+          $notes = @"
+          Instalador de teste Windows x64 da Central W1.
+          Abre a loja independente e inclui os servidores locais do LexisPredict e INFINITUM.
+          Build, teste HTTP e abertura das três janelas pelo EXE aprovados no Windows do GitHub Actions.
+          NSIS instalado em pasta limpa do runner e loja/produtos reabertos a partir do EXE instalado.
+          Sem teste com conta real ou em PC de cliente.
+          Authenticode: $($signature.Status). Este pacote não tem assinatura W1 validada.
+          Não integra o canal de atualização automática; as exigências de hash e assinatura permanecem ativas.
+          SHA-256 e commits dos produtos estão nos arquivos anexos. Não desative proteções do Windows.
+          "@
+          $notes | Set-Content preview-notes.md -Encoding utf8
+          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --prerelease --latest=false --title ("Central de Apps 0.1.${{ github.run_number }} - teste sem assinatura W1") --notes-file preview-notes.md $installer source-commits.json SHA256SUMS.txt

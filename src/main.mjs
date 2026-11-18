@@ -9,7 +9,7 @@ import {pathToFileURL} from 'node:url';
 import {registerOpenCodeRelay,stopOpenCodeRelay} from './opencode-relay-ipc.mjs';
 import {OpenCodeController} from './opencode-controller.mjs';
 import {APPS,resolveApp} from './catalog.mjs';
-import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl} from './runtime-policy.mjs';
+import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl,canonicalProductUrl} from './runtime-policy.mjs';
 import {validateReleaseAsset,downloadSignedRelease,verifyWindowsSignature,verifyFileDigest} from './update-security.mjs';
 
 const STORE_FILE=join(import.meta.dirname,'store.html');
@@ -103,13 +103,20 @@ async function startProduct(id){
  return record;
 }
 function productBrowser(id,port){
+ const productSession=session.fromPartition('persist:central-'+id);
+ // Rewrite only the same-port loopback alias, before the request reaches DNS.
+ // Other hosts/ports retain the normal navigation and authorization policy.
+ productSession.webRequest.onBeforeRequest({urls:['http://localhost:'+port+'/*']},(details,callback)=>{
+  const url=canonicalProductUrl(details.url,port);
+  callback(url?{redirectURL:url}:{cancel:true});
+ });
  const win=new BrowserWindow({
   width:1380,height:880,minWidth:780,minHeight:520,
   show:false,backgroundColor:'#101017',
   title:resolveApp(id).name+' · W1 Capital',
   webPreferences:{
    nodeIntegration:false,contextIsolation:true,sandbox:true,
-   session:session.fromPartition('persist:central-'+id)
+   session:productSession
   }
  });
  win.webContents.setWindowOpenHandler(({url})=>{

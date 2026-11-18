@@ -33,7 +33,7 @@ Em [GitHub Actions → Central W1 — Windows](../../actions/workflows/windows.y
 6. Gera o instalador NSIS e disponibiliza um artefato de teste.
 7. Publica uma GitHub Release automaticamente **somente se** houver assinatura Authenticode válida do editor W1 Capital.
 
-O workflow é acionado em pushes na `main`, manualmente, e faz verificações periódicas das versões dos dois produtos. Quando não há mudanças nos códigos e já há release publicada, evita recompilações desnecessárias. Sem certificado do editor no ambiente GitHub, a Central **não publica instaladores executáveis como releases oficiais**; o instalador de teste ainda pode ser gerado como artefato.
+O workflow é acionado em pushes na `main`, manualmente, e faz verificações periódicas das versões dos dois produtos. Quando não há mudanças nos códigos e já há release publicada, evita recompilações desnecessárias. Sem certificado do editor no ambiente GitHub, a Central **não publica instaladores executáveis como releases oficiais**; o instalador de teste pode ser publicado em uma **pré-release**, identificada como sem assinatura W1, depois dos testes HTTP e da abertura real da loja e dos dois produtos no Windows. Essa pré-release não entra nas atualizações automáticas.
 
 O ambiente de assinatura usa apenas segredos privados do GitHub Actions: `CENTRAL_WINDOWS_CERT_P12` e `CENTRAL_WINDOWS_CERT_PASSWORD`. Não publicar certificados nem senhas neste repositório, nas variáveis `NEXT_PUBLIC_*`, no EXE ou em conversa.
 
@@ -57,7 +57,7 @@ O operador pode escolher:
 
 A verificação do editor W1 Capital usa o script local `Get-AuthenticodeSignature`, sem executar código remoto. O SHA-256 do arquivo local é conferido novamente imediatamente antes da instalação. Arquivos com hash divergente, assinatura inválida, downgrade ou endereço externo não são executados. Nenhuma atualização pode instalar silenciosamente quando o operador fecha o CRM.
 
-**Limite de publicação:** o instalador do GitHub Actions só é disponibilizado como GitHub Release oficial quando o certificado Authenticode W1 Capital está configurado e válido. Sem o certificado, apenas o artefato de teste Windows é gerado. Esse artefato não entra no canal automático e pode sofrer avisos do SmartScreen.
+**Limite de publicação:** o instalador do GitHub Actions só é disponibilizado como GitHub Release oficial quando o certificado Authenticode W1 Capital está configurado e válido. Sem o certificado, o instalador validado no runner é publicado como pré-release de teste e artefato. Esse instalador não entra no canal automático e pode sofrer avisos do SmartScreen. O teste no runner não comprova instalação em outro PC ou uso com conta real.
 
 O instalador contém o código dos produtos existente no momento do build. Novos códigos exigem um novo EXE. Dados em Supabase continuam sendo sincronizados separadamente.
 

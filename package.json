@@ -29,22 +29,11 @@
     ],
     "extraResources": [
       {
-        "from": "products/lexispredict",
-        "to": "products/lexispredict",
+        "from": "products",
+        "to": "products",
         "filter": [
-          "**/*",
-          "!**/.env",
-          "!**/.env.*",
-          "!**/*service-role*",
-          "!**/private-key*",
-          "!**/*.pem"
-        ]
-      },
-      {
-        "from": "products/infinitum",
-        "to": "products/infinitum",
-        "filter": [
-          "**/*",
+          "lexispredict/**/*",
+          "infinitum/**/*",
           "!**/.env",
           "!**/.env.*",
           "!**/*service-role*",

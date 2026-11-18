@@ -61,3 +61,8 @@ test('instalador adulterado depois do download é recusado antes do reinício',a
   await assert.rejects(()=>verifyFileDigest(file,asset),/SHA-256/);
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
+
+test('pré-release e rascunho nunca entram no atualizador oficial',()=>{
+ assert.throws(()=>validateReleaseAsset({...current,prerelease:true}),/canal oficial/);
+ assert.throws(()=>validateReleaseAsset({...current,draft:true}),/canal oficial/);
+});

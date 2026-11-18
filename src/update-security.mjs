@@ -13,6 +13,7 @@ const VERSION=/^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$/;
 const HOSTS=new Set(['github.com','release-assets.githubusercontent.com','objects.githubusercontent.com']);
 
 export function validateReleaseAsset(release){
+ if(release?.prerelease===true||release?.draft===true)throw Error('Versão de teste fora do canal oficial.');
  const tag=String(release?.tag_name||'');
  const version=tag.startsWith('v')?tag.slice(1):tag;
  if(!VERSION.test(version))throw Error('Versão oficial inválida.');

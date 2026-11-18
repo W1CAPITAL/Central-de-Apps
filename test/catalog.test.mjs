@@ -40,8 +40,10 @@ test('spawn do Next usa localhost e apenas variáveis públicas',async()=>{
 test('instalador empacota ambos os servidores e não baixa executáveis arbitrários',()=>{
  const pkg=JSON.parse(read('package.json'));
  assert.equal(pkg.build.appId,'br.com.w1capital.centraldeapps');
+ const products=pkg.build.extraResources.find(r=>r.from==='products'&&r.to==='products');
+ assert.ok(products);
  for(const app of ['lexispredict','infinitum']){
-  assert.ok(pkg.build.extraResources.some(r=>r.to==='products/'+app));
+  assert.ok(products.filter.includes(app+'/**/*'));
  }
  assert.match(read('src/main.mjs'),/requestSingleInstanceLock/);
  assert.match(read('src/main.mjs'),/openStoreWindow/);
@@ -54,9 +56,18 @@ test('build Windows compila fontes originais e não usa o deploy Vercel como bac
  const w=read('.github/workflows/windows.yml');
  assert.match(w,/W1CAPITAL\/LexisPredict/);
  assert.match(w,/W1CAPITAL\/Infinitum/);
+ assert.doesNotMatch(w,/ProjectW1SC\/INFINITUM/);
+ assert.match(read('src/catalog.mjs'),/W1CAPITAL\/Infinitum/);
  assert.match(w,/LEXIS_DESKTOP_STANDALONE/);
  assert.match(w,/KILLA_DESKTOP_STANDALONE/);
  assert.match(w,/npm.*test/);
  assert.match(w,/stage-next\.mjs/);
  assert.doesNotMatch(w,/vercel\s+(deploy|build)/i);
+});
+
+test('stage-next materializes pnpm symlinks before packaging Windows',()=>{
+ const stage=read('scripts/stage-next.mjs');
+ assert.match(stage,/dereference:true/);
+ assert.match(stage,/node_modules.*next.*package\.json/);
+ assert.match(stage,/start-server\.js/);
 });
