@@ -72,6 +72,6 @@ test('aceita apenas redirecionamentos HTTPS dos hosts oficiais do GitHub e Huggi
 
 test('o modelo padrão é GGUF Qwen3 compatível com stock llama.cpp, não I2_S experimental',()=>{
  assert.equal(LOCAL_AI_MODEL.id,'qwen3-1.7b');
- assert.match(LOCAL_AI_MODEL.fileName,/Q4_K_M\\.gguf$/);
+ assert.match(LOCAL_AI_MODEL.fileName,/Q4_K_M\.gguf$/);
  assert.doesNotMatch(LOCAL_AI_MODEL.fileName,/i2_s/i);
 });
