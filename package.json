@@ -47,7 +47,8 @@
         "nsis"
       ],
       "artifactName": "W1-Central-de-Apps-Setup-${version}-${arch}.exe",
-      "verifyUpdateCodeSignature": true
+      "verifyUpdateCodeSignature": true,
+      "icon": "assets/central.ico"
     },
     "nsis": {
       "oneClick": false,
