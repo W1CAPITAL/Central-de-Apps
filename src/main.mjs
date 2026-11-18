@@ -252,7 +252,7 @@ async function checkUpdates(){
   const catalog=await fetchReleaseCatalog();
   downloads().update(catalog);
   const candidate=selectProductRelease(catalog,BUILD.id);
-  if(!candidate){release={...release,error:null,phase:'none',canDownload:false,available:false,checkedAt:new Date().toISOString()};return publicState();}
+  if(!candidate){release={...release,version:null,notes:'',url:null,error:null,phase:'none',canDownload:false,available:false,checkedAt:new Date().toISOString()};return publicState();}
   const version=candidate.version,html=candidate.releaseUrl;
   const available=compareVersion(version,app.getVersion())>0;
   const asset=available?candidate:null;
