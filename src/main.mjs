@@ -1,6 +1,6 @@
 import {app,BrowserWindow,ipcMain,Menu,shell,dialog,session} from 'electron';
 import {spawn} from 'node:child_process';
-import {join} from 'node:path';
+import {join,dirname} from 'node:path';
 import {existsSync,readFileSync,writeFileSync,mkdirSync,lstatSync} from 'node:fs';
 import {classifyAttachment,ATTACHMENT_FILTERS} from './attachment-policy.mjs';
 import {officialToolUrl} from './official-tools.mjs';
@@ -34,6 +34,11 @@ let storeWindow=null;
 let release={version:null,notes:'',url:null,checkedAt:null,error:null,phase:'none',canDownload:false,percent:0};
 let verifiedAsset=null,downloadedInstaller=null,downloadPromise=null,installing=false,handingOffUpdate=false;
 let checking=false,closing=false;
+const installAttemptFile=join(app.getPath('userData'),'last-install-attempt.json');
+function previousInstallAttempt(asset){
+ try{return JSON.parse(readFileSync(installAttemptFile,'utf8')).sha256===asset.sha256;}
+ catch{return false;}
+}
 let openCode;
 let productDownloads;
 function downloads(){return productDownloads||(productDownloads=new ProductDownloads({folder:join(app.getPath('downloads'),'W1 Capital'),onState:announce}));}
@@ -148,6 +153,14 @@ function updateProductZoom(win,id,action){
  writeFileSync(path,JSON.stringify({...settings,[id]:factor}));
  return zoomPercent(factor);
 }
+async function updateFromMenu(){
+ await checkUpdates();
+ if(release.available&&release.canDownload){
+  await downloadUpdate('background');
+  if(release.phase==='downloaded'){await installUpdate();return;}
+ }
+ await dialog.showMessageBox({type:'info',title:BUILD.name,message:release.error||'Você já está na versão atual.'});
+}
 function attachLexisZoomMenu(win,id){
  if(id!=='lexispredict')return;
  const action=value=>updateProductZoom(win,id,value);
@@ -159,7 +172,7 @@ function attachLexisZoomMenu(win,id){
    {label:'Restaurar 100%',accelerator:'CommandOrControl+0',click:()=>action('reset')},
   ]},
   {label:'Aplicativo',submenu:[
-   {label:'Verificar atualizações',click:()=>void checkUpdates()},
+   {label:'Verificar atualizações',click:()=>void updateFromMenu()},
    {role:'quit',label:'Sair'}
   ]}
  ]));
@@ -256,7 +269,7 @@ async function checkUpdates(){
   const version=candidate.version,html=candidate.releaseUrl;
   const available=compareVersion(version,app.getVersion())>0;
   const asset=available?candidate:null;
-  const preserved=available&&verifiedAsset?.version===version&&downloadedInstaller;
+  const preserved=available&&verifiedAsset?.version===version&&verifiedAsset.sha256===asset.sha256&&downloadedInstaller;
   if(!preserved){
    downloadedInstaller=null;
    verifiedAsset=asset;
@@ -265,6 +278,9 @@ async function checkUpdates(){
    url:html,checkedAt:new Date().toISOString(),error:null,available,
    canDownload:!!asset,phase:preserved?'downloaded':available?'available':'none',
    percent:preserved?100:0};
+  if(asset && previousInstallAttempt(asset) && !handingOffUpdate && !installing && !downloadPromise){
+   release={...release,phase:'error',error:'A instalação anterior foi iniciada e esta versão continua aberta. Se o instalador já terminou, clique em Atualizar agora para tentar novamente.'};
+  }
   if(!asset&&!preserved)verifiedAsset=null;
  }catch(error){
   release={...release,checkedAt:new Date().toISOString(),
@@ -279,29 +295,27 @@ async function installUpdate(automatic=false){
   throw Error('Nenhum instalador verificado está pronto.');
  if(!app.isPackaged)throw Error('Atualizações automáticas estão disponíveis na versão instalada.');
  if(process.platform!=='win32')throw Error('A atualização automática está disponível no Windows.');
+ installing=true;
+ try{
  if(!automatic){
   const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
    type:'question',title:'Atualizar '+BUILD.name,
    message:'A versão '+verifiedAsset.version+' está pronta para instalar.',
-   detail:'A atualização substituirá os arquivos na instalação atual, no mesmo diretório. Todos os aplicativos abertos serão fechados e reabertos após a atualização.',
+   detail:'A atualização substituirá os arquivos na instalação atual, no mesmo diretório. O aplicativo será reaberto quando a instalação terminar.',
    buttons:['Atualizar e reiniciar','Depois'],defaultId:1,cancelId:1,noLink:true
   });
   if(choice.response!==0)return publicState();
  }
- installing=true;
- try{
   await verifyFileDigest(downloadedInstaller,verifiedAsset);
   const plan=createInPlaceUpdatePlan({
    installerPath:downloadedInstaller,executablePath:process.execPath,
-   parentProcessId:process.pid,expectedSha256:verifiedAsset.sha256
   });
-  const helper=app.isPackaged
-   ?join(process.resourcesPath,'app.asar.unpacked','src','install-update.ps1')
-   :join(import.meta.dirname,'install-update.ps1');
-  if(!existsSync(helper))throw Error('Componente de atualização não encontrado.');
-  const child=spawn('powershell.exe',[
-   '-NoProfile','-NonInteractive','-WindowStyle','Hidden','-File',helper,...plan.helperArgs
-  ],{detached:true,shell:false,stdio:'ignore',windowsHide:true});
+  writeFileSync(installAttemptFile,JSON.stringify({version:verifiedAsset.version,sha256:verifiedAsset.sha256}));
+  // NSIS requires /D= to be the final, unquoted remainder, including any spaces.
+  const child=spawn(downloadedInstaller,plan.nsisArguments,{
+   argv0:'"'+downloadedInstaller+'"',cwd:dirname(downloadedInstaller),windowsVerbatimArguments:true,
+   detached:true,shell:false,stdio:'ignore',windowsHide:true
+  });
   await new Promise((resolve,reject)=>{
    child.once('spawn',resolve);
    child.once('error',reject);
@@ -336,7 +350,7 @@ async function downloadUpdate(mode='background'){
    }
   }
  }).then(async path=>{
-  if(verifiedAsset?.version!==asset.version||release.version!==asset.version)
+  if(verifiedAsset?.sha256!==asset.sha256||verifiedAsset?.version!==asset.version||release.version!==asset.version)
    throw Error('Uma nova release substituiu o download; pacote anterior não será instalado.');
   downloadedInstaller=path;
   release={...release,phase:'downloaded',percent:100,error:null};
@@ -469,8 +483,7 @@ app.whenReady().then(()=>{
  try{const prefs=JSON.parse(readFileSync(join(app.getPath('userData'),'automatic-updates.json'),'utf8'));automaticUpdates=prefs.enabled!==false;}catch{}
  registerOpenCodeRelay({ipcMain,dialog,shell,controller:getOpenCode,isTrusted:trustedOpenCodeEvent});
  Menu.setApplicationMenu(BUILD.id==='central'?null:Menu.buildFromTemplate([{label:BUILD.name,submenu:[
-  {label:'Verificar atualizações',click:async()=>{await checkUpdates();await dialog.showMessageBox({type:'info',title:BUILD.name,
-   message:release.phase==='downloaded'?'Atualização verificada e pronta. Será aplicada ao fechar o aplicativo.':release.error||'As atualizações verificadas por SHA-256 são consultadas automaticamente.'});}},
+  {label:'Verificar atualizações',click:()=>void updateFromMenu()},
   {label:'Atualizar automaticamente ao fechar',type:'checkbox',checked:automaticUpdates,click:item=>setAutomaticUpdates(item.checked)},
   {role:'quit',label:'Sair'}
  ]}]));

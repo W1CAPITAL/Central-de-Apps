@@ -125,14 +125,6 @@ jobs:
       - name: Instalar dependências LexisPredict
         working-directory: central/apps-src/lexispredict
         run: pnpm install --frozen-lockfile
-      - name: Validar sintaxe do helper de atualização
-        working-directory: central
-        shell: pwsh
-        run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'src/install-update.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
-          if ($errors.Count -gt 0) { throw ($errors | Out-String) }
       - name: Testes e tipos LexisPredict
         if: steps.next-cache-check.outputs.valid != 'true'
         working-directory: central/apps-src/lexispredict
@@ -225,7 +217,7 @@ jobs:
         shell: pwsh
         run: |
           $installer = 'dist/W1-Central-de-Apps-Setup-' + $env:CENTRAL_VERSION + '-x64.exe'
-          $installDir = Join-Path $env:RUNNER_TEMP 'W1CentralInstalled'
+          $installDir = Join-Path $env:RUNNER_TEMP 'W1 Central Installed'
           $process = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
           if (-not $process.WaitForExit(180000)) {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
@@ -237,39 +229,17 @@ jobs:
           node scripts/verify-desktop-ui.mjs $installed desktop-smoke-installed
           if ($LASTEXITCODE -ne 0) { throw 'EXE instalado falhou no teste visual.' }
           $originalPath = (Resolve-Path -LiteralPath $installed).Path
-          $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
-          # Record only installer processes and their dialog text on this disposable runner.
-          Add-Type -AssemblyName UIAutomationClient
-          Add-Type -AssemblyName UIAutomationTypes
-          $started = Get-Date
-          foreach ($attempt in 1..9) {
-            if ($repeat.WaitForExit(45000)) { break }
-            $all = @(Get-CimInstance Win32_Process)
-            $ids = @([uint32]$repeat.Id)
-            do {
-              $children = @($all | Where-Object { $_.ParentProcessId -in $ids -and $_.ProcessId -notin $ids })
-              $ids += @($children | ForEach-Object ProcessId)
-            } while ($children.Count)
-            $all | Where-Object ProcessId -in $ids | Format-Table ProcessId,ParentProcessId,Name,ReadTransferCount,WriteTransferCount | Out-Host
-            $desktop = [System.Windows.Automation.AutomationElement]::RootElement
-            foreach ($id in $ids) {
-              $condition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty,[int]$id)
-              foreach ($window in $desktop.FindAll([System.Windows.Automation.TreeScope]::Children,$condition)) {
-                Write-Host "Janela: $($window.Current.Name)"
-                if ($window.Current.ClassName -eq '#32770') {
-                  foreach ($control in $window.FindAll([System.Windows.Automation.TreeScope]::Children,[System.Windows.Automation.Condition]::TrueCondition)) {
-                    if ($control.Current.Name) { Write-Host $control.Current.Name }
-                  }
-                }
-              }
-            }
-          }
-          $remaining = [Math]::Max(0, 600000 - [int]((Get-Date) - $started).TotalMilliseconds)
-          if (-not $repeat.WaitForExit($remaining)) {
-            Stop-Process -Id $repeat.Id -Force -ErrorAction SilentlyContinue
-            throw "Reinstalação silenciosa do NSIS excedeu 10 minutos."
-          }
-          if ($repeat.ExitCode -ne 0) { throw 'A atualização sobre a instalação existente falhou.' }
+          node scripts/verify-update-restart.mjs $installed $installer $env:CENTRAL_VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao transferir a atualização para o instalador.' }
+          $deadline = (Get-Date).AddMinutes(10)
+          do {
+            $relaunched = Get-Process -Name 'W1 Central de Apps' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $installed -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+            if ($relaunched) { break }
+            Start-Sleep -Seconds 2
+          } while ((Get-Date) -lt $deadline)
+          if (-not $relaunched) { throw 'O instalador não reabriu a janela da Central no caminho original.' }
+          Write-Host "Janela da Central reaberta no Windows: PID $($relaunched.Id)"
+          [void]$relaunched.CloseMainWindow()
           $updatedPath = (Resolve-Path -LiteralPath $installed).Path
           $copies = @(Get-ChildItem -LiteralPath $installDir -Filter 'W1 Central de Apps.exe' -File -Recurse)
           if ($updatedPath -ne $originalPath -or $copies.Count -ne 1) { throw 'A atualização criou uma segunda instalação da Central.' }

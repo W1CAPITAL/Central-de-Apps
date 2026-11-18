@@ -96,7 +96,7 @@ function render(value){
   else updateMessage.textContent='Release identificada, mas sem instalador oficial validável.';
   notes.textContent=String(r.notes||'Detalhes no GitHub Releases.');
   notes.hidden=false;releaseButton.hidden=false;
-  downloadNow.hidden=!r.canDownload||phase!=='available';
+  downloadNow.hidden=!r.canDownload||!['available','error'].includes(phase);
   downloadBackground.hidden=!r.canDownload||phase!=='available';
   installUpdate.hidden=phase!=='downloaded';
   progress.hidden=phase!=='downloading';

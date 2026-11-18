@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {copyFileSync,createReadStream,mkdirSync,mkdtempSync,statSync,writeFileSync,readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {tmpdir} from 'node:os';
+import {join,resolve} from 'node:path';
+import {RELEASES_API} from '../src/distribution.mjs';
+
+const {_electron:electron}=createRequire(resolve('..','desktop-test','package.json'))('playwright-core');
+const [executable,installer,buildVersion]=process.argv.slice(2);
+const version='1.0.'+buildVersion.split('.')[2];
+const name='W1-Central-de-Apps-Setup-'+version+'-x64.exe';
+const profile=mkdtempSync(join(tmpdir(),'W1 update test '));
+const folder=join(profile,'trusted-updates');
+mkdirSync(folder);
+writeFileSync(join(profile,'automatic-updates.json'),JSON.stringify({enabled:false}));
+copyFileSync(installer,join(folder,name));
+const hash=createHash('sha256');
+for await(const chunk of createReadStream(installer))hash.update(chunk);
+const sha256=hash.digest('hex');
+const catalog=[{tag_name:'v'+version,prerelease:false,draft:false,assets:[{
+ name,size:statSync(installer).size,digest:'sha256:'+sha256,
+ browser_download_url:'https://github.com/W1CAPITAL/Central-de-Apps/releases/download/v'+version+'/'+name
+}]}];
+const env={...process.env};
+delete env.ELECTRON_RUN_AS_NODE;
+delete env.NODE_OPTIONS;
+const desktop=await electron.launch({executablePath:resolve(executable),args:['--user-data-dir='+profile],env,timeout:60000});
+try{
+ const page=await desktop.firstWindow();
+ await page.waitForURL('file:///**/store.html');
+ await page.waitForFunction(()=>window.w1Central.getState().then(s=>Boolean(s.release.checkedAt)),undefined,{timeout:60000});
+ const state=await page.evaluate(()=>window.w1Central.getState());
+ assert.equal(state.storeVersion,buildVersion);
+ assert.equal(state.automaticUpdates,false);
+ await desktop.evaluate(({dialog},{api,catalog})=>{
+  globalThis.fetch=async url=>{
+   if(String(url)!==api)throw Error('O instalador já está no cache. Download inesperado: '+url);
+   return new Response(JSON.stringify(catalog));
+  };
+  dialog.showMessageBox=async(...args)=>{
+   if(args.at(-1)?.buttons?.[0]!=='Atualizar e reiniciar')throw Error('Confirmação de reinício ausente.');
+   return {response:0};
+  };
+ },{api:RELEASES_API,catalog});
+ await page.locator('#check-updates').click();
+ await page.locator('#download-background').click();
+ await page.locator('#install-update').waitFor({state:'visible',timeout:90000});
+ const closed=desktop.waitForEvent('close',{timeout:90000});
+ await Promise.all([closed,page.locator('#install-update').click({noWaitAfter:true}).catch(error=>{
+  if(!/closed/i.test(error.message))throw error;
+ })]);
+ assert.equal(JSON.parse(readFileSync(join(profile,'last-install-attempt.json'),'utf8')).sha256,sha256);
+ console.log('O botão confirmou o pacote em cache e a Central fechou para o NSIS.');
+}finally{
+ if(desktop.process().exitCode===null)await desktop.close().catch(()=>{});
+ // O instalador em execução usa o perfil até terminar. O runner descarta a pasta.
+}

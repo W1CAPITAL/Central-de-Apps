@@ -69,6 +69,13 @@ async function downloadRelease({asset,folder,onProgress=()=>{},fetchImpl=fetch,m
  }
  mkdirSync(folder,{recursive:true});
  const file=join(folder,asset.name);
+ if(!markOfWeb){
+  try{
+   await verifyFileDigest(file,asset);
+   onProgress(100);
+   return file;
+  }catch{ /* No complete, matching cached installer. Fetch a verified copy. */ }
+ }
  const tmp=file+'.partial.exe';
  rmSync(tmp,{force:true});
  let total=0;
