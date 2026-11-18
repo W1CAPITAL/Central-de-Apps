@@ -440,11 +440,19 @@ app.on('window-all-closed',()=>{
  if(automaticUpdates&&release.phase==='downloading'&&downloadPromise){
   const pending=downloadPromise;
   void pending.then(()=>{
-   if(automaticUpdates&&release.phase==='downloaded'&&!installing&&!handingOffUpdate)void installUpdate(true);
-   else if(process.platform!=='darwin')app.quit();
+   if(automaticUpdates&&release.phase==='downloaded'&&!installing&&!handingOffUpdate){
+    void installUpdate(true).then(()=>{
+     if(!handingOffUpdate&&process.platform!=='darwin')app.quit();
+    });
+   }else if(process.platform!=='darwin')app.quit();
   });
   return;
  }
- if(automaticUpdates&&release.phase==='downloaded'&&!installing&&!handingOffUpdate){void installUpdate(true);return;}
+ if(automaticUpdates&&release.phase==='downloaded'&&!installing&&!handingOffUpdate){
+  void installUpdate(true).then(()=>{
+   if(!handingOffUpdate&&process.platform!=='darwin')app.quit();
+  });
+  return;
+ }
  if(process.platform!=='darwin')app.quit();
 });
