@@ -1,6 +1,9 @@
 ; Electron Builder's KILL_PROCESS fallback excludes the installer PID.
-; A custom app-running hook disables Electron Builder's automatic declaration.
-Var pid
+; The uninstaller build does not include the app-running hook, so avoid an
+; unused-variable warning when electron-builder compiles BUILD_UNINSTALLER.
+!ifndef BUILD_UNINSTALLER
+  Var pid
+!endif
 
 ; W1 Capital — close only processes belonging to this installation.
 ; electron-builder calls this hook instead of showing its default "close the app" prompt.
