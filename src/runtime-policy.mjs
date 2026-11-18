@@ -6,7 +6,7 @@ import {resolveApp,APPS} from './catalog.mjs';
 const PORT_MIN=1024,PORT_MAX=65535;
 const SUPABASE_URL='https://segjskjlbeydlljnefai.supabase.co';
 // Public Supabase publishable key. Never ship service role or sb_secret keys.
-const PUBLIC_KEY='sb_publishable_yEX6mVid3dpC7o7eOzuB1g_Vh';
+const PUBLIC_KEY='sb_publishable_yEX6mVid3dpC7o7eOzuB1g_VhQodoTg';
 const WA_AUTO='https://lexispredict-wa-auto.onrender.com';
 
 export function validNonce(value){
