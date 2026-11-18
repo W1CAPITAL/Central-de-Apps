@@ -37,8 +37,16 @@
   prepareButton.textContent=phase==='ready'?'IA local pronta':downloading?'Preparando...':state.installed?'Iniciar IA local':'Preparar automaticamente';
  }
  async function refresh(){
-  try{render(await bridge.localAI('status'))}
-  catch(error){messageEl.textContent=String(error?.message||'Não foi possível consultar a IA local.')}
+  try{
+   const state=await bridge.localAI('status');render(state);
+   const card=byId('local-ai');
+   if(card?.dataset.autoSetup==='true'&&state.supported!==false&&!state.running&&['not-installed','installed'].includes(state.phase)){
+    prepareButton.disabled=true;
+    try{render(await bridge.localAI('prepare'))}
+    catch(error){statusEl.textContent='Preparação automática interrompida';messageEl.textContent=String(error?.message||'Não foi possível preparar a IA local.')}
+    finally{prepareButton.disabled=false}
+   }
+  }catch(error){messageEl.textContent=String(error?.message||'Não foi possível consultar a IA local.')}
  }
  prepareButton.addEventListener('click',async()=>{
   prepareButton.disabled=true;
