@@ -7,12 +7,17 @@
 **Instalação, execução e atualização dos produtos W1 Capital para Windows.**
 
 [Instalador Windows](https://github.com/W1CAPITAL/Central-de-Apps/releases/latest) ·
+[Android (APK de testes)](android/README.md) ·
 [Versões disponíveis](https://github.com/W1CAPITAL/Central-de-Apps/releases) ·
 [Catálogo do ecossistema](docs/ECOSSISTEMA-W1.md)
 
 </div>
 
 ---
+
+## Android (APK nativo)
+
+O projeto Android está em [android/](android/README.md), com catálogo e instalador de APKs oficiais. É um aplicativo próprio, sem Electron nem Adobe AIR. As versões de teste são compiladas e disponibilizadas por GitHub Actions; os aplicativos LexisPredict, INFINITUM e PredictBot ainda precisam de APKs Android específicos e não são substituídos pelos seus instaladores Windows.
 
 ## Download para Windows
 
