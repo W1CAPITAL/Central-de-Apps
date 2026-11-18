@@ -104,7 +104,7 @@ function render(value){
   byId('download-bar').style.width=pct+'%';
   byId('download-percent').textContent=Math.floor(pct)+'%';
  }else{
-  updateMessage.textContent=r.error?'Não foi possível consultar o GitHub agora. Os aplicativos locais continuam disponíveis.':'Nenhuma atualização disponível. Os aplicativos continuam funcionando normalmente.';
+  updateMessage.textContent=r.error?String(r.error).slice(0,160):!r.version?'Ainda não há versão estável publicada. As versões de teste ficam no catálogo, mas não são instaladas automaticamente.':'Nenhuma atualização disponível. Os aplicativos continuam funcionando normalmente.';
   notes.hidden=true;releaseButton.hidden=true;downloadNow.hidden=true;downloadBackground.hidden=true;installUpdate.hidden=true;progress.hidden=true;
  }
 }
