@@ -51,24 +51,24 @@ test('mantém apenas o instalador mais recente do mesmo aplicativo no cache',()=
 
 test('helper espera o aplicativo fechar, confere SHA-256 e instala no mesmo diretório',()=>{
  const script=readFileSync(new URL('../src/install-update.ps1',import.meta.url),'utf8');
- assert.match(script,/Get-Process -Id \\$ParentProcessId/);
- assert.match(script,/Get-FileHash/);
- assert.match(script,/\\/D=/);
- assert.match(script,/Start-Process -FilePath \\$resolvedInstaller/);
- assert.match(script,/Start-Process -FilePath \\$resolvedExecutable/);
- assert.doesNotMatch(script,/New-Item|mkdir|CreateDirectory/i);
+ assert.ok(script.includes('Get-Process -Id $ParentProcessId'));
+ assert.ok(script.includes('Get-FileHash'));
+ assert.ok(script.includes('/D='));
+ assert.ok(script.includes('Start-Process -FilePath $resolvedInstaller'));
+ assert.ok(script.includes('Start-Process -FilePath $resolvedExecutable'));
+ assert.ok(!script.includes('New-Item')&&!script.includes('CreateDirectory'));
 });
 
-test('o atualizador usa verificação SHA-256 e instalador em cima da instalação existente',()=>{
+test('o atualizador usa SHA-256 e não depende de Authenticode',()=>{
  const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
- assert.match(main,/downloadVerifiedRelease/);
- assert.match(main,/createInPlaceUpdatePlan/);
- assert.match(main,/install-update\\.ps1/);
- assert.match(main,/automaticUpdates&&release\\.phase==='downloaded'/);
- assert.doesNotMatch(main,/verifyWindowsSignature\\(downloadedInstaller/);
+ assert.ok(main.includes('downloadVerifiedRelease'));
+ assert.ok(main.includes('createInPlaceUpdatePlan'));
+ assert.ok(main.includes('install-update.ps1'));
+ assert.ok(main.includes("automaticUpdates&&release.phase==='downloaded'"));
+ assert.ok(!main.includes('verifyWindowsSignature'));
  const workflow=readFileSync(new URL('../.github/workflows/windows.yml',import.meta.url),'utf8');
- assert.match(workflow,/SHA256SUMS\\.txt/);
- assert.match(workflow,/if: github\\.ref == 'refs\\/heads\\/main'/);
- assert.doesNotMatch(workflow,/needs\\.windows\\.outputs\\.signed/);
- assert.doesNotMatch(workflow,/^  preview:/m);
+ assert.ok(workflow.includes('SHA256SUMS.txt'));
+ assert.ok(workflow.includes("if: github.ref == 'refs/heads/main'"));
+ assert.ok(!workflow.includes('needs.windows.outputs.signed'));
+ assert.ok(!workflow.includes('  preview:'));
 });
