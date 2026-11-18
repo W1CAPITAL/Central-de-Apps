@@ -22,6 +22,9 @@ export class OpenCodeController {
   switch(action){
    case 'health':return this.#adapter.health();
    case 'sessions':return this.#adapter.listSessions();
+   case 'models':return this.#adapter.listModels();
+   case 'get':return this.#adapter.getSession(input.sessionId);
+   case 'switchModel':return this.#adapter.switchModel(input.sessionId,input.model);
    case 'create':return this.#adapter.createSession({title:input.title,mode:input.mode});
    case 'prompt':return this.#adapter.sendPrompt(input.sessionId,input.text);
    case 'messages':return this.#adapter.getMessages(input.sessionId);
