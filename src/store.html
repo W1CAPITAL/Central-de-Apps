@@ -10,26 +10,74 @@
 <body>
 <div class="shell">
  <header class="top">
-  <div class="brand"><span class="brandmark" aria-hidden="true">W1</span><span><strong>W1 CAPITAL</strong><small>CENTRAL DE APLICATIVOS</small></span></div>
-  <div class="top-right"><span class="dot"></span><span>Windows · Plataforma local</span><span class="circle">●</span></div>
- </header>
- <main>
-  <div class="hero">
-   <div class="hero-copy">
-    <span class="eyebrow">SEU ESPAÇO DE TRABALHO</span>
-    <h1>Um lugar para todos<br/><em>os seus aplicativos.</em></h1>
-    <p>Abra e baixe LexisPredict, INFINITUM e PredictBot. A loja funciona diretamente no computador, sem depender da Vercel.</p>
-    <div class="hero-badges"><span>✓ Inicialização local</span><span>✓ Contas separadas</span><span>✓ Atualizações GitHub</span></div>
-   </div>
-   <div class="hero-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="core">W1</div><div class="spark s1"></div><div class="spark s2"></div></div>
+  <div class="brand" aria-label="W1 Capital Central de Apps">
+   <span class="brandmark" aria-hidden="true">W<span>1</span></span>
+   <span class="brand-name">CAPITAL</span>
+   <span class="top-divider"></span>
+   <strong class="header-title">Central de Apps</strong>
   </div>
-  <div class="section-title"><span><small>EXPLORAR</small><h2>Aplicativos da W1 Capital</h2></span><span class="section-count" id="apps-count">3 produtos</span></div>
-  <section class="apps-grid" id="app-list" aria-label="Aplicativos disponíveis">
-   <div class="loading">Carregando a central local...</div>
-  </section>
+  <div class="top-right"><span class="dot"></span><span>Windows · Plataforma local</span></div>
+ </header>
+ <aside class="sidebar" aria-label="Navegação principal">
+  <nav class="side-nav" aria-label="Áreas">
+   <button type="button" data-go="#inicio" class="nav-link"><span aria-hidden="true">⌂</span>Início</button>
+   <button type="button" data-go="#catalogo" class="nav-link selected" aria-current="page"><span aria-hidden="true">▦</span>Aplicativos</button>
+   <button type="button" data-go="#catalogo" class="nav-link"><span aria-hidden="true">⇩</span>Downloads</button>
+   <button type="button" data-go="#atualizacoes" class="nav-link"><span aria-hidden="true">↻</span>Atualizações</button>
+   <button type="button" data-go="#integracoes" class="nav-link"><span aria-hidden="true">⌘</span>Integrações</button>
+   <button type="button" data-go="#seguranca" class="nav-link"><span aria-hidden="true">⬡</span>Segurança</button>
+   <button type="button" data-go="#configuracoes" class="nav-link"><span aria-hidden="true">⚙</span>Configurações</button>
+  </nav>
+  <div class="sidebar-brand" aria-hidden="true"><span class="building-stripe"></span><span class="building-mark">W<span>1</span></span><span class="sidebar-caption">W1 CAPITAL</span></div>
+  <div class="sidebar-footer"><span class="mini-dot"></span>Aplicativos locais e privados</div>
+ </aside>
+ <main class="workspace" id="inicio">
+  <div class="primary">
+   <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-copy"><h1 id="hero-title">Todos os seus aplicativos<br/>em um só lugar</h1><p>Execução local no Windows, atualizações automáticas e distribuição profissional.</p></div>
+    <div class="hero-art" aria-hidden="true"><div class="wall-lamp"></div><div class="wall-mark">W<span>1</span></div></div>
+   </section>
+   <section class="metrics" aria-label="Resumo da Central">
+    <div class="metric"><span class="metric-icon" aria-hidden="true">▱</span><strong><span id="apps-count">3</span> aplicativos</strong><small>na loja W1</small></div>
+    <div class="metric"><span class="metric-icon" aria-hidden="true">▭</span><strong><span id="installed-count">0</span> disponíveis</strong><small>para abrir</small></div>
+    <div class="metric"><span class="metric-icon" aria-hidden="true">↻</span><strong id="updates-summary">Versões</strong><small>verificação pelo GitHub</small></div>
+    <div class="metric"><span class="metric-icon" aria-hidden="true">◇</span><strong>Execução local</strong><small>no computador</small></div>
+   </section>
+   <section class="catalog" id="catalogo">
+    <div class="catalog-head"><div><h2>Catálogo de Aplicativos</h2><p>Aplicativos W1 Capital para produtividade, jurídico, atendimento e automação.</p></div><label class="searchbox"><span aria-hidden="true">⌕</span><input id="catalog-search" type="search" placeholder="Buscar aplicativo..." aria-label="Buscar aplicativo" autocomplete="off"/></label></div>
+    <div class="apps-grid" id="app-list" aria-label="Aplicativos disponíveis"><p class="loading">Carregando aplicativos...</p></div>
+    <div class="coming-grid" aria-label="Projetos em preparação">
+     <article class="coming-soon" data-name="PredictLM"><span class="coming-icon" aria-hidden="true">◈</span><div><div class="coming-heading"><h3>PredictLM</h3><span>Em preparação</span></div><p>Modelos, agentes e pesquisa da W1 Capital.</p></div></article>
+     <article class="coming-soon" data-name="SheetsPredict"><span class="coming-icon" aria-hidden="true">▥</span><div><div class="coming-heading"><h3>SheetsPredict</h3><span>Em preparação</span></div><p>Inteligência e automação para planilhas.</p></div></article>
+    </div>
+   </section>
+  </div>
+  <aside class="insights" aria-label="Atualizações e segurança">
+   <section class="update-card side-panel" id="atualizacoes">
+    <div class="side-head"><span class="side-icon" aria-hidden="true">⇩</span><div><h2>Atualizações</h2><small>GitHub Releases · W1 Capital</small></div></div>
+    <p id="update-message">Consultando versões oficiais...</p>
+    <pre id="release-notes" hidden></pre>
+    <div class="download-progress" id="download-progress" hidden><div class="download-track"><div id="download-bar"></div></div><span id="download-percent">0%</span></div>
+    <div class="update-actions"><button id="check-updates" type="button" class="accent">Verificar versões</button><button id="download-now" type="button" class="accent" hidden>Atualizar agora</button><button id="download-background" type="button" class="secondary" hidden>Baixar em segundo plano</button><button id="install-update" type="button" class="accent" hidden>Instalar e reiniciar</button><button id="open-release" type="button" class="secondary" hidden>Ver release</button></div>
+   </section>
+   <section class="privacy-card side-panel" id="seguranca">
+    <div class="side-head"><span class="side-icon" aria-hidden="true">⬡</span><div><h2>Segurança</h2><small>Verificação dos instaladores</small></div></div>
+    <p>Downloads com hash SHA-256. Atualizações automáticas só instalam versões oficialmente assinadas.</p>
+    <ul class="security-list"><li><span>✓</span>SHA-256 conferido no download</li><li><span>✓</span>Assinatura exigida nas automáticas</li><li><span>✓</span>Proteções do Windows preservadas</li></ul>
+   </section>
+   <section class="connection-panel side-panel" id="integracoes">
+    <div class="side-head"><span class="side-icon" aria-hidden="true">⌁</span><div><h2>OpenCode e MCP</h2><small>Integrações para agentes</small></div></div>
+    <p>Conecte o executor instalado para trabalhar com seus projetos, sempre com autorização.</p>
+    <button type="button" class="secondary wide-button" id="setup-opencode">Baixar OpenCode oficial</button>
+    <button type="button" class="secondary wide-button" id="setup-warp">Baixar Cloudflare WARP</button>
+    <button type="button" class="accent wide-button" id="show-advanced-integration">Configurar OpenCode e MCP</button>
+   </section>
+  </aside>
+  <section class="integration-zone" id="configuracoes">
+   <details class="integration-details" id="integration-details"><summary><span>Centro de conexões</span><small>OpenCode, MCP, documentos e configurações avançadas</small></summary>
   <section class="opencode-card" aria-labelledby="opencode-title">
    <div class="section-title"><div><small>INTEGRAÇÕES</small><h2 id="opencode-title">OpenCode e MCP</h2></div><span id="opencode-status" role="status">Desconectado</span></div>
-   <p>Conecte o OpenCode instalado ou seu próprio servidor. Tarefas usam os modelos configurados nele.</p>
+   <p>Escolha a pasta dos seus projetos, conecte sua conta OpenCode e utilize as ferramentas autorizadas. Senhas não ficam gravadas na Central.</p>
    <form id="opencode-form">
     <div class="opencode-grid">
      <label>Conexão<select id="oc-mode"><option value="local">Iniciar OpenCode instalado</option><option value="remote">Conectar a servidor existente</option></select></label>
@@ -47,6 +95,7 @@
     <div class="opencode-grid"><label>Sessão<select id="oc-session"></select></label><label>Permissões de nova sessão<select id="oc-permissions"><option value="restricted">Ferramentas bloqueadas</option><option value="review">Pedir aprovação no OpenCode</option></select></label></div>
     <div class="update-actions"><button class="secondary" id="oc-create">Nova sessão</button><button class="secondary" id="oc-messages">Ver respostas</button><button class="secondary" id="oc-diff">Ver alterações</button><button class="secondary" id="oc-abort">Interromper tarefa</button></div>
     <label>Tarefa<textarea id="oc-prompt" maxlength="32000" rows="3" placeholder="Descreva a tarefa que o OpenCode deve executar"></textarea></label>
+    <div class="oc-attachment-control"><button type="button" class="secondary" id="oc-attach">Adicionar documento, imagem, vídeo ou arquivo</button><ul id="oc-file-list" aria-label="Arquivos selecionados"></ul><p class="oc-note">Arquivos só serão referenciados na tarefa depois da sua confirmação. Não são enviados automaticamente, abertos ou descompactados.</p></div>
     <button class="accent" id="oc-send">Enviar tarefa</button>
     <details><summary>Gerenciar servidores MCP no OpenCode</summary>
      <label>Nome<input id="oc-mcp-name" maxlength="64" placeholder="meu-servidor"/></label>
@@ -66,19 +115,11 @@
     <pre id="oc-output" role="log" aria-live="polite"></pre>
    </div>
   </section>
-  <div class="bottom">
-   <section class="update-card" aria-label="Versões e atualizações">
-    <div class="update-head"><div class="update-glyph">↻</div><div><strong>Atualizações</strong><p>Distribuídas pelo GitHub Releases, não pela Vercel.</p></div></div>
-    <p id="update-message">Consultando versões oficiais...</p>
-    <label class="oc-note"><input id="automatic-updates" type="checkbox" checked/> Baixar atualizações assinadas automaticamente e instalar ao fechar os aplicativos</label>
-    <pre id="release-notes" hidden></pre>
-    <div class="download-progress" id="download-progress" hidden><div class="download-track"><div id="download-bar"></div></div><span id="download-percent">0%</span></div>
-    <div class="update-actions"><button id="check-updates" type="button" class="secondary">Verificar versões</button><button id="download-now" type="button" class="accent" hidden>Atualizar agora</button><button id="download-background" type="button" class="secondary" hidden>Baixar em segundo plano</button><button id="install-update" type="button" class="accent" hidden>Instalar e reiniciar</button><button id="open-release" type="button" class="secondary" hidden>Ver release</button></div>
-   </section>
-   <section class="privacy-card"><div class="lock">◇</div><strong>Dados sob sua conta</strong><p>Os programas executam localmente. Supabase e serviços oficiais continuam exigindo internet e suas permissões individuais. Nenhum segredo é embutido na Central.</p></section>
-  </div>
+   </details>
+   <section class="settings-strip"><label><input id="automatic-updates" type="checkbox" checked/> Baixar automaticamente atualizações oficiais assinadas e instalar depois de fechar os programas.</label><span>Pré-versões sem assinatura somente para download manual.</span></section>
+  </section>
+  <footer><span>© 2026 W1 Capital · Central de Apps</span><span id="store-version"></span></footer>
  </main>
- <footer><span>© 2026 W1 Capital · Central de Apps</span><span id="store-version"></span></footer>
 </div>
 <script src="./store.js"></script>
 <script src="./opencode-ui.js"></script>
