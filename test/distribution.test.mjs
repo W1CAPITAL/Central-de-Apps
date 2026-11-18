@@ -33,3 +33,19 @@ test('metadados adulterados, sem hash, rascunhos e tags inconsistentes falham fe
  assert.throws(()=>validateProductRelease({...release(),draft:true},'lexispredict',{manual:true}));
  assert.throws(()=>validateProductRelease({...release(),tag_name:'preview-v0.1.51'},'lexispredict'));
 });
+
+
+test('INFINITUM tem instalador próprio versionado e isolado das demais versões',async()=>{
+ const {productSpec}=await import('../src/distribution.mjs');
+ assert.equal(productSpec('infinitum').appId,'br.com.w1capital.infinitum');
+ const asset=validateProductRelease({
+  tag_name:'preview-v0.1.53',prerelease:true,draft:false,
+  assets:[{name:'INFINITUM-Setup-0.1.53-x64.exe',size:60_000_000,
+   digest:'sha256:'+'b'.repeat(64),
+   browser_download_url:'https://github.com/W1CAPITAL/Central-de-Apps/releases/download/preview-v0.1.53/INFINITUM-Setup-0.1.53-x64.exe'}]
+ },'infinitum',{manual:true});
+ assert.equal(asset.product,'infinitum');
+ assert.equal(asset.preview,true);
+ assert.equal(asset.version,'0.1.53');
+ assert.throws(()=>validateProductRelease(release('lexispredict'),'infinitum'));
+});

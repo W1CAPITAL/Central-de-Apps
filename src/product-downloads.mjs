@@ -11,7 +11,7 @@ export class ProductDownloads {
    {version:null,phase:'unavailable',percent:0,error:null};
  }
  update(releases){
-  for(const id of ['lexispredict','predictbot']){
+  for(const id of ['lexispredict','infinitum','predictbot']){
    if(this.#busy.has(id))continue;
    const asset=selectProductRelease(releases,id,{manual:true});
    const previous=this.#items.get(id);

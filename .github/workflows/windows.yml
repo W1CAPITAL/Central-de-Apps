@@ -218,8 +218,8 @@ jobs:
           WIN_CSC_LINK: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_P12 || '' }}
           WIN_CSC_KEY_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.CENTRAL_WINDOWS_CERT_PASSWORD || '' }}
         run: |
-          foreach ($id in @('lexispredict','predictbot')) {
-            $name = if ($id -eq 'lexispredict') { 'LexisPredict' } else { 'PredictBot' }
+          foreach ($id in @('lexispredict','infinitum','predictbot')) {
+            $name = if ($id -eq 'lexispredict') { 'LexisPredict' } elseif ($id -eq 'infinitum') { 'INFINITUM' } else { 'PredictBot' }
             node scripts/package-product.mjs $id dir
             if ($LASTEXITCODE -ne 0) { throw "Pack falhou: $id" }
             $exe = "dist/products/$id/win-unpacked/$name.exe"
@@ -234,8 +234,8 @@ jobs:
           WIN_CSC_LINK: ${{ secrets.CENTRAL_WINDOWS_CERT_P12 }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.CENTRAL_WINDOWS_CERT_PASSWORD }}
         run: |
-          foreach ($id in @('lexispredict','predictbot')) {
-            $name = if ($id -eq 'lexispredict') { 'LexisPredict' } else { 'PredictBot' }
+          foreach ($id in @('lexispredict','infinitum','predictbot')) {
+            $name = if ($id -eq 'lexispredict') { 'LexisPredict' } elseif ($id -eq 'infinitum') { 'INFINITUM' } else { 'PredictBot' }
             node scripts/package-product.mjs $id nsis
             if ($LASTEXITCODE -ne 0) { throw "NSIS falhou: $id" }
             $installer = "dist/products/$id/$name-Setup-$env:CENTRAL_VERSION-x64.exe"
@@ -270,6 +270,7 @@ jobs:
             central/dist/W1-Central-de-Apps-Setup-${{ env.CENTRAL_VERSION }}-x64.exe
             central/source-commits.json
             central/dist/products/lexispredict/LexisPredict-Setup-${{ env.CENTRAL_VERSION }}-x64.exe
+            central/dist/products/infinitum/INFINITUM-Setup-${{ env.CENTRAL_VERSION }}-x64.exe
             central/dist/products/predictbot/PredictBot-Setup-${{ env.CENTRAL_VERSION }}-x64.exe
           if-no-files-found: error
           retention-days: 30
@@ -284,6 +285,7 @@ jobs:
           $files = @($installer)
           if ($env:GITHUB_REF -eq 'refs/heads/main') {
             $files += 'dist/products/lexispredict/LexisPredict-Setup-' + $env:CENTRAL_VERSION + '-x64.exe'
+            $files += 'dist/products/infinitum/INFINITUM-Setup-' + $env:CENTRAL_VERSION + '-x64.exe'
             $files += 'dist/products/predictbot/PredictBot-Setup-' + $env:CENTRAL_VERSION + '-x64.exe'
           }
           $publish = $true
@@ -310,6 +312,7 @@ jobs:
           $file = 'central/dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe'
           $files = @($file,
             'central/dist/products/lexispredict/LexisPredict-Setup-0.1.${{ github.run_number }}-x64.exe',
+            'central/dist/products/infinitum/INFINITUM-Setup-0.1.${{ github.run_number }}-x64.exe',
             'central/dist/products/predictbot/PredictBot-Setup-0.1.${{ github.run_number }}-x64.exe')
           foreach ($item in $files) {
             if (-not (Test-Path -LiteralPath $item -PathType Leaf)) { throw 'Instalador ausente do artefato.' }
@@ -328,8 +331,9 @@ jobs:
             "LexisPredict e INFINITUM executados localmente a partir das branches main." + "`n" +
             "GitHub Releases sem Vercel; atualização Authenticode verificada."
           $lexis = 'dist/products/lexispredict/LexisPredict-Setup-0.1.${{ github.run_number }}-x64.exe'
+          $infinitum = 'dist/products/infinitum/INFINITUM-Setup-0.1.${{ github.run_number }}-x64.exe'
           $bot = 'dist/products/predictbot/PredictBot-Setup-0.1.${{ github.run_number }}-x64.exe'
-          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes $installer $lexis $bot source-commits.json
+          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes $installer $lexis $infinitum $bot source-commits.json
 
   preview:
     needs: [windows]
@@ -351,8 +355,9 @@ jobs:
           $tag = 'preview-v0.1.${{ github.run_number }}'
           $installer = 'dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe'
           $lexis = 'dist/products/lexispredict/LexisPredict-Setup-0.1.${{ github.run_number }}-x64.exe'
+          $infinitum = 'dist/products/infinitum/INFINITUM-Setup-0.1.${{ github.run_number }}-x64.exe'
           $bot = 'dist/products/predictbot/PredictBot-Setup-0.1.${{ github.run_number }}-x64.exe'
-          $files = @($installer,$lexis,$bot)
+          $files = @($installer,$lexis,$infinitum,$bot)
           $sums = foreach ($file in $files) {
             if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw 'Instalador ausente.' }
             $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $file).Hash.ToLowerInvariant()
@@ -363,7 +368,7 @@ jobs:
           $notes = @"
           Instalador de teste Windows x64 da Central W1.
           Abre a loja independente e inclui os servidores locais do LexisPredict e INFINITUM.
-          Instaladores independentes LexisPredict e PredictBot disponíveis nesta release e na loja.
+          Instaladores independentes LexisPredict, INFINITUM e PredictBot disponíveis nesta release e na loja.
           PredictBot inclui OpenCode/MCP; a migração de agentes e Hermes ainda não está concluída.
           Build, teste HTTP e abertura das três janelas pelo EXE aprovados no Windows do GitHub Actions.
           NSIS instalado em pasta limpa do runner e loja/produtos reabertos a partir do EXE instalado.
@@ -373,4 +378,4 @@ jobs:
           SHA-256 e commits dos produtos estão nos arquivos anexos. Não desative proteções do Windows.
           "@
           $notes | Set-Content preview-notes.md -Encoding utf8
-          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --prerelease --latest=false --title ("Central, LexisPredict e PredictBot 0.1.${{ github.run_number }} - teste sem assinatura W1") --notes-file preview-notes.md $installer $lexis $bot source-commits.json SHA256SUMS.txt
+          gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --prerelease --latest=false --title ("Central e três produtos 0.1.${{ github.run_number }} - teste sem assinatura W1") --notes-file preview-notes.md $installer $lexis $infinitum $bot source-commits.json SHA256SUMS.txt

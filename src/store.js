@@ -42,7 +42,7 @@ function productCard(app){
  });
  lower.append(status,btn);
  card.append(top,copy,lower);
- if(app.id==='lexispredict'||app.id==='predictbot'){
+ if(app.id==='lexispredict'||app.id==='infinitum'||app.id==='predictbot'){
   const d=app.download||{};
   const area=el('div','product-download');
   area.append(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · versão de teste sem assinatura W1':' · versão estável'):'Consultando instalador Windows...'));
