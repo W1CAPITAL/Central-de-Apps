@@ -27,10 +27,10 @@ test('fixa executável CPU e pesos oficiais da Microsoft com hashes verificados'
  assert.match(LOCAL_AI_ENGINE.url,/ggml-org\/llama\.cpp\/releases\/download\/b12521\/llama-b12521-bin-win-cpu-x64\.zip$/);
  assert.equal(LOCAL_AI_ENGINE.sha256,'bd4e093bce292452248c318d4b176fbfebe1ca43a7f3779ebb3846fe7753653e');
  assert.equal(LOCAL_AI_ENGINE.size,25555594);
- assert.equal(LOCAL_AI_MODEL.revision,'a1f2f1c765812aa8af3f6eda4a313707064bba15');
- assert.equal(LOCAL_AI_MODEL.sha256,'4221b252fdd5fd25e15847adfeb5ee88886506ba50b8a34548374492884c2162');
- assert.equal(LOCAL_AI_MODEL.size,1187801280);
- assert.match(LOCAL_AI_MODEL.url,/huggingface\.co\/microsoft\/bitnet-b1\.58-2B-4T-gguf\/resolve\/a1f2f1c765812aa8af3f6eda4a313707064bba15\/ggml-model-i2_s\.gguf$/);
+ assert.equal(LOCAL_AI_MODEL.revision,'daeb8e2d528a760970442092f6bf1e55c3b659eb');
+ assert.equal(LOCAL_AI_MODEL.sha256,'d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5');
+ assert.equal(LOCAL_AI_MODEL.size,1282439264);
+ assert.match(LOCAL_AI_MODEL.url,/huggingface\.co\/ggml-org\/Qwen3-1\.7B-GGUF\/resolve\/daeb8e2d528a760970442092f6bf1e55c3b659eb\/Qwen3-1\.7B-Q4_K_M\.gguf$/);
 });
 
 test('configura provider OpenAI compatível sem sobrescrever o modelo padrão do usuário',()=>{
@@ -39,9 +39,9 @@ test('configura provider OpenAI compatível sem sobrescrever o modelo padrão do
  assert.equal(config.providers['w1-local'].package,'@opencode/ai/providers/openai-compatible');
  assert.equal(config.providers['w1-local'].settings.apiKey,'{env:W1_LOCAL_AI_KEY}');
  assert.equal(config.providers['w1-local'].settings.baseURL,'http://127.0.0.1:8765/v1');
- assert.equal(config.providers['w1-local'].models['bitnet-2b'].limit.context,1024);
- assert.equal(config.providers['w1-local'].models['bitnet-2b'].modelID,'w1-bitnet-2b');
- assert.equal(config.providers['w1-local'].models['bitnet-2b'].capabilities.tools,false);
+ assert.equal(config.providers['w1-local'].models['qwen3-1.7b'].limit.context,1024);
+ assert.equal(config.providers['w1-local'].models['qwen3-1.7b'].modelID,'w1-qwen3-1.7b');
+ assert.equal(config.providers['w1-local'].models['qwen3-1.7b'].capabilities.tools,false);
  assert.equal(JSON.stringify(config).includes('secret'),false);
 });
 
@@ -68,4 +68,10 @@ test('aceita apenas redirecionamentos HTTPS dos hosts oficiais do GitHub e Huggi
  assert.throws(()=>validateAssetRedirect('http://release-assets.githubusercontent.com/file.zip','engine'));
  assert.throws(()=>validateAssetRedirect('https://evil.example/file.zip','engine'));
  assert.throws(()=>validateAssetRedirect('https://release-assets.githubusercontent.com/file.gguf','model'));
+});
+
+test('o modelo padrão é GGUF Qwen3 compatível com stock llama.cpp, não I2_S experimental',()=>{
+ assert.equal(LOCAL_AI_MODEL.id,'qwen3-1.7b');
+ assert.match(LOCAL_AI_MODEL.fileName,/Q4_K_M\\.gguf$/);
+ assert.doesNotMatch(LOCAL_AI_MODEL.fileName,/i2_s/i);
 });
