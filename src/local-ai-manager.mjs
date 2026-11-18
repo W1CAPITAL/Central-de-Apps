@@ -1,6 +1,6 @@
 import {createHash,randomBytes} from 'node:crypto';
 import {createReadStream,createWriteStream} from 'node:fs';
-import {access,mkdir,readFile,rename,rm,stat,writeFile,readdir} from 'node:fs/promises';
+import {access,mkdir,open,readFile,rename,rm,stat,writeFile,readdir} from 'node:fs/promises';
 import {Transform,Readable} from 'node:stream';
 import {pipeline} from 'node:stream/promises';
 import {spawn} from 'node:child_process';
@@ -112,6 +112,30 @@ export class LocalAIManager{
   this.#lastStatus={...value,updatedAt:new Date().toISOString()};
   try{this.#onProgress({...this.#lastStatus})}catch{}
   return this.#lastStatus;
+ }
+ async #acquireLock(){
+  const lockPath=join(this.#root,'setup.lock');
+  await mkdir(this.#root,{recursive:true});
+  for(let attempt=0;attempt<3600;attempt++){
+   try{
+    const handle=await open(lockPath,'wx',0o600);
+    await handle.writeFile(JSON.stringify({pid:process.pid,startedAt:Date.now()}));
+    return async()=>{await handle.close().catch(()=>{});await rm(lockPath,{force:true}).catch(()=>{})};
+   }catch(error){
+    if(error.code!=='EEXIST')throw error;
+    let stale=false;
+    try{
+     const value=JSON.parse(await readFile(lockPath,'utf8'));
+     const pid=Number(value.pid);
+     if(!Number.isInteger(pid)||pid<1)stale=Date.now()-Number(value.startedAt||0)>60000;
+     else try{process.kill(pid,0)}catch(check){if(check.code==='ESRCH'||check.code==='EINVAL')stale=true}
+    }catch{stale=true}
+    if(stale){await rm(lockPath,{force:true}).catch(()=>{});continue}
+    if(attempt===0)this.#emit({phase:'checking',supported:true,percent:0,message:'Outra janela W1 está preparando a IA local. A instalação será compartilhada.'});
+    await delay(1000);
+   }
+  }
+  throw Error('A preparação local já está em andamento em outra janela W1. Tente novamente em instantes.');
  }
  async #readKey(){
   try{const key=(await readFile(this.#paths().key,'utf8')).trim();return KEY_PATTERN.test(key)?key:null}catch{return null}
@@ -241,11 +265,23 @@ export class LocalAIManager{
   return this.#preparePromise;
  }
  async #prepare(){
+  const release=await this.#acquireLock();
+  try{return await this.#prepareUnlocked()}finally{await release()}
+ }
+ async #prepareUnlocked(){
   const profile=selectLocalAIProfile(this.#hardware);
   if(!profile.supported){this.#emit({phase:'unsupported',supported:false,percent:0,message:profile.reason});throw Error(profile.reason)}
   this.#emit({phase:'checking',supported:true,percent:0,message:'Verificando os componentes e a memória disponível.'});
   await mkdir(this.#root,{recursive:true});
   const key=await this.#ensureKey();
+  const existing=await this.#findExistingServer(key);
+  if(existing){
+   await this.#writeOpenCodeConfig(existing);
+   await this.#writeState({port:existing,engineVersion:LOCAL_AI_ENGINE.version,modelRevision:LOCAL_AI_MODEL.revision});
+   this.#ready={port:existing,key,configPath:this.#configPath};
+   this.#emit({phase:'ready',supported:true,running:true,installed:true,percent:100,port:existing,endpoint:'http://127.0.0.1:'+existing+'/v1',model:LOCAL_AI_MODEL.name,message:'IA local já estava em execução e foi reutilizada pelas janelas W1.'});
+   return {...this.#lastStatus};
+  }
   const executable=await this.#ensureEngine();
   const modelPath=await this.#ensureModel();
   const port=await this.#startServer(executable,modelPath,this.#paths().key,key,profile);
