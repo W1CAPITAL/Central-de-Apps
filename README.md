@@ -147,3 +147,20 @@ Após conectar uma sessão, as respostas reais são consultadas periodicamente. 
 Dentro da seção OpenCode, abra **Usar este OpenCode à distância**. Entre na página de conexão com sua conta e autenticador, gere o código, cole na Central e confirme o dispositivo na página. A ponte usa somente conexão de saída; não abre portas do computador. O padrão é leitura. Enviar tarefas exige permissão do dispositivo e confirmação local por operação.
 
 A página permite revogar o computador. A credencial fica em memória e expira em 24 horas; reiniciar a Central exige novo pareamento. Uma interrupção de internet durante a sessão tem reconexão automática. Fechar a ponte não significa cancelar uma tarefa já iniciada no OpenCode.
+
+
+## Central W1 visual premium e configuração assistida
+
+A janela principal apresenta menu lateral, catálogo pesquisável, cartões para LexisPredict, INFINITUM e PredictBot, área de versões, verificações de segurança e integração com OpenCode. PredictLM e SheetsPredict são exibidos como **em preparação**, não como instalados. A interface é uma reconstrução funcional da composição visual vinho/prata aprovada; não é uma captura de tela estática.
+
+Os botões de instalação OpenCode e Cloudflare WARP abrem exclusivamente as páginas oficiais no navegador do Windows. **Não instalam sem consentimento nem modificam automaticamente rede, DNS, proxy ou certificados.** Configuração de provedores/contas é feita no OpenCode e autenticação da ponte requer MFA e dispositivo pareado.
+
+A seleção de anexos suporta documentos, imagens, vídeos e ZIP/RAR/7z, com limites de tamanho e bloqueio de executáveis; a Central apenas adiciona referências aos caminhos locais na tarefa após ação explícita do operador. Isso não significa que o modelo compreenda todo arquivo, e nenhum anexo é automaticamente enviado, executado, extraído ou carregado no Supabase.
+
+O script de ícones gera no runner Windows ícones de identidade W1 com o mesmo esquema de cores, sem carregar binários externos.
+
+### SmartScreen
+
+Preview sem Authenticode W1 válida **não pode ser anunciado como confiável pelo SmartScreen**. Uma versão estável sem alertas de editor desconhecido requer certificado de assinatura de código válido, instalação legítima e reputação do editor junto ao Windows. Não desative proteções nem contorne a verificação. O canal automático continua bloqueando EXEs sem assinatura válida.
+
+A integração dos agentes LexisPredict/INFINITUM com a ponte remota depende das alterações revisadas e testadas nos respectivos repositórios; adicionar um botão na Central não autoriza acessos jurídicos automaticamente.

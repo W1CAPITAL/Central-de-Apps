@@ -1,17 +1,8 @@
 'use strict';
-const appList=document.getElementById('app-list');
-const updateMessage=document.getElementById('update-message');
-const releaseNotes=document.getElementById('release-notes');
-const updateButton=document.getElementById('check-updates');
-const releaseButton=document.getElementById('open-release');
-const downloadNow=document.getElementById('download-now');
-const downloadBackground=document.getElementById('download-background');
-const installUpdate=document.getElementById('install-update');
-const downloadProgress=document.getElementById('download-progress');
-const downloadBar=document.getElementById('download-bar');
-const downloadPercent=document.getElementById('download-percent');
 const bridge=window.w1Central;
+const byId=id=>document.getElementById(id);
 const LABELS={bundled:'Disponível no computador',starting:'Iniciando',running:'Aberto',error:'Precisa de atenção'};
+let currentState=null;
 function el(tag,className,text){
  const node=document.createElement(tag);
  if(className)node.className=className;
@@ -20,117 +11,145 @@ function el(tag,className,text){
 }
 function productCard(app){
  const card=el('article','product-card '+app.id);
+ card.dataset.name=String(app.name||app.id);
  const top=el('div','card-top');
- const mark=el('span','app-mark',app.id==='lexispredict'?'L':app.id==='predictbot'?'P':'∞');
- const badge=el('span','product-badge',app.badge);
- top.append(mark,badge);
+ const symbol=app.id==='lexispredict'?'⚖':app.id==='infinitum'?'∞':'▣';
+ top.appendChild(el('span','app-mark',symbol));
+ const ident=el('div','card-ident');
+ ident.append(el('h3',null,app.name),el('span','card-kicker',app.subtitle));
+ top.appendChild(ident);
+ const badge=el('span','product-badge',app.status?.phase==='error'?'!':'✓');
+ badge.title=LABELS[app.status?.phase]||'Disponível';
+ badge.setAttribute('aria-label',badge.title);
+ top.appendChild(badge);
  const copy=el('div','card-copy');
- const kicker=el('span','card-kicker',app.subtitle);
- const name=el('h3',null,app.name);
- const desc=el('p',null,app.description);
- copy.append(kicker,name,desc);
- const lower=el('div','card-bottom');
- const status=el('div','product-state');
- status.append(el('span','tiny-dot'),el('span',null,LABELS[app.status?.phase]||'Disponível'));
- const btn=el('button','launch-btn',app.status?.phase==='starting'?'Abrindo...':'Abrir '+app.name);
- btn.type='button';
- btn.disabled=app.status?.phase==='starting';
- btn.addEventListener('click',async()=>{
-  btn.disabled=true;btn.textContent='Iniciando...';
+ copy.appendChild(el('p',null,app.description));
+ const bottom=el('div','card-bottom');
+ const launch=el('button','launch-btn','Abrir '+app.name);
+ launch.type='button';
+ launch.disabled=app.status?.phase==='starting';
+ launch.addEventListener('click',async()=>{
+  launch.disabled=true;launch.textContent='Abrindo...';
   try{await bridge.launch(app.id)}
-  catch{btn.textContent='Não foi possível iniciar';btn.disabled=false}
+  catch(error){launch.textContent='Não foi possível abrir';launch.title=String(error?.message||'Falha local')}
+  finally{launch.disabled=false}
  });
- lower.append(status,btn);
- card.append(top,copy,lower);
- if(app.id==='lexispredict'||app.id==='infinitum'||app.id==='predictbot'){
-  const d=app.download||{};
-  const area=el('div','product-download');
-  area.append(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · versão de teste sem assinatura W1':' · versão estável'):'Consultando instalador Windows...'));
-  const download=el('button','secondary',d.phase==='downloading'?'Baixando '+(d.percent||0)+'%':'Baixar '+app.name+' para Windows');
-  download.type='button';download.disabled=!d.version||d.phase==='downloading';
-  download.addEventListener('click',async()=>{download.disabled=true;try{await bridge.downloadProduct(app.id)}catch{}finally{download.disabled=false;}});
-  area.append(download);
-  if(d.phase==='downloaded'){
-   const show=el('button','secondary','Mostrar instalador baixado');show.type='button';
-   show.addEventListener('click',()=>bridge.showDownload(app.id).catch(()=>{}));area.append(show);
-  }
-  if(d.error)area.append(el('p','card-error',d.error));
-  card.append(area);
+ bottom.appendChild(launch);
+ const d=app.download||{};
+ const area=el('div','product-download');
+ area.appendChild(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · Prévia não assinada':' · Estável'):'Sem instalador disponível'));
+ const name=app.name;
+ const text=d.phase==='downloading'?'Baixando '+(d.percent||0)+'%':'Baixar '+name+' para Windows';
+ const download=el('button','secondary',text);
+ download.type='button';
+ download.disabled=!d.version||d.phase==='downloading';
+ download.title=d.preview?'Download de teste, não entra no canal automático.':'Baixar instalador oficial para Windows.';
+ download.addEventListener('click',async()=>{
+  download.disabled=true;
+  try{await bridge.downloadProduct(app.id)}
+  catch(error){card.appendChild(el('p','card-error',String(error?.message||'Falha no download.')))}
+  finally{download.disabled=false}
+ });
+ area.appendChild(download);
+ if(d.phase==='downloaded'){
+  const show=el('button','secondary','Mostrar instalador baixado');
+  show.type='button';
+  show.addEventListener('click',()=>bridge.showDownload(app.id).catch(()=>{}));
+  area.appendChild(show);
  }
- if(app.status?.phase==='error')card.append(el('p','card-error',app.status.message));
+ bottom.appendChild(area);
+ card.append(top,copy,bottom,el('div','product-state',LABELS[app.status?.phase]||'Disponível'));
+ if(d.error)card.appendChild(el('p','card-error',String(d.error)));
+ if(app.status?.phase==='error')card.appendChild(el('p','card-error',String(app.status.message||'O aplicativo não iniciou.')));
  return card;
+}
+function filterCards(){
+ const query=byId('catalog-search')?.value.trim().toLocaleLowerCase('pt-BR')||'';
+ for(const card of document.querySelectorAll('.product-card,.coming-soon')){
+  const name=(card.dataset.name||'').toLocaleLowerCase('pt-BR');
+  card.hidden=!!query&&!name.includes(query);
+ }
 }
 function render(value){
  if(!value||!Array.isArray(value.apps))return;
- appList.replaceChildren(...value.apps.map(productCard));
- document.getElementById('apps-count').textContent=value.apps.length+' produtos';
- document.getElementById('store-version').textContent='Central v'+String(value.storeVersion||'0.0.0');
- const automatic=document.getElementById('automatic-updates');if(automatic)automatic.checked=value.automaticUpdates!==false;
+ currentState=value;
+ byId('app-list').replaceChildren(...value.apps.map(productCard));
+ byId('apps-count').textContent=String(value.apps.length);
+ byId('installed-count').textContent=String(value.apps.filter(x=>['bundled','starting','running'].includes(x.status?.phase)).length);
+ byId('store-version').textContent='Central v'+String(value.storeVersion||'0.0.0');
+ const automatic=byId('automatic-updates');
+ if(automatic)automatic.checked=value.automaticUpdates!==false;
+ filterCards();
  const r=value.release||{};
  const available=r.available===true;
+ byId('updates-summary').textContent=available?'Atualização':'GitHub Releases';
+ const updateMessage=byId('update-message');
+ const notes=byId('release-notes'),releaseButton=byId('open-release');
+ const downloadNow=byId('download-now'),downloadBackground=byId('download-background');
+ const installUpdate=byId('install-update'),progress=byId('download-progress');
  if(available){
   const phase=String(r.phase||'available');
-  if(phase==='downloading'){
-   updateMessage.textContent='Baixando versão '+r.version+' em segundo plano. Continue usando os aplicativos.';
-  }else if(phase==='downloaded'){
-   updateMessage.textContent='Atualização '+r.version+' verificada pelo Windows. A instalação aguarda sua confirmação.';
-  }else if(phase==='error'){
-   updateMessage.textContent='Atualização bloqueada: '+String(r.error||'O pacote não foi validado.');
-  }else if(r.canDownload){
-   updateMessage.textContent='Central de Apps v'+r.version+' disponível. Confira as alterações antes de baixar.';
-  }else{
-   updateMessage.textContent='Nova release disponível, mas sem instalador Authenticode e SHA-256 validáveis. Consulte o GitHub.';
-  }
-  releaseNotes.textContent=String(r.notes||'Atualização disponível no GitHub oficial.');
-  releaseNotes.hidden=false;
-  releaseButton.hidden=false;
+  if(phase==='downloading')updateMessage.textContent='Baixando versão '+r.version+'. Pode continuar trabalhando.';
+  else if(phase==='downloaded')updateMessage.textContent='Versão '+r.version+' verificada. Instalação disponível.';
+  else if(phase==='error')updateMessage.textContent='Atualização bloqueada: '+String(r.error||'Pacote não validado.');
+  else if(r.canDownload)updateMessage.textContent='Central v'+r.version+' disponível para atualização.';
+  else updateMessage.textContent='Release identificada, mas sem instalador oficial validável.';
+  notes.textContent=String(r.notes||'Detalhes no GitHub Releases.');
+  notes.hidden=false;releaseButton.hidden=false;
   downloadNow.hidden=!r.canDownload||phase!=='available';
   downloadBackground.hidden=!r.canDownload||phase!=='available';
   installUpdate.hidden=phase!=='downloaded';
-  downloadProgress.hidden=phase!=='downloading';
-  const percent=Math.min(100,Math.max(0,Number(r.percent)||0));
-  downloadBar.style.width=percent+'%';
-  downloadPercent.textContent=Math.floor(percent)+'%';
+  progress.hidden=phase!=='downloading';
+  const pct=Math.min(100,Math.max(0,Number(r.percent)||0));
+  byId('download-bar').style.width=pct+'%';
+  byId('download-percent').textContent=Math.floor(pct)+'%';
  }else{
-  updateMessage.textContent=r.error?'Não foi possível verificar agora. Seus aplicativos locais continuam disponíveis.':'Nenhuma nova versão oficial detectada.';
-  releaseNotes.hidden=true;
-  releaseButton.hidden=true;
-  downloadNow.hidden=true;
-  downloadBackground.hidden=true;
-  installUpdate.hidden=true;
-  downloadProgress.hidden=true;
+  updateMessage.textContent=r.error?'Não foi possível consultar o GitHub agora. Os aplicativos locais continuam disponíveis.':'Nenhuma atualização oficial assinada detectada.';
+  notes.hidden=true;releaseButton.hidden=true;downloadNow.hidden=true;downloadBackground.hidden=true;installUpdate.hidden=true;progress.hidden=true;
  }
 }
-if(bridge){
- document.getElementById('automatic-updates')?.addEventListener('change',event=>bridge.setAutomaticUpdates(event.target.checked).catch(()=>{}));
- bridge.onState(render);
- bridge.getState().then(render).catch(()=>{
-  updateMessage.textContent='A ponte local está indisponível. Reinicie a Central de Apps.';
+byId('catalog-search')?.addEventListener('input',filterCards);
+for(const item of document.querySelectorAll('[data-go]')){
+ item.addEventListener('click',()=>{
+  for(const nav of document.querySelectorAll('[data-go]')){nav.classList.remove('selected');nav.removeAttribute('aria-current')}
+  item.classList.add('selected');item.setAttribute('aria-current','page');
+  document.querySelector(item.dataset.go)?.scrollIntoView?.({block:'start',behavior:'smooth'});
  });
- updateButton.addEventListener('click',async()=>{
-  updateButton.disabled=true;
-  try{render(await bridge.checkUpdates())}
-  finally{updateButton.disabled=false}
- });
- releaseButton.addEventListener('click',()=>bridge.openRelease().catch(()=>{}));
- downloadNow.addEventListener('click',async()=>{
-  downloadNow.disabled=true;
-  try{render(await bridge.downloadUpdate('now'))}
-  catch{updateMessage.textContent='O Windows não pôde iniciar a atualização assinada.'}
-  finally{downloadNow.disabled=false}
- });
- downloadBackground.addEventListener('click',async()=>{
-  downloadBackground.disabled=true;
-  try{render(await bridge.downloadUpdate('background'))}
-  catch{updateMessage.textContent='O download seguro não foi concluído.'}
-  finally{downloadBackground.disabled=false}
- });
- installUpdate.addEventListener('click',async()=>{
-  installUpdate.disabled=true;
-  try{render(await bridge.installUpdate())}
-  catch{updateMessage.textContent='A instalação foi bloqueada. O programa atual foi preservado.'}
-  finally{installUpdate.disabled=false}
- });
-}else{
- updateMessage.textContent='A inicialização segura do aplicativo falhou.';
 }
+byId('show-advanced-integration')?.addEventListener('click',()=>{
+ const panel=byId('integration-details');panel.open=true;
+ panel.scrollIntoView?.({block:'start',behavior:'smooth'});
+});
+for(const [id,provider] of [['setup-opencode','opencode'],['setup-warp','warp']]){
+ byId(id)?.addEventListener('click',async()=>{
+  const target=byId(id);target.disabled=true;
+  try{await bridge.openOfficialTool(provider)}
+  catch{target.title='Não foi possível abrir o site oficial.'}
+  finally{target.disabled=false}
+ });
+}
+if(bridge){
+ bridge.onState(render);
+ bridge.getState().then(render).catch(()=>{byId('update-message').textContent='A Central não conseguiu carregar seu estado local.'});
+ byId('automatic-updates')?.addEventListener('change',event=>bridge.setAutomaticUpdates(event.target.checked).catch(()=>{}));
+ const check=byId('check-updates');
+ check.addEventListener('click',async()=>{
+  check.disabled=true;
+  try{render(await bridge.checkUpdates())}catch{byId('update-message').textContent='Consulta indisponível. Confira a conexão com o GitHub.'}finally{check.disabled=false}
+ });
+ byId('open-release').addEventListener('click',()=>bridge.openRelease().catch(()=>{}));
+ for(const [id,mode] of [['download-now','now'],['download-background','background']]){
+  byId(id).addEventListener('click',async()=>{
+   const btn=byId(id);btn.disabled=true;
+   try{render(await bridge.downloadUpdate(mode))}
+   catch{byId('update-message').textContent='O download oficial não foi concluído.'}
+   finally{btn.disabled=false}
+  });
+ }
+ byId('install-update').addEventListener('click',async()=>{
+  const btn=byId('install-update');btn.disabled=true;
+  try{render(await bridge.installUpdate())}
+  catch{byId('update-message').textContent='A instalação foi bloqueada. O aplicativo atual foi preservado.'}
+  finally{btn.disabled=false}
+ });
+}else byId('update-message').textContent='A ponte local da Central não foi inicializada.';

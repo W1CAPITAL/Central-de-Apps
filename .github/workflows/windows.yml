@@ -120,7 +120,7 @@ jobs:
           NODE_ENV: production
           LEXIS_DESKTOP_STANDALONE: '1'
           NEXT_PUBLIC_SUPABASE_URL: 'https://segjskjlbeydlljnefai.supabase.co'
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_yEX6mVid3dpC7o7eOzuB1g_Vh'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_yEX6mVid3dpC7o7eOzuB1g_VhQodoTg'
           SUPABASE_SERVICE_ROLE_KEY: ''
           CRON_SECRET: ''
       - name: Instalar dependências INFINITUM
@@ -140,7 +140,7 @@ jobs:
           KILLA_DESKTOP_STANDALONE: '1'
           NEXT_PUBLIC_LEXIS_SHARED_DB: '1'
           NEXT_PUBLIC_SUPABASE_URL: 'https://segjskjlbeydlljnefai.supabase.co'
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_yEX6mVid3dpC7o7eOzuB1g_Vh'
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_yEX6mVid3dpC7o7eOzuB1g_VhQodoTg'
       - name: Preparar os dois servidores locais no instalador Central
         working-directory: central
         run: |
@@ -165,6 +165,10 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm run check
           npm test
+      - name: Criar logo W1 Capital nos ícones dos quatro EXEs
+        working-directory: central
+        shell: pwsh
+        run: ./scripts/create-icons.ps1
       - name: Gerar EXE com LexisPredict e INFINITUM locais
         working-directory: central
         run: npm run pack:win
