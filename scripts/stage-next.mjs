@@ -57,8 +57,10 @@ export function stageNext(sourcePath,id,{productsRoot=resolve(import.meta.dirnam
    recursive:true,dereference:true,filter:path=>!privateFile(path)
   });
  }
- if(existsSync(join(output,'node_modules','next')))
-  materializeNextDependencies(join(output,'node_modules'),join(target,'node_modules'));
+ // Validate the portable destination, not one assumed source layout. Next
+ // can put node_modules beside a nested server.js instead of standalone/.
+ if(existsSync(join(target,'node_modules','next')))
+  materializeNextDependencies(join(target,'node_modules'),join(target,'node_modules'));
  for(const [from,to] of [[join(root,'public'),join(target,'public')],[join(root,'.next','static'),join(target,'.next','static')]]){
   if(existsSync(from))cpSync(from,to,{recursive:true,dereference:true});
  }

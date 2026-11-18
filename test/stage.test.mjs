@@ -81,3 +81,30 @@ test('dependência hoisted fora da pasta real do Next continua resolvível sem a
   rmSync(output,{recursive:true,force:true});
  }
 });
+
+test('Next e dependências junto ao servidor aninhado são preparados sem node_modules no topo',async()=>{
+ const folder=mkdtempSync(join(tmpdir(),'w1-stage-nested-modules-'));
+ const output=mkdtempSync(join(tmpdir(),'w1-stage-output-'));
+ try{
+  const base=join(folder,'.next','standalone','apps','web');
+  const next=join(base,'node_modules','next');
+  const styled=join(base,'node_modules','styled-jsx');
+  mkdirSync(join(base,'.next'),{recursive:true});
+  mkdirSync(join(next,'dist','server','lib'),{recursive:true});
+  mkdirSync(styled,{recursive:true});
+  writeFileSync(join(base,'server.js'),'');
+  writeFileSync(join(base,'.next','BUILD_ID'),'synthetic-build');
+  writeFileSync(join(next,'package.json'),'{"name":"next","dependencies":{"styled-jsx":"5"}}');
+  writeFileSync(join(next,'dist','server','lib','start-server.js'),"module.exports=require('styled-jsx')");
+  writeFileSync(join(styled,'package.json'),'{"name":"styled-jsx","main":"index.js"}');
+  writeFileSync(join(styled,'index.js'),"module.exports='nested runtime'");
+  const {target}=stageNext(folder,'infinitum',{productsRoot:output});
+  rmSync(folder,{recursive:true,force:true});
+  const {createRequire}=await import('node:module');
+  assert.equal(createRequire(join(target,'server.js'))('next/dist/server/lib/start-server.js'),'nested runtime');
+  assert.equal(existsSync(join(target,'node_modules','next','node_modules','styled-jsx','package.json')),true);
+ }finally{
+  rmSync(folder,{recursive:true,force:true});
+  rmSync(output,{recursive:true,force:true});
+ }
+});
