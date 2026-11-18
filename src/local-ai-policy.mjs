@@ -9,19 +9,19 @@ export const LOCAL_AI_ENGINE=Object.freeze({
 });
 
 export const LOCAL_AI_MODEL=Object.freeze({
- name:'Microsoft BitNet b1.58 2B-4T',
- id:'bitnet-2b',
- revision:'a1f2f1c765812aa8af3f6eda4a313707064bba15',
- fileName:'ggml-model-i2_s.gguf',
- url:'https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/a1f2f1c765812aa8af3f6eda4a313707064bba15/ggml-model-i2_s.gguf',
- sha256:'4221b252fdd5fd25e15847adfeb5ee88886506ba50b8a34548374492884c2162',
- size:1187801280
+ name:'Qwen3 1.7B Q4_K_M',
+ id:'qwen3-1.7b',
+ revision:'daeb8e2d528a760970442092f6bf1e55c3b659eb',
+ fileName:'Qwen3-1.7B-Q4_K_M.gguf',
+ url:'https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/daeb8e2d528a760970442092f6bf1e55c3b659eb/Qwen3-1.7B-Q4_K_M.gguf',
+ sha256:'d2387ca2dbfee2ffabce7120d3770dadca0b293052bc2f0e138fdc940d9bc7b5',
+ size:1282439264
 });
 
 export function selectLocalAIProfile({platform,arch,totalMemory,logicalCores}={}){
  const reason=platform!=='win32'?'A instalação automática está preparada para Windows.':
   arch!=='x64'?'Este pacote requer Windows x64.':
-  !Number.isFinite(totalMemory)||totalMemory<7.5*1024**3?'O BitNet 2B exige pelo menos 8 GB de RAM para este perfil econômico.':'';
+  !Number.isFinite(totalMemory)||totalMemory<7.5*1024**3?'O modelo local exige pelo menos 8 GB de RAM para este perfil econômico.':'';
  if(reason)return Object.freeze({supported:false,reason});
  const cores=Number.isInteger(logicalCores)&&logicalCores>0?logicalCores:2;
  return Object.freeze({supported:true,threads:Math.max(1,Math.min(2,cores)),context:1024,output:512,gpuLayers:0,parallel:1,idleSleepSeconds:300});
@@ -37,9 +37,9 @@ export function createLocalAIProviderConfig({port=8765}={}){
     package:'@opencode/ai/providers/openai-compatible',
     settings:{baseURL:'http://127.0.0.1:'+port+'/v1',apiKey:'{env:W1_LOCAL_AI_KEY}',timeout:300000},
     models:{
-     'bitnet-2b':{
+     'qwen3-1.7b':{
       name:LOCAL_AI_MODEL.name,
-      modelID:'w1-bitnet-2b',
+      modelID:'w1-qwen3-1.7b',
       capabilities:{tools:false,input:['text'],output:['text']},
       limit:{context:1024,output:512}
      }
@@ -68,7 +68,7 @@ export function createLlamaServerArgs({modelPath,keyPath,port=8765,threads=2,con
   '--parallel','1',
   '--no-webui',
   '--sleep-idle-seconds','300',
-  '--alias','w1-bitnet-2b'
+  '--alias','w1-qwen3-1.7b'
  ];
 }
 

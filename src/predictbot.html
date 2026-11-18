@@ -1,11 +1,11 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'"/><title>PredictBot · W1 Capital</title><link rel="stylesheet" href="./store.css"/></head><body><main class="shell"><header class="top"><div class="brand"><span class="brandmark">W1</span><span><strong>PredictBot</strong><small>OPENCODE E MCP</small></span></div></header><p>Sessões, tarefas e ponte remota. Conecte o OpenCode instalado ou seu servidor autenticado.</p>
   <section class="opencode-card local-ai-card" id="local-ai" data-auto-setup="true" aria-labelledby="local-ai-title">
-   <div class="section-title"><div><small>EXECUÇÃO NO COMPUTADOR</small><h2 id="local-ai-title">IA local W1 · Microsoft BitNet</h2></div><span id="local-ai-status" role="status">Não instalada</span></div>
+   <div class="section-title"><div><small>EXECUÇÃO NO COMPUTADOR</small><h2 id="local-ai-title">IA local W1 · Qwen3 1.7B</h2></div><span id="local-ai-status" role="status">Não instalada</span></div>
    <p id="local-ai-message">Modelo local para uso sem créditos de API. A Central baixa o motor CPU e os pesos oficiais, confere os hashes e configura o OpenCode sem alterar seu modelo padrão.</p>
    <div class="local-ai-progress" id="local-ai-progress" hidden><div class="download-track"><div id="local-ai-bar"></div></div><span id="local-ai-percent">0%</span></div>
    <div class="update-actions"><button type="button" class="accent" id="local-ai-prepare">Preparar automaticamente</button><button type="button" class="secondary" id="local-ai-check">Verificar instalação</button></div>
-   <p class="local-ai-footnote">Primeira instalação: aproximadamente 1,22 GB. Perfil econômico: até 2 threads, contexto de 1.024 tokens e suspensão de memória após 5 minutos sem uso. O BitNet 2B não equivale ao GPT 6.2 Astra nem ao Grok 4.6.</p>
+   <p class="local-ai-footnote">Primeira instalação: aproximadamente 1,31 GB. Perfil econômico: até 2 threads, contexto de 1.024 tokens e suspensão de memória após 5 minutos sem uso. O Qwen3 1.7B não equivale ao GPT 6.2 Astra nem ao Grok 4.6.</p>
   </section>
   <section class="opencode-card" aria-labelledby="opencode-title">
    <div class="section-title"><div><small>INTEGRAÇÕES</small><h2 id="opencode-title">OpenCode e MCP</h2></div><span id="opencode-status" role="status">Desconectado</span></div>
@@ -26,7 +26,7 @@
    <div id="oc-workspace" hidden>
     <div class="opencode-grid"><label>Sessão<select id="oc-session"></select></label><label>Permissões de nova sessão<select id="oc-permissions"><option value="restricted">Ferramentas bloqueadas</option><option value="review">Pedir aprovação no OpenCode</option></select></label></div>
     <div class="opencode-grid opencode-model-grid"><label>Modelo da sessão<select id="oc-model"><option value="" disabled selected>Selecione um modelo para esta sessão</option></select></label></div>
-    <small class="local-ai-footnote">O BitNet local aparece nesta lista após a preparação. Ele responde texto, mas não executa ferramentas; o Astra continua disponível para tarefas com agentes.</small>
+    <small class="local-ai-footnote">O Qwen3 local aparece nesta lista após a preparação. Ele responde texto, mas não executa ferramentas; o Astra continua disponível para tarefas com agentes.</small>
     <div class="update-actions"><button class="secondary" id="oc-create">Nova sessão</button><button class="secondary" id="oc-messages">Ver respostas</button><button class="secondary" id="oc-diff">Ver alterações</button><button class="secondary" id="oc-abort">Interromper tarefa</button></div>
     <label>Tarefa<textarea id="oc-prompt" maxlength="32000" rows="3" placeholder="Descreva a tarefa que o OpenCode deve executar"></textarea></label>
     <div class="oc-attachment-control"><button type="button" class="secondary" id="oc-attach">Adicionar documento, imagem, vídeo ou arquivo</button><ul id="oc-file-list" aria-label="Arquivos selecionados"></ul><p class="oc-note">Arquivos escolhidos são referenciados no texto da tarefa; não são executados ou descompactados automaticamente.</p></div>
