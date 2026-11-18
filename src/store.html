@@ -101,6 +101,8 @@
    </form>
    <div id="oc-workspace" hidden>
     <div class="opencode-grid"><label>Sessão<select id="oc-session"></select></label><label>Permissões de nova sessão<select id="oc-permissions"><option value="restricted">Ferramentas bloqueadas</option><option value="review">Pedir aprovação no OpenCode</option></select></label></div>
+    <div class="opencode-grid"><label>Modelo da sessão<select id="oc-model"><option value="">Modelo padrão da sessão</option></select></label></div>
+    <small class="local-ai-footnote">O BitNet local aparece nesta lista após a preparação. Ele responde texto, mas não executa ferramentas; o Astra continua disponível para tarefas com agentes.</small>
     <div class="update-actions"><button class="secondary" id="oc-create">Nova sessão</button><button class="secondary" id="oc-messages">Ver respostas</button><button class="secondary" id="oc-diff">Ver alterações</button><button class="secondary" id="oc-abort">Interromper tarefa</button></div>
     <label>Tarefa<textarea id="oc-prompt" maxlength="32000" rows="3" placeholder="Descreva a tarefa que o OpenCode deve executar"></textarea></label>
     <div class="oc-attachment-control"><button type="button" class="secondary" id="oc-attach">Adicionar documento, imagem, vídeo ou arquivo</button><ul id="oc-file-list" aria-label="Arquivos selecionados"></ul><p class="oc-note">Arquivos só serão referenciados na tarefa depois da sua confirmação. Não são enviados automaticamente, abertos ou descompactados.</p></div>
