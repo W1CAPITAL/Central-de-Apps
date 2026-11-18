@@ -19,12 +19,13 @@ const desktop=await electron.launch({
 });
 try{
  const store=await desktop.firstWindow();
- if(product==='lexispredict'){
+ if(product==='lexispredict'||product==='infinitum'){
   await store.waitForURL(/^http:\/\/127\.0\.0\.1:\d+\//,{timeout:60000});
-  await store.locator('input[type="password"]').waitFor();
+  if(product==='lexispredict')await store.locator('input[type="password"]').waitFor();
+  else {await store.waitForLoadState('domcontentloaded');assert.ok((await store.locator('body').innerText()).trim().length>40,'INFINITUM: tela inicial vazia');}
   assert.equal(await store.evaluate(()=>typeof window.w1Central),'undefined');
-  await store.screenshot({path:join(results,'lexispredict.png')});
-  console.log('LexisPredict independente: login local abriu pelo seu próprio EXE.');
+  await store.screenshot({path:join(results,product+'.png')});
+  console.log(product+' independente: tela local abriu pelo EXE próprio.');
  }else if(product==='predictbot'){
   await store.waitForURL('file:///**/predictbot.html');
   await store.locator('#opencode-form').waitFor();
