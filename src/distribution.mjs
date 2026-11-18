@@ -41,13 +41,60 @@ export function selectProductRelease(releases,id,options){
  for(const release of releases){try{assets.push(validateProductRelease(release,id,options))}catch{}}
  return assets.sort((a,b)=>compareVersions(b.version,a.version))[0]||null;
 }
+export const RELEASE_CATALOG_FALLBACK_URL =
+ 'https://github.com/W1CAPITAL/Central-de-Apps/releases/latest/download/release-catalog.json';
+const FALLBACK_HOSTS = new Set([
+ 'github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'
+]);
+
+async function parseReleaseResponse(response, maxBytes) {
+ if(!response.ok || !response.body)throw Error('Resposta GitHub HTTP '+response.status);
+ let bytes=0; const chunks=[];
+ for await(const chunk of response.body){
+  bytes+=chunk.length;
+  if(bytes>maxBytes)throw Error('Catálogo excedeu o tamanho permitido.');
+  chunks.push(Buffer.from(chunk));
+ }
+ return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+}
+function verifyFallbackRelease(data) {
+ if(!data || typeof data!=='object' || Array.isArray(data))throw Error('Manifesto inválido.');
+ if(data.prerelease!==false || data.draft!==false)throw Error('Somente releases estáveis oficiais são aceitas.');
+ if(!Array.isArray(data.assets)||data.assets.length!==4)throw Error('Manifesto incompleto.');
+ // Cada instalador deve ter origem imutável, tamanho e SHA-256 exatos.
+ for(const id of Object.keys(PRODUCTS))validateProductRelease(data,id);
+ return [data];
+}
+/**
+ * O endpoint principal pode responder 403/429 por limite da API pública.
+ * O manifesto da última release estável é uma segunda origem hospedada no
+ * próprio GitHub; nunca habilita previews nem dispensa SHA-256.
+ */
 export async function fetchReleaseCatalog(fetchImpl=fetch){
- const response=await fetchImpl(RELEASES_API,{headers:{Accept:'application/vnd.github+json','User-Agent':'W1-Central-de-Apps'},
-  redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10000)});
- if(!response.ok||!response.body)throw Error('Não foi possível consultar as versões ('+response.status+').');
- let bytes=0;const chunks=[];
- for await(const chunk of response.body){bytes+=chunk.length;if(bytes>256000)throw Error('Catálogo excedeu o tamanho permitido.');chunks.push(Buffer.from(chunk));}
- const data=JSON.parse(Buffer.concat(chunks).toString('utf8'));
- if(!Array.isArray(data)||data.length>12)throw Error('Catálogo inválido.');
- return data;
+ try{
+  const response=await fetchImpl(RELEASES_API,{
+   headers:{Accept:'application/vnd.github+json','User-Agent':'W1-Central-de-Apps'},
+   redirect:'error',cache:'no-store',signal:AbortSignal.timeout(10000)
+  });
+  const data=await parseReleaseResponse(response,256000);
+  if(!Array.isArray(data)||data.length>12)throw Error('Catálogo inválido.');
+  return data;
+ }catch(primaryError){
+  try{
+   const response=await fetchImpl(RELEASE_CATALOG_FALLBACK_URL,{
+    headers:{Accept:'application/json','User-Agent':'W1-Central-de-Apps'},
+    redirect:'follow',cache:'no-store',signal:AbortSignal.timeout(12000)
+   });
+   // Rejeitar redirecionamentos para qualquer origem fora do GitHub.
+   if(response.url){
+    const final=new URL(response.url);
+    if(final.protocol!=='https:'||final.username||final.password||!FALLBACK_HOSTS.has(final.hostname.toLowerCase()))
+     throw Error('Origem do manifesto não autorizada.');
+   }
+   return verifyFallbackRelease(await parseReleaseResponse(response,48000));
+  }catch{
+   const reason=primaryError instanceof Error?primaryError.message:'consulta indisponível';
+   throw Error('GitHub indisponível no momento ('+reason.slice(0,72)+'). Os aplicativos locais continuam funcionando.');
+  }
+ }
 }

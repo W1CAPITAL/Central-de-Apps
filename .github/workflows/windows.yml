@@ -208,14 +208,22 @@ jobs:
         run: |
           $installer = 'dist/W1-Central-de-Apps-Setup-' + $env:CENTRAL_VERSION + '-x64.exe'
           $installDir = Join-Path $env:RUNNER_TEMP 'W1CentralInstalled'
-          $process = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -Wait -PassThru
+          $process = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
+          if (-not $process.WaitForExit(180000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Instalação silenciosa do NSIS excedeu 3 minutos."
+          }
           if ($process.ExitCode -ne 0) { throw "NSIS falhou: $($process.ExitCode)" }
           $installed = Join-Path $installDir 'W1 Central de Apps.exe'
           if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) { throw 'NSIS não instalou o EXE.' }
           node scripts/verify-desktop-ui.mjs $installed desktop-smoke-installed
           if ($LASTEXITCODE -ne 0) { throw 'EXE instalado falhou no teste visual.' }
           $originalPath = (Resolve-Path -LiteralPath $installed).Path
-          $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -Wait -PassThru
+          $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
+          if (-not $repeat.WaitForExit(180000)) {
+            Stop-Process -Id $repeat.Id -Force -ErrorAction SilentlyContinue
+            throw "Reinstalação silenciosa do NSIS excedeu 3 minutos."
+          }
           if ($repeat.ExitCode -ne 0) { throw 'A atualização sobre a instalação existente falhou.' }
           $updatedPath = (Resolve-Path -LiteralPath $installed).Path
           $copies = @(Get-ChildItem -LiteralPath $installDir -Filter 'W1 Central de Apps.exe' -File -Recurse)
@@ -256,14 +264,22 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "NSIS falhou: $id" }
             $installer = "dist/products/$id/$name-Setup-$env:CENTRAL_VERSION-x64.exe"
             $installDir = Join-Path $env:RUNNER_TEMP ("W1ProductInstalled-"+$id)
-            $process = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -Wait -PassThru
-            if ($process.ExitCode -ne 0) { throw "Instalação falhou: $id" }
+            $process = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
+            if (-not $process.WaitForExit(180000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "Instalação silenciosa do NSIS excedeu 3 minutos."
+          }
+          if ($process.ExitCode -ne 0) { throw "Instalação falhou: $id" }
             $installedExe = Join-Path $installDir "$name.exe"
             node scripts/verify-desktop-ui.mjs $installedExe ("desktop-smoke-products/installed-"+$id) $id
             if ($LASTEXITCODE -ne 0) { throw "EXE instalado falhou: $id" }
             $originalPath = (Resolve-Path -LiteralPath $installedExe).Path
-            $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -Wait -PassThru
-            if ($repeat.ExitCode -ne 0) { throw "Atualização sobre a instalação existente falhou: $id" }
+            $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
+            if (-not $repeat.WaitForExit(180000)) {
+            Stop-Process -Id $repeat.Id -Force -ErrorAction SilentlyContinue
+            throw "Reinstalação silenciosa do NSIS excedeu 3 minutos."
+          }
+          if ($repeat.ExitCode -ne 0) { throw "Atualização sobre a instalação existente falhou: $id" }
             $updatedPath = (Resolve-Path -LiteralPath $installedExe).Path
             $copies = @(Get-ChildItem -LiteralPath $installDir -Filter "$name.exe" -File -Recurse)
             if ($updatedPath -ne $originalPath -or $copies.Count -ne 1) { throw "A atualização criou uma segunda instalação: $id" }
@@ -329,6 +345,9 @@ jobs:
             "$hash  $([IO.Path]::GetFileName($file))"
           }
           $sums | Set-Content -LiteralPath 'SHA256SUMS.txt' -Encoding ascii
+      - name: Gerar manifesto estável alternativo à API GitHub
+        working-directory: central
+        run: node scripts/create-release-catalog.mjs 0.1.${{ github.run_number }}
       - name: Publicar release estável para atualização automática
         working-directory: central
         shell: pwsh
@@ -351,14 +370,18 @@ jobs:
             'dist/products/infinitum/INFINITUM-Setup-0.1.${{ github.run_number }}-x64.exe',
             'dist/products/predictbot/PredictBot-Setup-0.1.${{ github.run_number }}-x64.exe',
             'source-commits.json',
-            'SHA256SUMS.txt'
+            'SHA256SUMS.txt',
+            'release-catalog.json'
           )
           gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes @assets
           $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
+          $manifest = Get-Content -LiteralPath 'release-catalog.json' -Raw | ConvertFrom-Json
+          if ($manifest.tag_name -ne $tag) { throw "Manifesto não corresponde à versão publicada." }
           foreach ($file in $assets[0..3]) {
             $name = [IO.Path]::GetFileName($file)
-            $line = $sums | Where-Object { $_.EndsWith("  $name") }
-            $expected = ($line -split '\s+')[0]
+            $manifestAsset = $manifest.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
             $published = $release.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
-            if (-not $published -or $published.digest -ne ("sha256:"+$expected)) { throw "Digest publicado não confere: $name" }
+            if (-not $manifestAsset -or -not $published -or $published.digest -ne $manifestAsset.digest) {
+              throw "Digest publicado não confere: $name"
+            }
           }
