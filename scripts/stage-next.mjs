@@ -57,10 +57,12 @@ export function stageNext(sourcePath,id,{productsRoot=resolve(import.meta.dirnam
    recursive:true,dereference:true,filter:path=>!privateFile(path)
   });
  }
- // Validate the portable destination, not one assumed source layout. Next
- // can put node_modules beside a nested server.js instead of standalone/.
- if(existsSync(join(target,'node_modules','next')))
-  materializeNextDependencies(join(target,'node_modules'),join(target,'node_modules'));
+ // Next can trace modules beside the nested server or at standalone root.
+ // Resolve from the original Next package before materializing it: pnpm's
+ // dependency junctions can be siblings of its real package in the store.
+ const sourceModules=[join(base,'node_modules'),join(output,'node_modules')]
+  .find(modules=>existsSync(join(modules,'next')));
+ if(sourceModules)materializeNextDependencies(sourceModules,join(target,'node_modules'));
  for(const [from,to] of [[join(root,'public'),join(target,'public')],[join(root,'.next','static'),join(target,'.next','static')]]){
   if(existsSync(from))cpSync(from,to,{recursive:true,dereference:true});
  }
