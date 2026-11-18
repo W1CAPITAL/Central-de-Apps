@@ -323,6 +323,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Obter gerador do catálogo do mesmo commit dos instaladores
+        uses: actions/checkout@v4
+        with:
+          path: central
+          persist-credentials: false
+          sparse-checkout: scripts
       - name: Baixar os instaladores Windows testados
         uses: actions/download-artifact@v4
         with:

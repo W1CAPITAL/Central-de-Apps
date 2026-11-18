@@ -1,15 +1,11 @@
-; Electron Builder's KILL_PROCESS fallback excludes the installer PID.
-; Electron Builder also compiles this include while building the uninstaller.
-; KILL_PROCESS still references $pid there, so keep the variable and suppress
-; only NSIS's harmless unused-variable warning for that specific build.
+; KILL_PROCESS uses the current installer PID in its taskkill filter.
 Var pid
-!ifdef BUILD_UNINSTALLER
-  !pragma warning disable 6001
-!endif
 
 ; W1 Capital — close only processes belonging to this installation.
 ; electron-builder calls this hook instead of showing its default "close the app" prompt.
 !macro customCheckAppRunning
+  System::Call 'kernel32::GetCurrentProcessId() i .r0'
+  StrCpy $pid $0
   !insertmacro IS_POWERSHELL_AVAILABLE
 
   ; First request a normal close, then force-close only if the app is still running.
