@@ -64,7 +64,7 @@ O operador pode escolher:
 - **Baixar em segundo plano:** continuar trabalhando no LexisPredict ou INFINITUM; a instalação fica disponível para confirmação posterior.
 - **Depois:** manter a versão instalada. Também é possível abrir a página da release oficial.
 
-A verificação do editor W1 Capital usa o script local `Get-AuthenticodeSignature`, sem executar código remoto. O SHA-256 do arquivo local é conferido novamente imediatamente antes da instalação. Arquivos com hash divergente, assinatura inválida, downgrade ou endereço externo não são executados. Nenhuma atualização pode instalar silenciosamente quando o operador fecha o CRM.
+A verificação do editor W1 Capital usa o script local `Get-AuthenticodeSignature`, sem executar código remoto. O SHA-256 do arquivo local é conferido novamente imediatamente antes da instalação. Arquivos com hash divergente, assinatura inválida, downgrade ou endereço externo não são executados. Com atualização automática ativada, a instalação autenticada ocorre somente após fechar todas as janelas do programa. A opção manual continua pedindo confirmação antes de fechar o trabalho.
 
 **Limite de publicação:** o instalador do GitHub Actions só é disponibilizado como GitHub Release oficial quando o certificado Authenticode W1 Capital está configurado e válido. Sem o certificado, o instalador validado no runner é publicado como pré-release de teste e artefato. Esse instalador não entra no canal automático e pode sofrer avisos do SmartScreen. O teste no runner não comprova instalação em outro PC ou uso com conta real.
 
@@ -99,7 +99,7 @@ A política de porta local rejeita conflitos, em vez de alternar silenciosamente
 
 ## Segurança
 
-- `contextIsolation`, sandbox e `nodeIntegration=false`; somente quatro ações permitidas via IPC (estado, abrir um produto permitido, consultar release e abrir página oficial).
+- `contextIsolation`, sandbox e `nodeIntegration=false`; IPC restrito à loja local para catálogo, produtos e atualizações. A janela PredictBot recebe somente as ações OpenCode/MCP autorizadas.
 - Nenhum arquivo ou URL arbitrária pode virar um produto instalável.
 - Sem acesso a arquivos de outros usuários, sem service role no EXE e sem carregamento de scripts remotos.
 - Sites externos só são abertos no navegador padrão se passarem pela allowlist HTTPS.

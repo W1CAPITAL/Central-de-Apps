@@ -15,9 +15,10 @@ import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distributi
 import {ProductDownloads} from './product-downloads.mjs';
 
 const BUILD=productSpec(JSON.parse(readFileSync(new URL('./product-build.json',import.meta.url),'utf8')).id);
+const previousProfile=app.getPath('userData');
 app.setName(BUILD.name);
 if(!app.commandLine.hasSwitch('user-data-dir')){
- const profile=join(app.getPath('appData'),BUILD.id==='central'?'w1-central-de-apps':BUILD.appId);
+ const profile=BUILD.id==='central'?previousProfile:join(app.getPath('appData'),BUILD.appId);
  mkdirSync(profile,{recursive:true});app.setPath('userData',profile);
 }
 const STORE_FILE=join(import.meta.dirname,BUILD.id==='predictbot'?'predictbot.html':'store.html');
