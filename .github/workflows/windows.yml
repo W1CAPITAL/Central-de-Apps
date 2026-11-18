@@ -238,7 +238,34 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'EXE instalado falhou no teste visual.' }
           $originalPath = (Resolve-Path -LiteralPath $installed).Path
           $repeat = Start-Process -FilePath $installer -ArgumentList @('/S',('/D='+$installDir)) -PassThru
-          if (-not $repeat.WaitForExit(600000)) {
+          # Record only installer processes and their dialog text on this disposable runner.
+          Add-Type -AssemblyName UIAutomationClient
+          Add-Type -AssemblyName UIAutomationTypes
+          $started = Get-Date
+          foreach ($attempt in 1..9) {
+            if ($repeat.WaitForExit(45000)) { break }
+            $all = @(Get-CimInstance Win32_Process)
+            $ids = @([uint32]$repeat.Id)
+            do {
+              $children = @($all | Where-Object { $_.ParentProcessId -in $ids -and $_.ProcessId -notin $ids })
+              $ids += @($children | ForEach-Object ProcessId)
+            } while ($children.Count)
+            $all | Where-Object ProcessId -in $ids | Format-Table ProcessId,ParentProcessId,Name,ReadTransferCount,WriteTransferCount | Out-Host
+            $desktop = [System.Windows.Automation.AutomationElement]::RootElement
+            foreach ($id in $ids) {
+              $condition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty,[int]$id)
+              foreach ($window in $desktop.FindAll([System.Windows.Automation.TreeScope]::Children,$condition)) {
+                Write-Host "Janela: $($window.Current.Name)"
+                if ($window.Current.ClassName -eq '#32770') {
+                  foreach ($control in $window.FindAll([System.Windows.Automation.TreeScope]::Children,[System.Windows.Automation.Condition]::TrueCondition)) {
+                    if ($control.Current.Name) { Write-Host $control.Current.Name }
+                  }
+                }
+              }
+            }
+          }
+          $remaining = [Math]::Max(0, 600000 - [int]((Get-Date) - $started).TotalMilliseconds)
+          if (-not $repeat.WaitForExit($remaining)) {
             Stop-Process -Id $repeat.Id -Force -ErrorAction SilentlyContinue
             throw "Reinstalação silenciosa do NSIS excedeu 10 minutos."
           }
