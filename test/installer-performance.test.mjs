@@ -9,6 +9,8 @@ test('instalador NSIS fecha a Central automaticamente sem pedir intervenção ma
  assert.equal(pkg.build.nsis.include,'build/installer.nsh');
  const script=read('build/installer.nsh');
  assert.match(script,/!macro customCheckAppRunning/);
+ assert.match(script,/Var pid/);
+ assert.ok(script.indexOf("Var pid") < script.indexOf("!macro customCheckAppRunning"));
  assert.match(script,/KILL_PROCESS "\$\{APP_EXECUTABLE_FILENAME\}" 0/);
  assert.match(script,/KILL_PROCESS "\$\{APP_EXECUTABLE_FILENAME\}" 1/);
  assert.doesNotMatch(script,/MessageBox.*appRunning/i);
