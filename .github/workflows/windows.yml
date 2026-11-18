@@ -329,6 +329,9 @@ jobs:
             "$hash  $([IO.Path]::GetFileName($file))"
           }
           $sums | Set-Content -LiteralPath 'SHA256SUMS.txt' -Encoding ascii
+      - name: Gerar manifesto estável alternativo à API GitHub
+        working-directory: central
+        run: node scripts/create-release-catalog.mjs 0.1.${{ github.run_number }}
       - name: Publicar release estável para atualização automática
         working-directory: central
         shell: pwsh
@@ -351,7 +354,8 @@ jobs:
             'dist/products/infinitum/INFINITUM-Setup-0.1.${{ github.run_number }}-x64.exe',
             'dist/products/predictbot/PredictBot-Setup-0.1.${{ github.run_number }}-x64.exe',
             'source-commits.json',
-            'SHA256SUMS.txt'
+            'SHA256SUMS.txt',
+            'release-catalog.json'
           )
           gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --latest --title ("Central de Apps "+$tag) --notes $notes @assets
           $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
