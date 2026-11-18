@@ -383,6 +383,13 @@ ipcMain.handle('central:open-release',async event=>{
 ipcMain.handle('central:opencode',async(event,action,input={})=>{
  if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
  if(!input||typeof input!=='object'||JSON.stringify(input).length>50000)throw Error('Solicitação OpenCode inválida.');
+ if(action==='simpleSetup'){
+  const folder=join(app.getPath('documents'),'W1 Capital','Projetos');
+  mkdirSync(folder,{recursive:true});
+  const found=await getOpenCode().detect();
+  return {installed:found.installed===true,executable:found.executable||'',
+   directory:folder,userId:'windows-user-local',companyId:'w1-local-only',message:found.message||''};
+ }
  if(action==='detect')return getOpenCode().detect(input.executable);
  if(action==='connect'){stopOpenCodeRelay();return getOpenCode().connect(input);}
  if(action==='disconnect'){stopOpenCodeRelay();return getOpenCode().disconnect();}
