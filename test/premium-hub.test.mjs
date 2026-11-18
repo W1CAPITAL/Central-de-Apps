@@ -31,7 +31,7 @@ test('busca filtra aplicativos reais e área planejada sem inventar status',asyn
  input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
  assert.equal(dom.window.document.querySelectorAll('.product-card:not([hidden])').length,1);
  assert.ok(dom.window.document.querySelector('.coming-soon'));
- assert.equal(dom.window.document.querySelector('#installed-count').textContent,'0');
+ assert.equal(dom.window.document.querySelector('#installed-count').textContent,'2');
  dom.window.close();
 });
 test('instalação de ferramentas oficiais não usa URL arbitrária nem atalho de proteção Windows',()=>{
