@@ -206,7 +206,7 @@ export class LocalAIManager{
  }
  async #ensureModel(){
   const paths=this.#paths();
-  return this.#ensureAsset({...LOCAL_AI_MODEL,maxBytes:1_300_000_000},paths.model,'model','downloading-model','Baixando o modelo oficial Microsoft BitNet (aproximadamente 1,19 GB).');
+  return this.#ensureAsset({...LOCAL_AI_MODEL,maxBytes:1_400_000_000},paths.model,'model','downloading-model','Baixando Qwen3 1.7B (1,28 GB), compatível com o motor CPU local.');
  }
  async #isReady(port,key){
   try{
@@ -216,7 +216,7 @@ export class LocalAIManager{
    });
    if(!response.ok)return false;
    const value=await response.json();
-   return Array.isArray(value?.data)&&value.data.some(model=>model?.id==='w1-bitnet-2b');
+   return Array.isArray(value?.data)&&value.data.some(model=>model?.id==='w1-qwen3-1.7b');
   }catch{return false}
  }
  async #findExistingServer(key){
@@ -244,7 +244,7 @@ export class LocalAIManager{
   const existing=await this.#findExistingServer(key);
   if(existing)return existing;
   const port=await this.#choosePort();
-  this.#emit({phase:'starting',percent:0,message:'Carregando BitNet na memória do computador.'});
+  this.#emit({phase:'starting',percent:0,message:'Carregando Qwen3 na memória do computador.'});
   const args=createLlamaServerArgs({modelPath,keyPath,port,threads:profile.threads,context:profile.context});
   const child=this.#spawn(executable,args,{
    cwd:dirname(executable),detached:true,windowsHide:true,shell:false,stdio:'ignore',
@@ -310,9 +310,9 @@ export class LocalAIManager{
    phase:port?'ready':installed?'installed':'not-installed',
    supported:true,installed,running:!!port,engineInstalled:!!executable,modelInstalled,
    port:port||null,endpoint:port?'http://127.0.0.1:'+port+'/v1':null,
-   model:LOCAL_AI_MODEL.name,modelSizeLabel:'1,19 GB',
+   model:LOCAL_AI_MODEL.name,modelSizeLabel:'1,28 GB',
    threads:profile.threads,context:profile.context,
-   message:port?'IA local conectada e disponível.':installed?'Motor e modelo instalados; inicie para carregar a IA.':'Pronta para instalação automática. O primeiro download usa cerca de 1,22 GB.'
+   message:port?'IA local conectada e disponível.':installed?'Motor e modelo instalados; inicie para carregar a IA.':'Pronta para instalação automática. O primeiro download usa cerca de 1,31 GB.'
   };
  }
  async openCodeEnvironment(){
