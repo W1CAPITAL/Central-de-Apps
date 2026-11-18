@@ -40,7 +40,7 @@ A Central é um aplicativo Electron independente dos CRMs. Abre diretamente no W
 
 - **LexisPredict:** executa o Next.js standalone no computador; banco, tribunais e serviços externos continuam dependentes de conectividade.
 - **INFINITUM:** executa sua aplicação local em uma instância própria; utiliza as permissões e os dados autorizados do Supabase.
-- **PredictBot:** interface desktop para sessões, tarefas e integração autenticada com OpenCode/MCP. A Central pode preparar um provedor local BitNet sem alterar o modelo padrão do OpenCode.
+- **PredictBot:** interface desktop para sessões, tarefas e integração autenticada com OpenCode/MCP. A Central pode preparar um provedor Qwen3 1.7B local sem alterar o modelo padrão do OpenCode.
 
 Downloads e atualizações usam releases do GitHub por HTTPS e conferência de SHA-256. Authenticode não é requisito para publicar nem instalar atualizações. O SmartScreen do Windows permanece ativo; instaladores sem certificado podem continuar exibindo avisos.
 
@@ -62,21 +62,23 @@ Consulte [catálogo, requisitos e links dos projetos](docs/ECOSSISTEMA-W1.md).
 - Código e workflow de compilação Windows centralizados neste repositório, recebendo as versões das `main` dos três sistemas.
 - Testes de política de execução, isolamento, validação de caminhos e empacotamento.
 
-## IA local W1 — BitNet
+## IA local W1 — Qwen3 compatível (BitNet experimental)
 
 A Central oferece preparação automática de um modelo local para Windows x64 com pelo menos 8 GB de RAM:
 
-- Baixa o executável CPU pré-compilado do llama.cpp (25,6 MB) e o modelo oficial Microsoft BitNet b1.58 2B-4T GGUF (1,19 GB).
+- Baixa o executável CPU pré-compilado do llama.cpp (25,6 MB) e o Qwen3 1.7B Q4_K_M GGUF oficial do ggml-org (1,28 GB), com hash fixado.
 - Confere SHA-256 e tamanho dos dois arquivos antes de instalar ou executar.
 - Usa CPU, duas threads, contexto de 1.024 tokens, uma geração por vez e API limitada a `127.0.0.1`.
 - Mantém o modelo e a chave em `%LOCALAPPDATA%\\W1 Capital\\Local AI` e passa a configuração isolada apenas ao OpenCode iniciado pela Central.
-- Aparece no seletor de modelo por sessão do PredictBot. Você pode usar BitNet em uma sessão e manter GPT 6.2 Astra em outra.
+- Aparece no seletor de modelo por sessão do PredictBot. Você pode usar Qwen3 local em uma sessão e manter GPT 6.2 Astra em outra.
 - Não altera o modelo padrão nem as configurações globais existentes do OpenCode.
 - Após cinco minutos sem uso, o llama.cpp descarrega os pesos da memória para reduzir o consumo de RAM. O mesmo download é compartilhado entre a Central e o PredictBot independente.
 
-A primeira instalação exige cerca de 1,22 GB de download e espaço em disco adicional. Depois disso, a inferência é local e não consome créditos de API. Não requer Python, CMake, Visual Studio, Vercel ou servidor remoto. O processo local pode continuar ativo em segundo plano e reutiliza o mesmo modelo pelos aplicativos W1.
+A primeira instalação exige cerca de 1,31 GB de download e espaço em disco adicional. Depois disso, a inferência é local e não consome créditos de API. Não requer Python, CMake, Visual Studio, Vercel ou servidor remoto. O processo local pode continuar ativo em segundo plano e reutiliza o mesmo modelo pelos aplicativos W1.
 
-**Limite de capacidade:** BitNet 2B é um modelo compacto. Não equivale ao GPT 6.2 Astra nem ao Grok 4.6. Serve como opção gratuita para tarefas simples e consultas locais; modelos de ponta continuam dependendo de provedores externos e suas respectivas cotas.
+**Microsoft BitNet:** seu GGUF I2_S não é reconhecido pelo executável padrão do llama.cpp; depende do motor bitnet.cpp específico e ainda não está ativado nesta instalação. Essa proteção evita baixar um modelo que não inicia.
+
+**Limite de capacidade:** Qwen3 1.7B é um modelo compacto. Não equivale ao GPT 6.2 Astra nem ao Grok 4.6. Serve como opção gratuita para tarefas simples e consultas locais; modelos de ponta continuam dependendo de provedores externos e suas respectivas cotas.
 
 ## Como a instalação Windows é gerada
 
