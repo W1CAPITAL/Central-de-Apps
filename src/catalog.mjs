@@ -1,4 +1,10 @@
 export const APPS=Object.freeze({
+ predictbot:Object.freeze({
+  id:'predictbot',name:'PredictBot',subtitle:'OpenCode e MCP',
+  description:'Sessões, tarefas, respostas e ponte remota com aprovação local.',
+  localEntry:'predictbot.html',runtime:'desktop',color:'#9b7195',badge:'AUTOMAÇÃO',
+  source:'https://github.com/W1CAPITAL/PredictBot'
+ }),
  lexispredict:Object.freeze({
   id:'lexispredict',name:'LexisPredict',subtitle:'Gabinete jurídico digital',
   description:'Processos, prazos, publicações, DJEN, DataJud e atendimento.',

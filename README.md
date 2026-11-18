@@ -2,12 +2,21 @@
 
 **Repositório central do launcher Windows, da loja independente e dos instaladores locais.**
 
+A loja inclui **LexisPredict, INFINITUM e PredictBot**. LexisPredict e PredictBot têm botões de download com progresso e instaladores próprios, publicados junto com o instalador da Central em GitHub Releases. A cópia manual verifica SHA-256 e salva em `Downloads/W1 Capital`; mostrar a pasta não executa o arquivo.
+
+O PredictBot desktop oferece os recursos OpenCode/MCP existentes: sessões, tarefas, respostas, alterações, cancelamento e pareamento remoto. OpenCode e seu provedor continuam sendo configurados separadamente. A migração de Hermes 3D, agentes e chats do CRM não está incluída nessa interface.
+
+Os três EXEs são compilados sem Vercel. A Central acompanha as `main` dos produtos a cada seis horas e recompila quando os commits mudam. Cada release registra os SHAs de origem; builds repetidos sem mudanças são evitados. O INFINITUM permanece incluso na Central.
+
+**Atualização automática:** ativada por padrão, pode ser desligada na Central ou no menu de cada aplicativo independente. Apenas uma release estável, com hash e Authenticode W1 válidos, pode ser baixada automaticamente e instalada depois que todas as janelas daquele programa forem fechadas. Arquivo e assinatura são verificados novamente antes da instalação. Pré-releases sem assinatura ficam disponíveis exclusivamente para download manual, identificadas como teste.
+
 A Central é um aplicativo Electron separado dos CRMs. Ao abrir o EXE, o operador vê a **loja diretamente**, sem passar pelo site ou pela rota `/app-store` do INFINITUM. Os produtos continuam com repositórios e ciclos de desenvolvimento próprios:
 
 | Produto | Código-fonte | Execução na Central |
 | --- | --- | --- |
 | LexisPredict | [W1CAPITAL/LexisPredict](https://github.com/W1CAPITAL/LexisPredict) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria |
 | INFINITUM Killa AI | [W1CAPITAL/Infinitum](https://github.com/W1CAPITAL/Infinitum) | Next.js standalone local no Windows, `127.0.0.1`, sessão própria |
+| PredictBot | [W1CAPITAL/PredictBot](https://github.com/W1CAPITAL/PredictBot) | Interface desktop local, adaptador OpenCode e MCP, sem servidor Next ou Vercel |
 
 ## O que está implementado
 
@@ -55,11 +64,11 @@ O operador pode escolher:
 - **Baixar em segundo plano:** continuar trabalhando no LexisPredict ou INFINITUM; a instalação fica disponível para confirmação posterior.
 - **Depois:** manter a versão instalada. Também é possível abrir a página da release oficial.
 
-A verificação do editor W1 Capital usa o script local `Get-AuthenticodeSignature`, sem executar código remoto. O SHA-256 do arquivo local é conferido novamente imediatamente antes da instalação. Arquivos com hash divergente, assinatura inválida, downgrade ou endereço externo não são executados. Nenhuma atualização pode instalar silenciosamente quando o operador fecha o CRM.
+A verificação do editor W1 Capital usa o script local `Get-AuthenticodeSignature`, sem executar código remoto. O SHA-256 do arquivo local é conferido novamente imediatamente antes da instalação. Arquivos com hash divergente, assinatura inválida, downgrade ou endereço externo não são executados. Com atualização automática ativada, a instalação autenticada ocorre somente após fechar todas as janelas do programa. A opção manual continua pedindo confirmação antes de fechar o trabalho.
 
 **Limite de publicação:** o instalador do GitHub Actions só é disponibilizado como GitHub Release oficial quando o certificado Authenticode W1 Capital está configurado e válido. Sem o certificado, o instalador validado no runner é publicado como pré-release de teste e artefato. Esse instalador não entra no canal automático e pode sofrer avisos do SmartScreen. O teste no runner não comprova instalação em outro PC ou uso com conta real.
 
-O instalador contém o código dos produtos existente no momento do build. Novos códigos exigem um novo EXE. Dados em Supabase continuam sendo sincronizados separadamente.
+Os instaladores contêm o código dos produtos existente no momento do build. Novos códigos geram novos EXEs pelo workflow de distribuição. Dados em Supabase continuam sendo sincronizados separadamente.
 
 ## Desenvolvimento
 
@@ -90,7 +99,7 @@ A política de porta local rejeita conflitos, em vez de alternar silenciosamente
 
 ## Segurança
 
-- `contextIsolation`, sandbox e `nodeIntegration=false`; somente quatro ações permitidas via IPC (estado, abrir um produto permitido, consultar release e abrir página oficial).
+- `contextIsolation`, sandbox e `nodeIntegration=false`; IPC restrito à loja local para catálogo, produtos e atualizações. A janela PredictBot recebe somente as ações OpenCode/MCP autorizadas.
 - Nenhum arquivo ou URL arbitrária pode virar um produto instalável.
 - Sem acesso a arquivos de outros usuários, sem service role no EXE e sem carregamento de scripts remotos.
 - Sites externos só são abertos no navegador padrão se passarem pela allowlist HTTPS.

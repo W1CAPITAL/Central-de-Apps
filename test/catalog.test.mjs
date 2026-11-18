@@ -8,7 +8,7 @@ const read=path=>readFileSync(resolve(root,path),'utf8');
 
 test('loja exclusiva inicia fora do CRM com dois aplicativos locais permitidos',async()=>{
  const {APPS,resolveApp}=await import('../src/catalog.mjs');
- assert.deepEqual(Object.keys(APPS).sort(),['infinitum','lexispredict']);
+ assert.deepEqual(Object.keys(APPS).sort(),['infinitum','lexispredict','predictbot']);
  assert.equal(resolveApp('lexispredict').localHealth,'/api/desktop/health');
  assert.equal(resolveApp('infinitum').localHealth,'/api/desktop/health');
  assert.throws(()=>resolveApp('../../Windows/System32'));

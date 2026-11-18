@@ -7,6 +7,7 @@ const {_electron:electron}=createRequire(resolve('..','desktop-test','package.js
 
 if(process.platform!=='win32')throw Error('O teste visual do EXE exige Windows.');
 const results=resolve(process.argv[3]||'desktop-smoke');
+const product=process.argv[4]||'central';
 mkdirSync(results,{recursive:true});
 const profile=mkdtempSync(join(tmpdir(),'w1-desktop-smoke-'));
 const env={...process.env};
@@ -18,6 +19,20 @@ const desktop=await electron.launch({
 });
 try{
  const store=await desktop.firstWindow();
+ if(product==='lexispredict'){
+  await store.waitForURL(/^http:\/\/127\.0\.0\.1:\d+\//,{timeout:60000});
+  await store.locator('input[type="password"]').waitFor();
+  assert.equal(await store.evaluate(()=>typeof window.w1Central),'undefined');
+  await store.screenshot({path:join(results,'lexispredict.png')});
+  console.log('LexisPredict independente: login local abriu pelo seu próprio EXE.');
+ }else if(product==='predictbot'){
+  await store.waitForURL('file:///**/predictbot.html');
+  await store.locator('#opencode-form').waitFor();
+  const state=await store.evaluate(()=>window.w1Central.openCodeRelay('state'));
+  assert.equal(state.state,'stopped');
+  await store.screenshot({path:join(results,'predictbot.png')});
+  console.log('PredictBot independente: interface local e IPC MCP confirmados, sem inferência.');
+ }else{
  await store.waitForURL('file:///**/store.html');
  await store.getByRole('button',{name:'Abrir LexisPredict',exact:true}).waitFor();
  await store.getByRole('button',{name:'Abrir INFINITUM',exact:true}).waitFor();
@@ -40,7 +55,17 @@ try{
   assert.deepEqual(errors,[],id+': erro JavaScript na tela inicial');
   console.log(name+': botão da loja abriu janela local real; IPC isolado e reabertura confirmados.');
  }
- assert.equal(desktop.windows().length,3);
+ const created=desktop.waitForEvent('window',{timeout:30000});
+ await store.getByRole('button',{name:'Abrir PredictBot',exact:true}).click();
+ const bot=await created;
+ await bot.waitForURL('file:///**/predictbot.html');
+ await bot.locator('#opencode-form').waitFor();
+ assert.equal((await bot.evaluate(()=>window.w1Central.openCodeRelay('state'))).state,'stopped');
+ await bot.screenshot({path:join(results,'predictbot.png')});
+ // Catalog cannot make a product renderer a trusted store renderer.
+ await assert.rejects(()=>bot.evaluate(()=>window.w1Central.getState()),/Origem não autorizada/);
+ assert.equal(desktop.windows().length,4);
+ }
  console.log('Smoke visual aprovado sem conta real ou envio de mensagens.');
 }finally{
  await desktop.close();
