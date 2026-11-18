@@ -167,11 +167,11 @@ export class LocalAIManager{
    await rm(destination,{force:true});
   }
   this.#emit({phase,percent:0,receivedBytes:0,totalBytes:0,message});
-  await downloadVerifiedAsset({
+  const downloaded=await downloadVerifiedAsset({
    asset,destination,assetType,fetchImpl:this.#fetch,
    onProgress:value=>this.#emit({phase,message,...value})
   });
-  this.#emit({phase,percent:100,message,receivedBytes:0,totalBytes:0});
+  this.#emit({phase,percent:100,message,receivedBytes:downloaded.bytes,totalBytes:asset.size||downloaded.bytes});
   return destination;
  }
  async #extractEngine(zipPath){
