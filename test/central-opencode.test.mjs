@@ -14,7 +14,7 @@ test('IA local é instalada pelo app e exposta apenas a janelas OpenCode confiá
  assert.match(main,/central:local-ai/);
  assert.match(main,/trustedOpenCodeEvent/);
  assert.match(main,/managedLocalAI/);
- assert.match(main,/rootDirectory:join\(app\.getPath\('appData'\)/);
+ assert.match(main,/rootDirectory:join\(process\.env\.LOCALAPPDATA/);
  assert.match(preload,/localAI:action=>ipcRenderer\.invoke/);
  assert.match(preload,/onLocalAIProgress/);
  assert.match(read('src/opencode-controller.mjs'),/localAI:input\.localAI/);
