@@ -26,3 +26,8 @@ test('configuração automática de OpenCode prepara o modelo local antes da con
  const ui=read('src/opencode-ui.js');
  assert.ok(ui.indexOf("await bridge.localAI('prepare')")<ui.indexOf("byId('opencode-form').requestSubmit"));
 });
+
+test('PredictBot inicia a preparação local automaticamente no primeiro uso',()=>{
+ assert.match(read('src/predictbot.html'),/data-auto-setup="true"/);
+ assert.match(read('src/local-ai-ui.js'),/autoSetup/);
+});
