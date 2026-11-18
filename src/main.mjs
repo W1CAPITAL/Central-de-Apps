@@ -312,15 +312,21 @@ async function installUpdate(automatic=false){
   });
   writeFileSync(installAttemptFile,JSON.stringify({version:verifiedAsset.version,sha256:verifiedAsset.sha256}));
   // NSIS requires /D= to be the final, unquoted remainder, including any spaces.
-  const child=spawn(downloadedInstaller,plan.nsisArguments,{
-   argv0:'"'+downloadedInstaller+'"',cwd:dirname(downloadedInstaller),windowsVerbatimArguments:true,
-   detached:true,shell:false,stdio:'ignore',windowsHide:true
-  });
-  await new Promise((resolve,reject)=>{
-   child.once('spawn',resolve);
-   child.once('error',reject);
-  });
-  child.unref();
+  const launch=async(command,args)=>{
+   const child=spawn(command,args,{
+    argv0:'"'+command+'"',cwd:dirname(downloadedInstaller),windowsVerbatimArguments:true,
+    detached:true,shell:false,stdio:'ignore',windowsHide:true
+   });
+   await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject);});
+   child.unref();
+  };
+  try{
+   await launch(downloadedInstaller,plan.nsisArguments);
+  }catch(error){
+   if(!['EACCES','EPERM','UNKNOWN'].includes(error.code))throw error;
+   // NSIS ships this helper for installations requiring Windows elevation.
+   await launch(join(process.resourcesPath,'elevate.exe'),['"'+downloadedInstaller+'"',...plan.nsisArguments]);
+  }
   handingOffUpdate=true;
   app.quit();
  }catch(error){

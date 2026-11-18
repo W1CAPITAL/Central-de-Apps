@@ -12,7 +12,7 @@ test('o instalador recebe o diretório exato da instalação atual, sem criar pa
  assert.equal(plan.installDirectory,win32.dirname(executablePath));
  assert.equal(plan.executablePath,executablePath);
 
- assert.deepEqual(plan.nsisArguments,['/S','--force-run','/D='+win32.dirname(executablePath)]);
+ assert.deepEqual(plan.nsisArguments,['--updated','/S','--force-run','/D='+win32.dirname(executablePath)]);
 });
 
 test('rejeita caminhos relativos e a raiz do volume',()=>{
@@ -44,7 +44,7 @@ test('o atualizador usa SHA-256 e não depende de Authenticode',()=>{
  const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
  assert.ok(main.includes('downloadVerifiedRelease'));
  assert.ok(main.includes('createInPlaceUpdatePlan'));
- assert.ok(main.includes('spawn(downloadedInstaller,plan.nsisArguments'));
+ assert.ok(main.includes('await launch(downloadedInstaller,plan.nsisArguments'));
  assert.ok(main.includes("automaticUpdates&&release.phase==='downloaded'"));
  assert.ok(!main.includes('verifyWindowsSignature'));
  const workflow=readFileSync(new URL('../.github/workflows/windows.yml',import.meta.url),'utf8');

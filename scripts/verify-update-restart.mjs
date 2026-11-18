@@ -27,31 +27,49 @@ delete env.ELECTRON_RUN_AS_NODE;
 delete env.NODE_OPTIONS;
 const desktop=await electron.launch({executablePath:resolve(executable),args:['--user-data-dir='+profile],env,timeout:60000});
 try{
+ desktop.on('console',message=>console.log('Electron: '+message.text()));
  const page=await desktop.firstWindow();
+ page.on('console',message=>console.log('Central: '+message.text()));
  await page.waitForURL('file:///**/store.html');
  await page.waitForFunction(()=>window.w1Central.getState().then(s=>Boolean(s.release.checkedAt)),undefined,{timeout:60000});
  const state=await page.evaluate(()=>window.w1Central.getState());
  assert.equal(state.storeVersion,buildVersion);
  assert.equal(state.automaticUpdates,false);
- await desktop.evaluate(({dialog},{api,catalog})=>{
+ await desktop.evaluate(({dialog,app},{api,catalog})=>{
+  app.once('before-quit',()=>console.log('before-quit recebido'));
   globalThis.fetch=async url=>{
    if(String(url)!==api)throw Error('O instalador já está no cache. Download inesperado: '+url);
    return new Response(JSON.stringify(catalog));
   };
   dialog.showMessageBox=async(...args)=>{
    if(args.at(-1)?.buttons?.[0]!=='Atualizar e reiniciar')throw Error('Confirmação de reinício ausente.');
+   console.log('Confirmação de reinício aceita.');
    return {response:0};
   };
  },{api:RELEASES_API,catalog});
  await page.locator('#check-updates').click();
  await page.locator('#download-background').click();
  await page.locator('#install-update').waitFor({state:'visible',timeout:90000});
- const closed=desktop.waitForEvent('close',{timeout:90000});
- await Promise.all([closed,page.locator('#install-update').click({noWaitAfter:true}).catch(error=>{
-  if(!/closed/i.test(error.message))throw error;
- })]);
+ const before=await page.evaluate(()=>window.w1Central.getState());
+ assert.equal(before.release.phase,'downloaded');
+ const closed=page.waitForEvent('close',{timeout:90000});
+ const error=page.waitForFunction(()=>window.w1Central.getState().then(s=>
+  s.release.phase==='error'?s.release.error:null),undefined,{timeout:90000}).then(async handle=>{
+  throw Error('Falha ao iniciar NSIS: '+await handle.jsonValue());
+ });
+ await Promise.all([
+  Promise.race([closed,error.catch(cause=>{if(!/closed/i.test(cause.message))throw cause;return closed;})]),
+  page.locator('#install-update').click({noWaitAfter:true}).catch(cause=>{if(!/closed/i.test(cause.message))throw cause;})
+ ]);
  assert.equal(JSON.parse(readFileSync(join(profile,'last-install-attempt.json'),'utf8')).sha256,sha256);
  console.log('O botão confirmou o pacote em cache e a Central fechou para o NSIS.');
+}catch(error){
+ const page=desktop.windows()[0];
+ if(page&&!page.isClosed()){
+  console.error('Estado ao falhar:',await page.evaluate(()=>window.w1Central.getState().then(s=>s.release)).catch(()=>null));
+  console.error('Mensagem:',await page.locator('#update-message').textContent({timeout:2000}).catch(()=>''));
+ }
+ throw error;
 }finally{
  if(desktop.process().exitCode===null)await desktop.close().catch(()=>{});
  // O instalador em execução usa o perfil até terminar. O runner descarta a pasta.

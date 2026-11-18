@@ -14,7 +14,7 @@ export function createInPlaceUpdatePlan({installerPath,executablePath}){
   throw Error('Diretório de instalação inválido.');
  return Object.freeze({
   installDirectory,executablePath,
-  nsisArguments:Object.freeze(['/S','--force-run','/D='+installDirectory])
+  nsisArguments:Object.freeze(['--updated','/S','--force-run','/D='+installDirectory])
  });
 }
 
