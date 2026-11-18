@@ -40,6 +40,8 @@ test('configura provider OpenAI compatível sem sobrescrever o modelo padrão do
  assert.deepEqual(config.providers['w1-local'].env,['W1_LOCAL_AI_KEY']);
  assert.equal(config.providers['w1-local'].settings.baseURL,'http://127.0.0.1:8765/v1');
  assert.equal(config.providers['w1-local'].models['bitnet-2b'].limit.context,1024);
+ assert.equal(config.providers['w1-local'].models['bitnet-2b'].modelID,'w1-bitnet-2b');
+ assert.equal(config.providers['w1-local'].models['bitnet-2b'].capabilities.tools,false);
  assert.equal(JSON.stringify(config).includes('secret'),false);
 });
 
