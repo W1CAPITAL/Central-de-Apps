@@ -1,6 +1,6 @@
 import {app,BrowserWindow,ipcMain,Menu,shell,dialog,session} from 'electron';
 import {spawn} from 'node:child_process';
-import {join,dirname} from 'node:path';
+import {join} from 'node:path';
 import {existsSync,readFileSync,writeFileSync,mkdirSync,lstatSync} from 'node:fs';
 import {classifyAttachment,ATTACHMENT_FILTERS} from './attachment-policy.mjs';
 import {officialToolUrl} from './official-tools.mjs';
