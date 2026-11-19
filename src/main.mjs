@@ -4,6 +4,8 @@ import {join,dirname} from 'node:path';
 import {existsSync,readFileSync,writeFileSync,mkdirSync,lstatSync} from 'node:fs';
 import {classifyAttachment,ATTACHMENT_FILTERS} from './attachment-policy.mjs';
 import {officialToolUrl} from './official-tools.mjs';
+import {evaluateLingerCompatibility} from './linger-integration.mjs';
+import {totalmem} from 'node:os';
 import {createServer} from 'node:net';
 import {randomBytes} from 'node:crypto';
 import {setTimeout as sleep} from 'node:timers/promises';
@@ -435,6 +437,10 @@ ipcMain.handle('central:download-update',(event,mode)=>{
 ipcMain.handle('central:install-update',event=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
  return installUpdate();
+});
+ipcMain.handle('central:linger-capability',event=>{
+ if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ return evaluateLingerCompatibility({platform:process.platform,arch:process.arch,totalMemory:totalmem()});
 });
 ipcMain.handle('central:open-official-tool',async(event,provider)=>{
   if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
