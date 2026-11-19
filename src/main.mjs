@@ -325,7 +325,6 @@ async function installUpdate(automatic=false){
   const plan=createInPlaceUpdatePlan({
    installerPath:downloadedInstaller,executablePath:process.execPath,
   });
-  writeFileSync(installAttemptFile,JSON.stringify({version:verifiedAsset.version,sha256:verifiedAsset.sha256}));
   // NSIS requires /D= to be the final, unquoted remainder, including any spaces.
   const launch=async(command,args)=>{
    const child=spawn(command,args,{
@@ -342,6 +341,8 @@ async function installUpdate(automatic=false){
    // NSIS ships this helper for installations requiring Windows elevation.
    await launch(join(process.resourcesPath,'elevate.exe'),['"'+downloadedInstaller+'"',...plan.nsisArguments]);
   }
+  // Persist the anti-loop marker only after the installer has spawned.
+  writeFileSync(installAttemptFile,JSON.stringify({version:verifiedAsset.version,sha256:verifiedAsset.sha256}));
   handingOffUpdate=true;
   app.quit();
  }catch(error){
