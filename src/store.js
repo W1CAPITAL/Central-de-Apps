@@ -10,7 +10,7 @@ function el(tag,className,text){
  return node;
 }
 function newerProductVersion(current,latest){
- const parse=value=>/^\\d+\\.\\d+\\.\\d+$/.test(String(value||''))?String(value).split('.').map(Number):null;
+ const parse=value=>new RegExp('^[0-9]+[.][0-9]+[.][0-9]+$').test(String(value||''))?String(value).split('.').map(Number):null;
  const remote=parse(latest),local=parse(current);
  if(!remote)return false;
  if(!local)return true;
