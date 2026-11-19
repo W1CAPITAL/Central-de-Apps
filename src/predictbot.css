@@ -89,3 +89,33 @@ body{background:#212121}
 .pb-new:hover{background:#292929}
 .pb-alert{background:#33252b;border-color:#694255}
 .pb-retry{background:#552436}
+
+/* Ferramentas integradas ao chat, sem formulários MCP na página inicial */
+.pb-header-right{display:flex;align-items:center;gap:15px;min-width:0}
+.pb-header-right select,.pb-compose-tools select{color:#f0f0f0;background:#303030;border:1px solid #484848;border-radius:11px;padding:8px 10px;max-width:195px;font:inherit;font-size:12px}
+.pb-header-right select:focus-visible,.pb-compose-tools select:focus-visible{outline:2px solid #b56e88}
+.pb-header-right .pb-status{max-width:245px}
+.pb-tools{border-top:1px solid #303030;padding:12px 5px;display:flex;flex-direction:column;gap:3px}
+.pb-tools button{border:0;background:none;color:#d5d5d5;text-align:left;padding:11px 10px;font-size:13px;border-radius:10px}
+.pb-tools button:hover{background:#292929}
+.pb-compose-tools{display:flex;gap:8px;align-items:center}
+.pb-compose-tools button{border:0;background:none;border-radius:10px;color:#ddd;padding:6px 10px;font-size:12px}
+.pb-compose-tools button:hover{background:#434343}
+.pb-composer-actions{flex-wrap:wrap}
+.pb-selected-files{display:flex;gap:6px;flex-wrap:wrap}
+.pb-file-chip{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:12px;background:#303030;border:1px solid #454545;font-size:12px}
+.pb-file-chip button{background:none;border:0;color:#dedede}
+.pb-workspace-panel{position:absolute;right:25px;bottom:160px;z-index:5;max-width:min(480px,calc(100vw - 45px));width:440px;max-height:60vh;overflow:auto;border:1px solid #494949;border-radius:18px;padding:18px;background:#262626;box-shadow:0 20px 50px #0009;color:#f5f5f5}
+.pb-panel-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.pb-panel-head h2{font-size:17px;font-weight:600;margin:0}
+.pb-panel-head button{background:none;border:0;color:#ddd;padding:6px}
+#pb-panel-content p{font-size:12px;line-height:1.6;color:#c6c6c6}
+.pb-library-row{display:flex;align-items:center;gap:8px;border-top:1px solid #414141;padding:9px 0;font-size:12px}
+.pb-library-row span{flex:1;overflow-wrap:anywhere}
+.pb-library-row button,.pb-tool-item{border:1px solid #626262;border-radius:9px;background:#353535;color:#fff;padding:7px 9px;font-size:12px}
+.pb-library-row .pb-minor{border:0;background:transparent;color:#bdbdbd}
+.pb-tool-item{display:block;width:100%;text-align:left;margin-top:7px}
+.pb-tool-item:hover,.pb-library-row button:hover{background:#454545}
+.pb-settings-option{display:flex;align-items:center;gap:9px;font-size:13px}
+.pb-large-type .pb-message{font-size:17px}
+@media(max-width:760px){.pb-header-right .pb-status{max-width:90px;font-size:10px}.pb-header-right select{max-width:128px}.pb-workspace-panel{right:10px;bottom:125px}}
