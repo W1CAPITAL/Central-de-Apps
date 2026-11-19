@@ -439,11 +439,11 @@ ipcMain.handle('central:install-update',event=>{
  return installUpdate();
 });
 ipcMain.handle('central:linger-capability',event=>{
- if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
  return evaluateLingerCompatibility({platform:process.platform,arch:process.arch,totalMemory:totalmem()});
 });
 ipcMain.handle('central:open-official-tool',async(event,provider)=>{
-  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+  if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
   const url=officialToolUrl(provider);
   await shell.openExternal(url);
   return {opened:true,provider};
