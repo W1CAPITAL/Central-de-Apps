@@ -1,15 +1,17 @@
 import {extname,basename} from 'node:path';
 const TYPES=Object.freeze({
- document:['.pdf','.doc','.docx','.txt','.md','.csv','.xls','.xlsx','.ppt','.pptx','.odt','.ods','.rtf','.json'],
+ document:['.pdf','.doc','.docx','.txt','.md','.csv','.xls','.xlsx','.ppt','.pptx','.odt','.ods','.rtf','.json','.log'],
  image:['.png','.jpg','.jpeg','.webp','.gif','.bmp','.svg'],
+ audio:['.mp3','.wav','.ogg','.m4a','.flac'],
  video:['.mp4','.webm','.mov','.mkv','.avi'],
  archive:['.zip','.rar','.7z']
 });
-const MAX=Object.freeze({document:50*1024*1024,image:25*1024*1024,video:150*1024*1024,archive:100*1024*1024});
+const MAX=Object.freeze({document:50*1024*1024,image:25*1024*1024,audio:50*1024*1024,video:150*1024*1024,archive:100*1024*1024});
 export const ATTACHMENT_FILTERS=Object.freeze([
  {name:'Documentos',extensions:TYPES.document.map(x=>x.slice(1))},
  {name:'Imagens',extensions:TYPES.image.map(x=>x.slice(1))},
  {name:'Vídeos',extensions:TYPES.video.map(x=>x.slice(1))},
+ {name:'Áudios',extensions:TYPES.audio.map(x=>x.slice(1))},
  {name:'Arquivos compactados',extensions:TYPES.archive.map(x=>x.slice(1))}
 ]);
 export function classifyAttachment(name,size){
