@@ -154,3 +154,7 @@ footer{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;colo
 .linger-option p{margin:5px 0;color:#e9d4de;font-size:12px;line-height:1.5}
 .linger-option small{display:block;margin-top:8px;font-size:10px;line-height:1.5;color:#bba5b0}
 .linger-option .wide-button{margin-top:8px}
+
+.opencode-updater-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.opencode-updater-actions button{flex:1;min-width:155px}
+#oc-desktop-update-status{line-height:1.5;max-width:620px}
