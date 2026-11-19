@@ -9,6 +9,14 @@ function el(tag,className,text){
  if(text!==undefined)node.textContent=text;
  return node;
 }
+function newerProductVersion(current,latest){
+ const parse=value=>/^\\d+\\.\\d+\\.\\d+$/.test(String(value||''))?String(value).split('.').map(Number):null;
+ const remote=parse(latest),local=parse(current);
+ if(!remote)return false;
+ if(!local)return true;
+ for(let i=0;i<3;i++)if(remote[i]!==local[i])return remote[i]>local[i];
+ return false;
+}
 function productCard(app){
  const card=el('article','product-card '+app.id);
  card.dataset.name=String(app.name||app.id);
@@ -29,8 +37,10 @@ function productCard(app){
  copy.appendChild(el('p',null,app.description));
  const bottom=el('div','card-bottom');
  const independentlyInstalled=app.installation?.installed===true;
- const primaryLabel=independentlyInstalled?'Abrir '+app.name:
-  app.download?.version?'Instalar e abrir '+app.name:'Abrir na Central · '+app.name;
+ const officialRelease=app.download?.version&&!app.download.preview;
+ const needsUpdate=independentlyInstalled&&officialRelease&&newerProductVersion(app.installation?.version,app.download.version);
+ const primaryLabel=independentlyInstalled?(needsUpdate?'Atualizar e abrir ':'Abrir ')+app.name:
+  officialRelease?'Instalar e abrir '+app.name:'Abrir na Central · '+app.name;
  const launch=el('button','launch-btn',primaryLabel);
  launch.type='button';
  launch.disabled=app.status?.phase==='starting'||app.installation?.phase==='installing';
@@ -40,8 +50,9 @@ function productCard(app){
   try{
    // Quem não tem o EXE recebe instalação completa em um clique.
    // Sem release validada, usamos a cópia local que acompanha a Central.
-   if(independentlyInstalled)await bridge.openInstalledProduct(app.id);
-   else if(app.download?.version)await bridge.installProduct(app.id);
+   if(needsUpdate)await bridge.installProduct(app.id);
+   else if(independentlyInstalled)await bridge.openInstalledProduct(app.id);
+   else if(officialRelease)await bridge.installProduct(app.id);
    else await bridge.launch(app.id);
   }catch(error){
    launch.title=String(error?.message||'Falha local');
