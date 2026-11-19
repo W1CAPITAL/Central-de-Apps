@@ -4,7 +4,7 @@ import { OpenCodeWorkerd } from "@opencode/sdk/workerd";
 import { OpenCodeHarness } from "agents/harness/opencode";
 import { createAI } from "agents/models/opencode";
 import workerTools from "./worker-tools.js";
-import { authorized, promptFromBody } from "./security.mjs";
+import { authenticatedIdentity, promptFromBody } from "./security.mjs";
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -17,7 +17,6 @@ function json(body, status = 200) {
     },
   });
 }
-
 export class Assistant extends DurableObject {
   ai = createAI({ binding: this.env.AI });
   harness = new OpenCodeHarness({
@@ -33,22 +32,19 @@ export class Assistant extends DurableObject {
     },
   });
   lifecycle = Lifecycle.install(this).use(this.harness);
-
   async ask(prompt) {
     const { status, text, reason } = await this.harness.prompt(prompt);
     return { status, text: text || "", reason: reason || null };
   }
 }
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname !== "/api/health" && url.pathname !== "/api/chat") {
       return json({ error: "Rota inexistente" }, 404);
     }
-    if (!authorized(request.headers.get("Authorization"), env.MOBILE_API_TOKEN)) {
-      return json({ error: "Acesso negado" }, 401);
-    }
+    const identity = await authenticatedIdentity(request.headers.get("Authorization"), env);
+    if (!identity) return json({ error: "Sessão expirada ou acesso não autorizado" }, 401);
     if (url.pathname === "/api/health" && request.method === "GET") {
       return json({ ok: true, runtime: "opencode-workerd", pcRequired: false });
     }
@@ -64,12 +60,11 @@ export default {
     try { prompt = promptFromBody(await request.text()); }
     catch (error) { return json({ error: error.message }, 400); }
     try {
-      // One private object per installation. Never derive an object key from a request header.
-      const assistant = env.Assistant.getByName("owner");
+      // Cada conta tem sessão isolada; tokens do usuário não identificam objetos diretamente.
+      const assistant = env.Assistant.getByName(identity);
       const result = await assistant.ask(prompt);
       return json(result);
     } catch {
-      // Never leak provider credentials, SDK internals or stack traces to mobile clients.
       return json({ error: "Falha do OpenCode ou do provedor de IA. Consulte os logs privados." }, 502);
     }
   },
