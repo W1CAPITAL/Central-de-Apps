@@ -69,6 +69,8 @@ jobs:
     if: needs.inspect.outputs.build == 'true' && github.event_name != 'pull_request'
     runs-on: windows-latest
     timeout-minutes: 120
+    outputs:
+      signed: ${{ steps.signature.outputs.publish }}
     steps:
       - name: Código da Central de Apps
         uses: actions/checkout@v4
@@ -291,6 +293,30 @@ jobs:
           name: Product-desktop-smoke-${{ github.run_number }}
           path: central/desktop-smoke-products/
           if-no-files-found: ignore
+      - name: Validar assinatura Authenticode dos quatro instaladores
+        id: signature
+        if: github.ref == 'refs/heads/main'
+        working-directory: central
+        shell: pwsh
+        run: |
+          $files = @(
+            'dist/W1-Central-de-Apps-Setup-' + $env:CENTRAL_VERSION + '-x64.exe',
+            'dist/products/lexispredict/LexisPredict-Setup-' + $env:CENTRAL_VERSION + '-x64.exe',
+            'dist/products/infinitum/INFINITUM-Setup-' + $env:CENTRAL_VERSION + '-x64.exe',
+            'dist/products/predictbot/PredictBot-Setup-' + $env:CENTRAL_VERSION + '-x64.exe'
+          )
+          $valid = $true
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature -LiteralPath $file
+            if ($sig.Status -ne 'Valid' -or -not $sig.SignerCertificate -or $sig.SignerCertificate.Subject -notmatch 'W1 Capital') {
+              Write-Warning "Instalador sem assinatura W1 válida: $file ($($sig.Status))"
+              $valid = $false
+            }
+          }
+          "publish=$($valid.ToString().ToLowerInvariant())" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+          if (-not $valid) {
+            Write-Warning 'Build validado apenas como artefato de CI. Nenhuma release pública será criada.'
+          }
       - name: Guardar os commits de origem
         working-directory: central
         shell: pwsh
@@ -315,7 +341,7 @@ jobs:
           retention-days: 30
   publish:
     needs: [windows]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.windows.outputs.signed == 'true'
     runs-on: windows-latest
     permissions:
       contents: write
@@ -331,6 +357,18 @@ jobs:
         with:
           name: W1-Central-de-Apps-Windows-x64-0.1.${{ github.run_number }}
           path: central
+      - name: Verificar novamente as assinaturas antes da publicação
+        working-directory: central
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -LiteralPath 'dist' -Filter '*-Setup-*.exe' -File -Recurse
+          if ($files.Count -ne 4) { throw "Quantidade inesperada de instaladores: $($files.Count)" }
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            if ($sig.Status -ne 'Valid' -or -not $sig.SignerCertificate -or $sig.SignerCertificate.Subject -notmatch 'W1 Capital') {
+              throw "Release bloqueada: assinatura W1 inválida em $($file.Name)."
+            }
+          }
       - name: Conferir os pacotes e calcular SHA-256
         working-directory: central
         shell: pwsh
@@ -366,9 +404,9 @@ jobs:
             '',
             'Atualização automática aplicada sobre a instalação existente, no mesmo diretório.',
             'Não cria uma pasta por versão nem uma segunda instalação do aplicativo.',
-            'O instalador é baixado do GitHub e conferido por SHA-256 antes da execução.',
+            'O instalador é baixado do GitHub, conferido por SHA-256 e exige assinatura digital W1 Capital válida.',
             'A atualização é aplicada quando o aplicativo é fechado e reabre a versão atualizada.',
-            'Authenticode não é requisito para este mecanismo. O SmartScreen do Windows permanece ativo e pode avisar na instalação inicial.'
+            'A publicação é bloqueada quando qualquer instalador não possui Authenticode W1 Capital válido.'
           ) -join "`n"
           $assets = @(
             'dist/W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe',
