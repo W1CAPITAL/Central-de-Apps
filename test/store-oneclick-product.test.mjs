@@ -4,11 +4,11 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
-function fixture({installed}){
+function fixture({installed,installedVersion='0.1.212'}){
  const dom=new JSDOM(read('src/store.html'),{runScripts:'outside-only'});
  const calls=[];
  const state={apps:[{id:'lexispredict',name:'LexisPredict',status:{phase:'bundled'},
-  download:{version:'0.1.212',phase:'available'},installation:{installed,phase:installed?'installed':'missing',version:installed?'0.1.211':null}}],release:{}};
+  download:{version:'0.1.212',phase:'available'},installation:{installed,phase:installed?'installed':'missing',version:installed?installedVersion:null}}],release:{}};
  dom.window.w1Central={onState:()=>{},getState:async()=>state,setAutomaticUpdates:async()=>{},
   launch:async id=>calls.push(['bundled',id]),
   openInstalledProduct:async id=>calls.push(['installed',id]),
@@ -54,4 +54,15 @@ test('Loja mostra ação principal e deixa manutenção opcional recolhida', asy
   assert.match(detail.querySelector('summary').textContent,/Outras opções/);
   assert.equal(card.querySelector('.launch-btn').textContent,'Instalar e abrir LexisPredict');
  }finally{dom.window.close();}
+});
+
+test('Central atualiza e abre versão antiga pelo botão principal, sem menu técnico',async()=>{
+ const {dom,calls}=fixture({installed:true,installedVersion:'0.1.211'});
+ try{
+  await tick();
+  const button=dom.window.document.querySelector('.product-card.lexispredict button.launch-btn');
+  assert.equal(button.textContent,'Atualizar e abrir LexisPredict');
+  button.click();await tick();
+  assert.deepEqual(calls,[['install','lexispredict']]);
+ }finally{dom.window.close()}
 });
