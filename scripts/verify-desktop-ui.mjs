@@ -13,6 +13,8 @@ const profile=mkdtempSync(join(tmpdir(),'w1-desktop-smoke-'));
 const env={...process.env};
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.NODE_OPTIONS;
+// Não realizar download de modelo no smoke de interface.
+env.W1_DESKTOP_SMOKE_TEST='1';
 const desktop=await electron.launch({
  executablePath:resolve(process.argv[2]||'dist/win-unpacked/W1 Central de Apps.exe'),
  args:['--user-data-dir='+profile],env,timeout:60000
@@ -37,8 +39,8 @@ try{
   console.log(product+' independente: tela local abriu pelo EXE próprio.');
  }else if(product==='predictbot'){
   await store.waitForURL('file:///**/predictbot.html');
-  await store.locator('#opencode-form').waitFor();
-  await verifyImages(store,'.brand img',1);
+  await store.locator('#chat-form').waitFor();
+  await verifyImages(store,'.pb-brand img',1);
   const state=await store.evaluate(()=>window.w1Central.openCodeRelay('state'));
   assert.equal(state.state,'stopped');
   await store.screenshot({path:join(results,'predictbot.png')});
@@ -72,7 +74,7 @@ try{
  await store.locator('.product-card.predictbot button.launch-btn').click();
  const bot=await created;
  await bot.waitForURL('file:///**/predictbot.html');
- await bot.locator('#opencode-form').waitFor();
+ await bot.locator('#chat-form').waitFor();
  assert.equal((await bot.evaluate(()=>window.w1Central.openCodeRelay('state'))).state,'stopped');
  await bot.screenshot({path:join(results,'predictbot.png')});
  // Catalog cannot make a product renderer a trusted store renderer.
