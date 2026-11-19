@@ -38,9 +38,9 @@ test('abre apenas release do editor do Linger e preserva a separação do W1',()
  assert.match(main,/trustedStoreEvent/);
  assert.match(store,/id="setup-linger"/);
  assert.match(store,/id="linger-compatibility"/);
- assert.match(bot,/id="setup-linger"/);
+ assert.doesNotMatch(bot,/id="setup-linger"/);
  assert.match(store,/linger-ui\.js/);
- assert.match(bot,/linger-ui\.js/);
+ assert.match(bot,/predictbot-ui\.js/);
  assert.match(ui,/setup-linger/);
  assert.match(ui,/getLingerCapability/);
  assert.doesNotMatch(main,/require\(['"]linger['"]\)/);
