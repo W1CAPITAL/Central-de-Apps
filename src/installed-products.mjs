@@ -18,7 +18,7 @@ export function planProductInstall(id,{localAppData=process.env.LOCALAPPDATA,ins
  const target=productInstallation(id,{localAppData});
  if(typeof installerPath!=='string'||!installerPath.toLowerCase().endsWith('.exe'))
   throw Error('Instalador do produto inválido.');
- return Object.freeze({...target,installerPath,args:Object.freeze(['/S','/D='+target.directory])});
+ return Object.freeze({...target,executablePath:target.exe,installerPath,args:Object.freeze(['/S','/D='+target.directory])});
 }
 export function readProductRecord(file,id){
  nameFor(id);
