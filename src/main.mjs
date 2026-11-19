@@ -54,8 +54,8 @@ const productInstallTasks=new Map();
 const installedProductsFile=join(app.getPath('userData'),'installed-products.json');
 const userLocalData=()=>process.env.LOCALAPPDATA||join(app.getPath('home'),'AppData','Local');
 function installedProductState(id){
- const installed=productInstallation(id,{localAppData:userLocalData()});
- const record=installed.installed?readProductRecord(installedProductsFile,id):null;
+ const record=readProductRecord(installedProductsFile,id);
+ const installed=productInstallation(id,{localAppData:userLocalData(),storedDirectory:record?.directory});
  return {installed:installed.installed,version:record?.version||null,phase:productInstallTasks.has(id)?'installing':installed.installed?'installed':'missing'};
 }
 function downloads(){return productDownloads||(productDownloads=new ProductDownloads({folder:join(app.getPath('downloads'),'W1 Capital'),onState:announce}));}
@@ -449,7 +449,7 @@ ipcMain.handle('central:download-product',(event,id)=>{
  return downloads().download(id);
 });
 async function openInstalledProduct(id){
- const candidate=productInstallation(id,{localAppData:userLocalData()});
+ const candidate=productInstallation(id,{localAppData:userLocalData(),storedDirectory:readProductRecord(installedProductsFile,id)?.directory});
  if(!candidate.installed)throw Error('O aplicativo independente ainda não está instalado. Use Instalar ou atualizar e abrir.');
  const error=await shell.openPath(candidate.exe);
  if(error)throw Error('O Windows não conseguiu abrir '+resolveApp(id).name+': '+String(error).slice(0,160));
@@ -458,7 +458,8 @@ async function openInstalledProduct(id){
 async function installProductWithVerification(id){
  const spec=productSpec(id);
  if(!['lexispredict','infinitum','predictbot'].includes(id))throw Error('Aplicativo independente não autorizado.');
- const candidate=productInstallation(id,{localAppData:userLocalData()});
+ const record=readProductRecord(installedProductsFile,id);
+ const candidate=productInstallation(id,{localAppData:userLocalData(),storedDirectory:record?.directory});
  const selected=downloads().snapshot(id);
  if(!selected.version)throw Error('Nenhuma versão independente publicada. Verifique as versões na Central.');
  const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
@@ -470,7 +471,7 @@ async function installProductWithVerification(id){
  if(choice.response!==0)return {cancelled:true};
  if(downloads().snapshot(id).phase!=='downloaded')await downloads().download(id);
  const installer=await downloads().verifiedPath(id);
- const plan=planProductInstall(id,{localAppData:userLocalData(),installerPath:installer});
+ const plan=planProductInstall(id,{localAppData:userLocalData(),storedDirectory:record?.directory,installerPath:installer});
  const exitCode=await new Promise((resolve,reject)=>{
   let done=false;
   const child=spawn(installer,plan.args,{
@@ -490,9 +491,9 @@ async function installProductWithVerification(id){
   child.once('exit',(code,signal)=>finish(signal?Error('Instalador interrompido: '+signal):null,code));
  });
  if(exitCode!==0)throw Error('O instalador encerrou com código '+exitCode+'. Confira as permissões do Windows.');
- const updated=productInstallation(id,{localAppData:userLocalData()});
+ const updated=productInstallation(id,{localAppData:userLocalData(),storedDirectory:plan.directory});
  if(!updated.installed)throw Error('A instalação terminou sem criar '+spec.name+'.exe na pasta esperada. O programa antigo não foi removido.');
- writeProductRecord(installedProductsFile,id,selected.version);
+ writeProductRecord(installedProductsFile,id,selected.version,plan.directory);
  announce();
  const opened=await openInstalledProduct(id);
  return {installed:true,opened:opened.opened,version:selected.version};
