@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync,existsSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {productInstallation,planProductInstall,readProductRecord,writeProductRecord} from '../src/installed-products.mjs';
@@ -37,8 +37,8 @@ test('registro de instalação é versionado e mantido entre sessões sem confia
 });
 
 test('Central oferece instalação automática completa e botão para abrir produto instalado',()=>{
- const main=await import('node:fs').then(fs=>fs.readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8'));
- const ui=await import('node:fs').then(fs=>fs.readFileSync(new URL('../src/store.js',import.meta.url),'utf8'));
+ const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../src/store.js',import.meta.url),'utf8');
  assert.match(main,/installProductWithVerification/);
  assert.match(main,/central:open-installed-product/);
  assert.match(main,/shell\.openPath\(candidate\.exe\)/);
