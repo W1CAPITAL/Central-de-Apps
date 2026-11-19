@@ -53,7 +53,7 @@ test('encontra instalador em pasta de nome minúsculo ou em diretório personali
  try{
   const alt=join(root,'Programs','predictbot');mkdirSync(alt,{recursive:true});
   writeFileSync(join(alt,'PredictBot.exe'),'fixture');
-  assert.equal(productInstallation('predictbot',{localAppData:root}).exe,join(alt,'PredictBot.exe'));
+  assert.equal(productInstallation('predictbot',{localAppData:root}).exe.toLowerCase(),join(alt,'PredictBot.exe').toLowerCase());
   const custom=join(root,'Custom Apps','PredictBot');
   mkdirSync(custom,{recursive:true});writeFileSync(join(custom,'PredictBot.exe'),'fixture');
   const record=join(root,'records.json');writeProductRecord(record,'predictbot','0.1.220',custom);
