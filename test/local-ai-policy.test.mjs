@@ -86,4 +86,7 @@ test('planejador leve reduz CPU e contexto quando a RAM livre do i3 está aperta
  const free=selectLocalAIProfile({platform:'win32',arch:'x64',totalMemory:8*GiB,availableMemory:5*GiB,logicalCores:4});
  assert.equal(free.threads,2);
  assert.equal(free.context,1024);
+ const config=createLocalAIProviderConfig({port:8765,context:busy.context});
+ assert.equal(config.providers['w1-local'].models['qwen3-1.7b'].limit.context,512);
+ assert.equal(config.providers['w1-local'].models['qwen3-1.7b'].limit.output,256);
 });
