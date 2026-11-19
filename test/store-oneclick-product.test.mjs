@@ -42,3 +42,16 @@ test('Sem EXE independente, botão principal instala e abre em um clique',async(
   assert.deepEqual(calls,[['install','lexispredict'],['install','lexispredict']]);
  }finally{dom.window.close()}
 });
+
+test('Loja mostra ação principal e deixa manutenção opcional recolhida', async()=>{
+ const {dom}=fixture({installed:false});
+ try{
+  await tick();
+  const card=dom.window.document.querySelector('.product-card.lexispredict');
+  const detail=card.querySelector('details.product-advanced');
+  assert.ok(detail);
+  assert.equal(detail.open,false);
+  assert.match(detail.querySelector('summary').textContent,/Outras opções/);
+  assert.equal(card.querySelector('.launch-btn').textContent,'Instalar e abrir LexisPredict');
+ }finally{dom.window.close();}
+});
