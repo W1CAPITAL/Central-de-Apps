@@ -18,8 +18,26 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    sourceSets.main.res.srcDir("$buildDir/generated/w1brand")
     testOptions { unitTests.returnDefaultValues = true }
 }
 dependencies {
     testImplementation 'junit:junit:4.13.2'
 }
+
+// A imagem da W1 é armazenada em texto para manter a identidade visual
+// idêntica entre builds via API GitHub; nenhum download externo é necessário.
+def encodedLogo = file('branding/w1_opencode_icon.jpg.b64')
+def decodedLogo = file("$buildDir/generated/w1brand/drawable-nodpi/w1_opencode_icon.jpg")
+tasks.register('prepareW1BrandIcon') {
+    inputs.file(encodedLogo)
+    outputs.file(decodedLogo)
+    doLast {
+        decodedLogo.parentFile.mkdirs()
+        decodedLogo.bytes = java.util.Base64.getMimeDecoder().decode(encodedLogo.text.trim())
+        if (decodedLogo.length() < 1000L) {
+            throw new GradleException('Logo W1 inválida')
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn('prepareW1BrandIcon') }
