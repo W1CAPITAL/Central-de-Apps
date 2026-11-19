@@ -28,7 +28,7 @@ export function productInstallation(id,{
   ...roots.flatMap(dir=>variants.map(variant=>join(dir,variant)))];
  const visited=new Set();
  for(const directory of directories){
-  const key=directory.toLowerCase();
+  const key=process.platform==='win32'?directory.toLowerCase():directory;
   if(visited.has(key))continue;
   visited.add(key);
   const exe=join(directory,name+'.exe');
