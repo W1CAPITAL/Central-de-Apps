@@ -29,16 +29,16 @@ test('Abrir inicia o EXE independente quando o produto foi instalado',async()=>{
   assert.ok([...dom.window.document.querySelectorAll('.product-card.lexispredict button')].some(x=>x.textContent.includes('Instalar ou atualizar e abrir')));
  }finally{dom.window.close()}
 });
-test('Sem EXE independente, Abrir usa a cópia local da Central',async()=>{
+test('Sem EXE independente, botão principal instala e abre em um clique',async()=>{
  const {dom,calls}=fixture({installed:false});
  try{
   await tick();
   const button=dom.window.document.querySelector('.product-card.lexispredict button.launch-btn');
-  assert.equal(button.textContent,'Abrir na Central · LexisPredict');
+  assert.equal(button.textContent,'Instalar e abrir LexisPredict');
   button.click();await tick();
-  assert.deepEqual(calls,[['bundled','lexispredict']]);
+  assert.deepEqual(calls,[['install','lexispredict']]);
   const oneClick=[...dom.window.document.querySelectorAll('.product-card.lexispredict button')].find(x=>x.textContent.startsWith('Instalar ou atualizar e abrir'));
   assert.ok(oneClick);oneClick.click();await tick();
-  assert.deepEqual(calls,[['bundled','lexispredict'],['install','lexispredict']]);
+  assert.deepEqual(calls,[['install','lexispredict'],['install','lexispredict']]);
  }finally{dom.window.close()}
 });
