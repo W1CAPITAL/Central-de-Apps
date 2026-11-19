@@ -60,7 +60,7 @@ test('modo simples configura OpenCode local sem IDs empresariais do CRM',()=>{
  const js=read('src/opencode-ui.js');
  const main=read('src/main.mjs');
  assert.match(html,/id="oc-simple-setup"/);
- assert.match(bot,/id="oc-simple-setup"/);
+ assert.match(bot,/id="chat-form"/);
  assert.match(js,/openCode\('simpleSetup'\)|request\('simpleSetup'\)/);
  assert.match(main,/action==='simpleSetup'/);
  assert.match(main,/app\.getPath\('documents'\)/);
