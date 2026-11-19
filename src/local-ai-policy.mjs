@@ -18,13 +18,16 @@ export const LOCAL_AI_MODEL=Object.freeze({
  size:1282439264
 });
 
-export function selectLocalAIProfile({platform,arch,totalMemory,logicalCores}={}){
+export function selectLocalAIProfile({platform,arch,totalMemory,availableMemory,logicalCores}={}){
  const reason=platform!=='win32'?'A instalação automática está preparada para Windows.':
   arch!=='x64'?'Este pacote requer Windows x64.':
   !Number.isFinite(totalMemory)||totalMemory<7.5*1024**3?'O modelo local exige pelo menos 8 GB de RAM para este perfil econômico.':'';
  if(reason)return Object.freeze({supported:false,reason});
  const cores=Number.isInteger(logicalCores)&&logicalCores>0?logicalCores:2;
- return Object.freeze({supported:true,threads:Math.max(1,Math.min(2,cores)),context:1024,output:512,gpuLayers:0,parallel:1,idleSleepSeconds:300});
+ // Lightweight resource admission inspired by Linger's free-memory planning.
+ // Do not try to run PolyStrata or another large model on this CPU-only profile.
+ const lowMemory=Number.isFinite(availableMemory)&&availableMemory>=0&&availableMemory<3*1024**3;
+ return Object.freeze({supported:true,threads:lowMemory?1:Math.max(1,Math.min(2,cores)),context:lowMemory?512:1024,output:lowMemory?256:512,gpuLayers:0,parallel:1,idleSleepSeconds:300});
 }
 
 export function createLocalAIProviderConfig({port=8765}={}){
