@@ -77,6 +77,11 @@
     <div class="side-head"><span class="side-icon" aria-hidden="true">⌁</span><div><h2>OpenCode e MCP</h2><small>Integrações para agentes</small></div></div>
     <p>Conecte o executor instalado para trabalhar com seus projetos, sempre com autorização.</p>
     <button type="button" class="secondary wide-button" id="setup-opencode">Baixar OpenCode oficial</button>
+    <div class="opencode-updater-actions">
+     <button type="button" class="secondary" id="oc-desktop-check">Verificar OpenCode para PC</button>
+     <button type="button" class="secondary" id="oc-desktop-repair">Reparar ou atualizar OpenCode</button>
+    </div>
+    <p class="oc-note" id="oc-desktop-update-status" role="status">O OpenCode possui atualizador próprio. Utilize o reparo somente se ele falhar.</p>
     <button type="button" class="secondary wide-button" id="setup-warp">Baixar Cloudflare WARP</button>
     <div class="linger-option">
      <p><strong>Linger (agente pessoal externo)</strong></p>
@@ -138,7 +143,7 @@
  </main>
 </div>
 <script src="./store.js"></script><script src="./linger-ui.js"></script>\n<script src="./local-ai-ui.js"></script>
-<script src="./opencode-ui.js"></script>
+<script src="./opencode-desktop-update-ui.js"></script><script src="./opencode-ui.js"></script>
 <script src="./opencode-relay-ui.js"></script>
 </body>
 </html>
