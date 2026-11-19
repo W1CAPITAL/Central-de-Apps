@@ -47,3 +47,18 @@ test('Central oferece instalação automática completa e botão para abrir prod
  assert.match(ui,/Instalar ou atualizar e abrir/);
  assert.match(ui,/openInstalledProduct/);
 });
+
+test('encontra instalador em pasta de nome minúsculo ou em diretório personalizado salvo',()=>{
+ const root=mkdtempSync(join(tmpdir(),'w1-alt-install-'));
+ try{
+  const alt=join(root,'Programs','predictbot');mkdirSync(alt,{recursive:true});
+  writeFileSync(join(alt,'PredictBot.exe'),'fixture');
+  assert.equal(productInstallation('predictbot',{localAppData:root}).exe,join(alt,'PredictBot.exe'));
+  const custom=join(root,'Custom Apps','PredictBot');
+  mkdirSync(custom,{recursive:true});writeFileSync(join(custom,'PredictBot.exe'),'fixture');
+  const record=join(root,'records.json');writeProductRecord(record,'predictbot','0.1.220',custom);
+  assert.equal(readProductRecord(record,'predictbot').directory,custom);
+  assert.equal(productInstallation('predictbot',{localAppData:root,storedDirectory:custom}).exe,join(custom,'PredictBot.exe'));
+  assert.equal(planProductInstall('predictbot',{localAppData:root,storedDirectory:custom,installerPath:join(root,'PredictBot-Setup-0.1.221-x64.exe')}).directory,custom);
+ }finally{rmSync(root,{recursive:true,force:true})}
+});
