@@ -120,7 +120,7 @@ byId('show-advanced-integration')?.addEventListener('click',()=>{
  const panel=byId('integration-details');panel.open=true;
  panel.scrollIntoView?.({block:'start',behavior:'smooth'});
 });
-for(const [id,provider] of [['setup-opencode','opencode'],['setup-warp','warp']]){
+for(const [id,provider] of [['setup-opencode','opencode'],['setup-warp','warp'],['setup-linger','linger']]){
  byId(id)?.addEventListener('click',async()=>{
   const target=byId(id);target.disabled=true;
   try{await bridge.openOfficialTool(provider)}
@@ -129,6 +129,15 @@ for(const [id,provider] of [['setup-opencode','opencode'],['setup-warp','warp']]
  });
 }
 if(bridge){
+ if(typeof bridge.getLingerCapability==='function'){
+  bridge.getLingerCapability().then(info=>{
+   const target=byId('linger-compatibility');
+   if(target)target.textContent=String(info?.message||'Confira os requisitos do Linger antes de instalar.');
+  }).catch(()=>{
+   const target=byId('linger-compatibility');
+   if(target)target.textContent='Não foi possível avaliar este computador; confirme os requisitos no site oficial.';
+  });
+ }
  bridge.onState(render);
  bridge.getState().then(render).catch(()=>{byId('update-message').textContent='A Central não conseguiu carregar seu estado local.'});
  byId('automatic-updates')?.addEventListener('change',event=>bridge.setAutomaticUpdates(event.target.checked).catch(()=>{}));
