@@ -28,14 +28,15 @@ function productCard(app){
  const copy=el('div','card-copy');
  copy.appendChild(el('p',null,app.description));
  const bottom=el('div','card-bottom');
- const launch=el('button','launch-btn','Abrir na Central · '+app.name);
+ const independentlyInstalled=app.installation?.installed===true;
+ const launch=el('button','launch-btn',(independentlyInstalled?'Abrir ':'Abrir na Central · ')+app.name);
  launch.type='button';
- launch.disabled=app.status?.phase==='starting';
+ launch.disabled=app.status?.phase==='starting'||app.installation?.phase==='installing';
  launch.addEventListener('click',async()=>{
   launch.disabled=true;launch.textContent='Abrindo...';
-  try{await bridge.launch(app.id)}
+  try{await (independentlyInstalled?bridge.openInstalledProduct(app.id):bridge.launch(app.id))}
   catch(error){launch.textContent='Não foi possível abrir';launch.title=String(error?.message||'Falha local')}
-  finally{launch.disabled=false}
+  finally{launch.disabled=false;launch.textContent=(independentlyInstalled?'Abrir ':'Abrir na Central · ')+app.name}
  });
  bottom.appendChild(launch);
  const d=app.download||{};
@@ -55,22 +56,43 @@ function productCard(app){
  });
  area.appendChild(download);
  if(d.phase==='downloaded'){
-  const install=el('button','secondary','Instalar '+app.name);
-  install.type='button';
-  install.title='Executar instalador verificado (Windows). Conclua o processo na tela.';
-  install.addEventListener('click',async()=>{
-   install.disabled=true;
-   try{
-    await bridge.installProduct(app.id);
-    card.appendChild(el('p','card-install-status','Instalador iniciado. Conclua a instalação no Windows e depois abra pelo Menu Iniciar.'));
-   }catch(error){card.appendChild(el('p','card-error','Não foi possível abrir o instalador: '+String(error?.message||'Erro do Windows')))}
-   finally{install.disabled=false}
-  });
-  area.appendChild(install);
   const show=el('button','secondary','Mostrar instalador baixado');
   show.type='button';
   show.addEventListener('click',()=>bridge.showDownload(app.id).catch(()=>{}));
   area.appendChild(show);
+ }
+ const installState=app.installation||{};
+ const action=el('button','accent','Instalar ou atualizar e abrir '+app.name);
+ action.type='button';
+ action.disabled=!d.version||installState.phase==='installing'||d.phase==='downloading';
+ if(installState.phase==='installing')action.textContent='Instalando '+app.name+' no Windows...';
+ action.title='A Central baixa, verifica, instala e abre o programa independente do Windows.';
+ action.addEventListener('click',async()=>{
+  action.disabled=true;
+  try{
+   const result=await bridge.installProduct(app.id);
+   const cardNow=document.querySelector('.product-card.'+app.id);
+   if(result?.installed&&cardNow)cardNow.appendChild(el('p','card-install-status',app.name+' instalado. Abrindo o aplicativo independente...'));
+  }catch(error){
+   const cardNow=document.querySelector('.product-card.'+app.id);
+   if(cardNow)cardNow.appendChild(el('p','card-error','Não foi possível concluir a instalação: '+String(error?.message||'Erro do Windows')));
+  }finally{action.disabled=false}
+ });
+ area.appendChild(action);
+ if(installState.installed){
+  const installed=el('button','secondary','Abrir versão integrada de '+app.name);
+  installed.type='button';
+  installed.addEventListener('click',async()=>{
+   installed.disabled=true;
+   try{await bridge.launch(app.id)}
+   catch(error){
+    const cardNow=document.querySelector('.product-card.'+app.id);
+    if(cardNow)cardNow.appendChild(el('p','card-error','Não foi possível abrir: '+String(error?.message||'Falha do Windows')));
+   }finally{installed.disabled=false}
+  });
+  area.appendChild(installed);
+  const version=installState.version?' · v'+installState.version:'';
+  area.prepend(el('p','card-install-status','Instalado no computador'+version));
  }
  bottom.appendChild(area);
  card.append(top,copy,bottom,el('div','product-state',LABELS[app.status?.phase]||'Disponível'));

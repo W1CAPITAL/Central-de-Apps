@@ -19,6 +19,7 @@ import {createInPlaceUpdatePlan} from './update-install.mjs';
 import {OPENCODE_RELEASES_API,chooseOpenCodeDesktopRelease,downloadVerifiedOpenCodeDesktop} from './opencode-desktop-update.mjs';
 import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distribution.mjs';
 import {ProductDownloads} from './product-downloads.mjs';
+import {productInstallation,planProductInstall,readProductRecord,writeProductRecord} from './installed-products.mjs';
 import {LocalAIManager} from './local-ai-manager.mjs';
 import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
 
@@ -47,6 +48,14 @@ let openCode;
 let openCodeDesktopRelease=null,openCodeDesktopTask=null;
 let localAIManager;
 let productDownloads;
+const productInstallTasks=new Map();
+const installedProductsFile=join(app.getPath('userData'),'installed-products.json');
+const userLocalData=()=>process.env.LOCALAPPDATA||join(app.getPath('home'),'AppData','Local');
+function installedProductState(id){
+ const installed=productInstallation(id,{localAppData:userLocalData()});
+ const record=installed.installed?readProductRecord(installedProductsFile,id):null;
+ return {installed:installed.installed,version:record?.version||null,phase:productInstallTasks.has(id)?'installing':installed.installed?'installed':'missing'};
+}
 function downloads(){return productDownloads||(productDownloads=new ProductDownloads({folder:join(app.getPath('downloads'),'W1 Capital'),onState:announce}));}
 let automaticUpdates=true;
 function setAutomaticUpdates(enabled){
@@ -76,7 +85,7 @@ else app.on('second-instance',()=>{void app.whenReady().then(showHome)});
 
 function publicState(){
  return {
-  apps:Object.values(APPS).map(app=>({...app,status:{...states[app.id]},download:downloads().snapshot(app.id)})),
+  apps:Object.values(APPS).map(app=>({...app,status:{...states[app.id]},download:downloads().snapshot(app.id),installation:installedProductState(app.id)})),
   release:{...release},
   storeVersion:app.getVersion(),automaticUpdates
  };
@@ -417,14 +426,67 @@ ipcMain.handle('central:download-product',(event,id)=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
  return downloads().download(id);
 });
+async function openInstalledProduct(id){
+ const candidate=productInstallation(id,{localAppData:userLocalData()});
+ if(!candidate.installed)throw Error('O aplicativo independente ainda não está instalado. Use Instalar ou atualizar e abrir.');
+ const error=await shell.openPath(candidate.exe);
+ if(error)throw Error('O Windows não conseguiu abrir '+resolveApp(id).name+': '+String(error).slice(0,160));
+ return {opened:true,installation:installedProductState(id)};
+}
+async function installProductWithVerification(id){
+ const spec=productSpec(id);
+ if(!['lexispredict','infinitum','predictbot'].includes(id))throw Error('Aplicativo independente não autorizado.');
+ const candidate=productInstallation(id,{localAppData:userLocalData()});
+ const selected=downloads().snapshot(id);
+ if(!selected.version)throw Error('Nenhuma versão independente publicada. Verifique as versões na Central.');
+ const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
+  type:'question',title:'W1 Capital · '+spec.name,
+  message:(candidate.installed?'Atualizar':'Instalar')+' '+spec.name+' v'+selected.version+' e abrir?',
+  detail:'O arquivo será baixado da release oficial W1, conferido por SHA-256 e instalado na pasta local do Windows. O aplicativo será aberto ao terminar, sem exigir passos técnicos. Seus projetos e dados não serão apagados.',
+  buttons:['Instalar e abrir','Cancelar'],defaultId:0,cancelId:1,noLink:true
+ });
+ if(choice.response!==0)return {cancelled:true};
+ if(downloads().snapshot(id).phase!=='downloaded')await downloads().download(id);
+ const installer=await downloads().verifiedPath(id);
+ const plan=planProductInstall(id,{localAppData:userLocalData(),installerPath:installer});
+ const exitCode=await new Promise((resolve,reject)=>{
+  let done=false;
+  const child=spawn(installer,plan.args,{
+   cwd:dirname(installer),windowsVerbatimArguments:true,argv0:'"'+installer+'"',
+   windowsHide:true,shell:false,stdio:'ignore'
+  });
+  const timer=setTimeout(()=>{
+   if(done)return;done=true;
+   try{child.kill()}catch{}
+   reject(Error('O instalador excedeu 10 minutos. O aplicativo anterior foi preservado.'));
+  },600000);
+  const finish=(error,code)=>{
+   if(done)return;done=true;clearTimeout(timer);
+   if(error)reject(error);else resolve(code);
+  };
+  child.once('error',error=>finish(error));
+  child.once('exit',(code,signal)=>finish(signal?Error('Instalador interrompido: '+signal):null,code));
+ });
+ if(exitCode!==0)throw Error('O instalador encerrou com código '+exitCode+'. Confira as permissões do Windows.');
+ const updated=productInstallation(id,{localAppData:userLocalData()});
+ if(!updated.installed)throw Error('A instalação terminou sem criar '+spec.name+'.exe na pasta esperada. O programa antigo não foi removido.');
+ writeProductRecord(installedProductsFile,id,selected.version);
+ announce();
+ const opened=await openInstalledProduct(id);
+ return {installed:true,opened:opened.opened,version:selected.version};
+}
 ipcMain.handle('central:install-product',async(event,id)=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
  if(process.platform!=='win32')throw Error('Este instalador é compatível somente com Windows.');
- // SHA-256 verification and release origin checks happen before executing anything.
- const file=await downloads().verifiedPath(id);
- const result=await shell.openPath(file);
- if(result)throw Error('O Windows não abriu o instalador: '+String(result).slice(0,160));
- return {started:true,message:'Instalador aberto. Conclua a instalação nas janelas do Windows.'};
+ productSpec(id);
+ if(productInstallTasks.has(id))throw Error('A instalação deste aplicativo já está em andamento.');
+ const task=installProductWithVerification(id);
+ productInstallTasks.set(id,task);announce();
+ try{return await task}finally{productInstallTasks.delete(id);announce()}
+});
+ipcMain.handle('central:open-installed-product',async(event,id)=>{
+ if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ return openInstalledProduct(id);
 });
 ipcMain.handle('central:show-download',async(event,id)=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
@@ -436,7 +498,10 @@ ipcMain.handle('central:auto-updates',(event,enabled)=>{
 });
 ipcMain.handle('central:launch',async(event,id)=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
- return openProduct(id);
+ const state=await openProduct(id);
+ const current=state.apps.find(app=>app.id===id);
+ if(current?.status?.phase==='error')throw Error(current.status.message||'Falha ao iniciar produto local.');
+ return state;
 });
 ipcMain.handle('central:check-updates',event=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');

@@ -45,14 +45,14 @@ try{
   console.log('PredictBot independente: interface local e IPC MCP confirmados, sem inferência.');
  }else{
  await store.waitForURL('file:///**/store.html');
- await store.getByRole('button',{name:'Abrir LexisPredict',exact:true}).waitFor();
- await store.getByRole('button',{name:'Abrir INFINITUM',exact:true}).waitFor();
+ await store.locator('.product-card.lexispredict button.launch-btn').waitFor({state:'visible'});
+ await store.locator('.product-card.infinitum button.launch-btn').waitFor({state:'visible'});
  await verifyImages(store,'.product-card img.app-mark',3);
  await verifyImages(store,'.brand img',1);
  await store.screenshot({path:join(results,'central.png')});
  for(const [id,name] of [['lexispredict','LexisPredict'],['infinitum','INFINITUM']]){
   const created=desktop.waitForEvent('window',{timeout:90000});
-  await store.getByRole('button',{name:'Abrir '+name,exact:true}).click();
+  await store.locator('.product-card.'+id+' button.launch-btn').click();
   const page=await created;
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
@@ -63,13 +63,13 @@ try{
   await page.screenshot({path:join(results,id+'.png')});
   await store.waitForFunction(appId=>window.w1Central.getState().then(s=>s.apps.find(a=>a.id===appId)?.status.phase==='running'),id);
   const count=desktop.windows().length;
-  await store.getByRole('button',{name:'Abrir '+name,exact:true}).click();
+  await store.locator('.product-card.'+id+' button.launch-btn').click();
   assert.equal(desktop.windows().length,count,'Reabrir deve reutilizar a janela');
   assert.deepEqual(errors,[],id+': erro JavaScript na tela inicial');
   console.log(name+': botão da loja abriu janela local real; IPC isolado e reabertura confirmados.');
  }
  const created=desktop.waitForEvent('window',{timeout:30000});
- await store.getByRole('button',{name:'Abrir PredictBot',exact:true}).click();
+ await store.locator('.product-card.predictbot button.launch-btn').click();
  const bot=await created;
  await bot.waitForURL('file:///**/predictbot.html');
  await bot.locator('#opencode-form').waitFor();
