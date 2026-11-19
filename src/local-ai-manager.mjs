@@ -255,10 +255,10 @@ export class LocalAIManager{
   await this.#waitReady(port,key,child);
   return port;
  }
- async #writeOpenCodeConfig(port){
+ async #writeOpenCodeConfig(port,context=1024){
   await mkdir(dirname(this.#configPath),{recursive:true});
   const temporary=this.#configPath+'.'+process.pid+'.tmp';
-  await writeFile(temporary,JSON.stringify(createLocalAIProviderConfig({port}),null,2)+'\n',{mode:0o600});
+  await writeFile(temporary,JSON.stringify(createLocalAIProviderConfig({port,context}),null,2)+'\n',{mode:0o600});
   await rename(temporary,this.#configPath);
  }
  async prepare(){
@@ -278,8 +278,10 @@ export class LocalAIManager{
   const key=await this.#ensureKey();
   const existing=await this.#findExistingServer(key);
   if(existing){
-   await this.#writeOpenCodeConfig(existing);
-   await this.#writeState({port:existing,engineVersion:LOCAL_AI_ENGINE.version,modelRevision:LOCAL_AI_MODEL.revision});
+   const prior=await this.#readState();
+   const actualContext=prior?.context||1024;
+   await this.#writeOpenCodeConfig(existing,actualContext);
+   await this.#writeState({port:existing,engineVersion:LOCAL_AI_ENGINE.version,modelRevision:LOCAL_AI_MODEL.revision,context:actualContext,threads:prior?.threads||profile.threads});
    this.#ready={port:existing,key,configPath:this.#configPath};
    this.#emit({phase:'ready',supported:true,running:true,installed:true,percent:100,port:existing,endpoint:'http://127.0.0.1:'+existing+'/v1',model:LOCAL_AI_MODEL.name,message:'IA local já estava em execução e foi reutilizada pelas janelas W1.'});
    return {...this.#lastStatus};
@@ -288,7 +290,7 @@ export class LocalAIManager{
   const modelPath=await this.#ensureModel();
   const port=await this.#startServer(executable,modelPath,this.#paths().key,key,profile);
   await this.#writeState({port,engineVersion:LOCAL_AI_ENGINE.version,modelRevision:LOCAL_AI_MODEL.revision,modelPath,executable,threads:profile.threads,context:profile.context});
-  await this.#writeOpenCodeConfig(port);
+  await this.#writeOpenCodeConfig(port,profile.context);
   this.#ready={port,key,configPath:this.#configPath};
   this.#emit({phase:'ready',supported:true,running:true,installed:true,percent:100,port,endpoint:'http://127.0.0.1:'+port+'/v1',model:LOCAL_AI_MODEL.name,message:'IA local pronta. O modelo ficará ocioso e liberará memória após 5 minutos sem uso.'});
   return {...this.#lastStatus};
@@ -302,7 +304,7 @@ export class LocalAIManager{
   const modelInstalled=await exists(paths.model);
   const port=key?await this.#findExistingServer(key):null;
   if(port){
-   await this.#writeOpenCodeConfig(port);
+   await this.#writeOpenCodeConfig(port,state?.context||1024);
    this.#ready={port,key,configPath:this.#configPath};
   }
   const installed=!!executable&&modelInstalled;
