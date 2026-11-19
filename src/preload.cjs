@@ -1,6 +1,7 @@
 const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('w1Central',Object.freeze({
  downloadProduct:id=>ipcRenderer.invoke('central:download-product',id),
+ installProduct:appId=>ipcRenderer.invoke('central:install-product',appId),
  openOfficialTool:provider=>ipcRenderer.invoke('central:open-official-tool',provider),
  getLingerCapability:()=>ipcRenderer.invoke('central:linger-capability'),
  pickOpenCodeFiles:()=>ipcRenderer.invoke('central:pick-opencode-files'),
