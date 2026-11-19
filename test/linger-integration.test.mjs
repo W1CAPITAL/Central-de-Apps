@@ -32,11 +32,15 @@ test('abre apenas release do editor do Linger e preserva a separação do W1',()
  assert.equal(officialToolUrl('linger'),'https://github.com/simplexai-labs/linger/releases/latest');
  const main=source('src/main.mjs');
  const store=source('src/store.html');
- const ui=source('src/store.js');
+ const ui=source('src/linger-ui.js');
+ const bot=source('src/predictbot.html');
  assert.match(main,/central:linger-capability/);
  assert.match(main,/trustedStoreEvent/);
  assert.match(store,/id="setup-linger"/);
  assert.match(store,/id="linger-compatibility"/);
+ assert.match(bot,/id="setup-linger"/);
+ assert.match(store,/linger-ui\\.js/);
+ assert.match(bot,/linger-ui\\.js/);
  assert.match(ui,/setup-linger/);
  assert.match(ui,/getLingerCapability/);
  assert.doesNotMatch(main,/require\(['"]linger['"]\)/);
