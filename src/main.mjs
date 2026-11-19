@@ -14,7 +14,7 @@ import {registerOpenCodeRelay,stopOpenCodeRelay} from './opencode-relay-ipc.mjs'
 import {OpenCodeController} from './opencode-controller.mjs';
 import {APPS,resolveApp} from './catalog.mjs';
 import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl,canonicalProductUrl} from './runtime-policy.mjs';
-import {validateReleaseAsset,downloadVerifiedRelease,verifyFileDigest} from './update-security.mjs';
+import {validateReleaseAsset,downloadVerifiedRelease,verifyFileDigest,verifyWindowsSignature} from './update-security.mjs';
 import {createInPlaceUpdatePlan} from './update-install.mjs';
 import {OPENCODE_RELEASES_API,chooseOpenCodeDesktopRelease,downloadVerifiedOpenCodeDesktop} from './opencode-desktop-update.mjs';
 import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distribution.mjs';
@@ -393,6 +393,11 @@ async function checkUpdates(){
  if(automaticUpdates&&release.available&&release.canDownload&&release.phase==='available')void downloadUpdate();
  return publicState();
 }
+function signatureScript(){
+ return app.isPackaged
+  ?join(process.resourcesPath,'app.asar.unpacked','src','verify-signature.ps1')
+  :join(import.meta.dirname,'verify-signature.ps1');
+}
 async function installUpdate(automatic=false){
  if(installing||handingOffUpdate)return publicState();
  if(!downloadedInstaller||!verifiedAsset||release.phase!=='downloaded')
@@ -411,6 +416,7 @@ async function installUpdate(automatic=false){
   if(choice.response!==0)return publicState();
  }
   await verifyFileDigest(downloadedInstaller,verifiedAsset);
+  await verifyWindowsSignature(downloadedInstaller,signatureScript());
   const plan=createInPlaceUpdatePlan({
    installerPath:downloadedInstaller,executablePath:process.execPath,
   });
@@ -454,6 +460,7 @@ async function downloadUpdate(mode='background'){
  // Baixar em segundo plano nunca fecha o CRM; a instalação aguarda escolha.
  downloadPromise=downloadVerifiedRelease({
   asset,folder:join(app.getPath('userData'),'trusted-updates'),
+  signatureScript:signatureScript(),
   onProgress:percent=>{
    if(release.version===asset.version){
     release={...release,phase:'downloading',percent};
@@ -527,6 +534,7 @@ async function installProductWithVerification(id){
  if(choice.response!==0)return {cancelled:true};
  if(downloads().snapshot(id).phase!=='downloaded')await downloads().download(id);
  const installer=await downloads().verifiedPath(id);
+ await verifyWindowsSignature(installer,signatureScript());
  const plan=planProductInstall(id,{localAppData:userLocalData(),storedDirectory:record?.directory,installerPath:installer});
  const exitCode=await new Promise((resolve,reject)=>{
   let done=false;

@@ -35,13 +35,16 @@ test('rejeita download de origem externa, caminho estranho e digests ausentes',(
   assert.throws(()=>validateReleaseAsset(release));
  }
 });
-test('atualização não depende de Authenticode e usa o instalador de instalação no mesmo diretório',()=>{
+test('atualização exige Authenticode e mantém a instalação no mesmo diretório',()=>{
  const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
  assert.ok(main.includes('downloadVerifiedRelease'));
  assert.ok(main.includes('createInPlaceUpdatePlan'));
  assert.ok(main.includes('windowsVerbatimArguments:true'));
  assert.ok(main.includes('verifyFileDigest(downloadedInstaller,verifiedAsset)'));
- assert.ok(!main.includes('verifyWindowsSignature'));
+ assert.ok(main.includes('verifyWindowsSignature(downloadedInstaller,signatureScript())'));
+ assert.ok(main.includes('signatureScript:signatureScript()'));
+ const security=readFileSync(new URL('../src/update-security.mjs',import.meta.url),'utf8');
+ assert.match(security,/await verifyWindowsSignature\(file,signatureScript\)/);
 });
 test('instalador adulterado depois do download é recusado antes do reinício',async()=>{
  const folder=mkdtempSync(join(tmpdir(),'w1-update-'));

@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {createReadStream,createWriteStream,statSync,mkdirSync,renameSync,rmSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
+import {spawn} from 'node:child_process';
 import {Transform} from 'node:stream';
 import {pipeline} from 'node:stream/promises';
 import {Readable} from 'node:stream';
@@ -37,6 +38,19 @@ function trustedDownloadResponse(value){
   return u.protocol==='https:'&&!u.username&&!u.password&&HOSTS.has(u.hostname.toLowerCase());
  }catch{return false}
 }
+export async function verifyWindowsSignature(file,scriptPath,spawnImpl=spawn){
+ if(process.platform!=='win32')throw Error('Verificação Authenticode exige Windows.');
+ if(typeof scriptPath!=='string'||!scriptPath.endsWith('verify-signature.ps1'))
+  throw Error('Verificador Authenticode inválido.');
+ return new Promise((resolve,reject)=>{
+  const child=spawnImpl('powershell.exe',['-NoProfile','-NonInteractive','-File',scriptPath,'-Installer',file],{
+   windowsHide:true,shell:false,stdio:['ignore','ignore','pipe']
+  });
+  child.stderr?.resume();
+  child.once('error',reject);
+  child.once('close',code=>code===0?resolve(true):reject(Error('O Windows não confirmou a assinatura W1 Capital (código '+code+').')));
+ });
+}
 export async function verifyFileDigest(file,asset){
  if(statSync(file).size!==asset.size)throw Error('Instalador local mudou de tamanho.');
  const hash=createHash('sha256');
@@ -45,10 +59,12 @@ export async function verifyFileDigest(file,asset){
  return true;
 }
 
-// Automatic updates rely on the GitHub release SHA-256 and HTTPS origin.
-// Authenticode remains optional; it is not a prerequisite for replacing an installed build.
-export async function downloadVerifiedRelease(options){
- return downloadRelease({...options,markOfWeb:false});
+// Atualizações automáticas exigem os mesmos bytes publicados e uma assinatura
+// Authenticode W1 válida. SHA-256 sozinho não identifica o editor do executável.
+export async function downloadVerifiedRelease({signatureScript,...options}){
+ const file=await downloadRelease({...options,markOfWeb:false});
+ await verifyWindowsSignature(file,signatureScript);
+ return file;
 }
 // Manual installers retain Windows' Internet-zone marking.
 export async function downloadProductCopy(options){

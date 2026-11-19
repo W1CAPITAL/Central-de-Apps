@@ -40,17 +40,22 @@ test('mantém apenas o instalador mais recente do mesmo aplicativo no cache',()=
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
 
-test('o atualizador usa SHA-256 e não depende de Authenticode',()=>{
+test('o atualizador exige SHA-256 e Authenticode antes de substituir a instalação',()=>{
  const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
  assert.ok(main.includes('downloadVerifiedRelease'));
  assert.ok(main.includes('createInPlaceUpdatePlan'));
  assert.ok(main.includes('await launch(downloadedInstaller,plan.nsisArguments'));
  assert.ok(main.includes("automaticUpdates&&release.phase==='downloaded'"));
- assert.ok(!main.includes('verifyWindowsSignature'));
+ assert.ok(main.includes('verifyWindowsSignature(downloadedInstaller,signatureScript())'));
+ assert.ok(main.includes('verifyWindowsSignature(installer,signatureScript())'));
+ const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+ assert.deepEqual(pkg.build.asarUnpack,['src/verify-signature.ps1']);
  const workflow=readFileSync(new URL('../.github/workflows/windows.yml',import.meta.url),'utf8');
  assert.ok(workflow.includes('SHA256SUMS.txt'));
  assert.ok(workflow.includes("if: github.ref == 'refs/heads/main'"));
- assert.ok(!workflow.includes('needs.windows.outputs.signed'));
+ assert.ok(workflow.includes("needs.windows.outputs.signed == 'true'"));
+ assert.ok(workflow.includes('Get-AuthenticodeSignature'));
+ assert.ok(workflow.includes('Nenhuma release pública será criada'));
  assert.ok(!workflow.includes('  preview:'));
 });
 

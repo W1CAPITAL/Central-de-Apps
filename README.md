@@ -60,7 +60,7 @@ A Central é um aplicativo Electron independente dos CRMs. Abre diretamente no W
 - **INFINITUM:** executa sua aplicação local em uma instância própria; utiliza as permissões e os dados autorizados do Supabase.
 - **PredictBot:** interface desktop para sessões, tarefas e integração autenticada com OpenCode/MCP. A Central pode preparar um provedor Qwen3 1.7B local sem alterar o modelo padrão do OpenCode.
 
-Downloads e atualizações usam releases do GitHub por HTTPS e conferência de SHA-256. Authenticode não é requisito para publicar nem instalar atualizações. O SmartScreen do Windows permanece ativo; instaladores sem certificado podem continuar exibindo avisos.
+Downloads e atualizações usam releases do GitHub por HTTPS, conferência de SHA-256 e assinatura Authenticode W1 Capital válida. Sem certificado configurado, o CI pode guardar o build para diagnóstico, mas não publica nem instala o EXE como release oficial.
 
 Consulte [catálogo, requisitos e links dos projetos](docs/ECOSSISTEMA-W1.md).
 
@@ -113,7 +113,7 @@ Em [GitHub Actions → Central W1 — Windows](https://github.com/W1CAPITAL/Cent
 
 O workflow é acionado em pushes na `main`, manualmente e por verificações periódicas das versões dos projetos. Quando não há mudanças nos códigos e já há release publicada, evita recompilações desnecessárias.
 
-Authenticode é opcional e pode ser adicionado posteriormente para identificar a W1 Capital como editora reconhecida pelo Windows. Não é necessário para o fluxo de atualização baseado em SHA-256. Certificados e senhas, caso existam, devem permanecer exclusivamente nos segredos do GitHub Actions.
+Authenticode é obrigatório para identificar a W1 Capital como editora dos instaladores oficiais. Certificados e senhas permanecem exclusivamente nos segredos do GitHub Actions; a ausência ou invalidade da assinatura bloqueia a publicação e a execução automática.
 
 ## Independência da Vercel — limites reais
 
