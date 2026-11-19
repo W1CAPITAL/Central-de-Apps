@@ -28,7 +28,7 @@ function productCard(app){
  const copy=el('div','card-copy');
  copy.appendChild(el('p',null,app.description));
  const bottom=el('div','card-bottom');
- const launch=el('button','launch-btn','Abrir '+app.name);
+ const launch=el('button','launch-btn','Abrir na Central · '+app.name);
  launch.type='button';
  launch.disabled=app.status?.phase==='starting';
  launch.addEventListener('click',async()=>{
@@ -42,10 +42,10 @@ function productCard(app){
  const area=el('div','product-download');
  area.appendChild(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · Prévia não assinada':' · Estável'):'Sem instalador disponível'));
  const name=app.name;
- const text=d.phase==='downloading'?'Baixando '+(d.percent||0)+'%':'Baixar '+name+' para Windows';
+ const text=d.phase==='downloading'?'Baixando '+(d.percent||0)+'%':d.phase==='downloaded'?'Instalador baixado':'Baixar '+name+' para Windows';
  const download=el('button','secondary',text);
  download.type='button';
- download.disabled=!d.version||d.phase==='downloading';
+ download.disabled=!d.version||d.phase==='downloading'||d.phase==='downloaded';
  download.title=d.preview?'Download de teste, não entra no canal automático.':'Baixar instalador oficial para Windows.';
  download.addEventListener('click',async()=>{
   download.disabled=true;
@@ -55,6 +55,18 @@ function productCard(app){
  });
  area.appendChild(download);
  if(d.phase==='downloaded'){
+  const install=el('button','secondary','Instalar '+app.name);
+  install.type='button';
+  install.title='Executar instalador verificado (Windows). Conclua o processo na tela.';
+  install.addEventListener('click',async()=>{
+   install.disabled=true;
+   try{
+    await bridge.installProduct(app.id);
+    card.appendChild(el('p','card-install-status','Instalador iniciado. Conclua a instalação no Windows e depois abra pelo Menu Iniciar.'));
+   }catch(error){card.appendChild(el('p','card-error','Não foi possível abrir o instalador: '+String(error?.message||'Erro do Windows')))}
+   finally{install.disabled=false}
+  });
+  area.appendChild(install);
   const show=el('button','secondary','Mostrar instalador baixado');
   show.type='button';
   show.addEventListener('click',()=>bridge.showDownload(app.id).catch(()=>{}));

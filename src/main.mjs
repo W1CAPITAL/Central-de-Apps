@@ -107,7 +107,7 @@ function productEntry(id){
 }
 async function waitForProduct(id,record){
  const url='http://127.0.0.1:'+record.port+resolveApp(id).localHealth;
- for(let i=0;i<85;i++){
+ for(let i=0;i<240;i++){
   if(record.child.exitCode!==null||record.child.signalCode!==null)
    throw Error('O servidor local do '+resolveApp(id).name+' encerrou antes de iniciar.');
   try{
@@ -120,7 +120,7 @@ async function waitForProduct(id,record){
   }catch(error){
    if(error?.message?.startsWith('Identidade da sessão'))throw error;
   }
-  await sleep(300);
+  await sleep(350);
  }
  throw Error('O servidor local do '+resolveApp(id).name+' não respondeu ao teste de segurança.');
 }
@@ -416,6 +416,15 @@ ipcMain.handle('central:get-state',event=>{
 ipcMain.handle('central:download-product',(event,id)=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
  return downloads().download(id);
+});
+ipcMain.handle('central:install-product',async(event,id)=>{
+ if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
+ if(process.platform!=='win32')throw Error('Este instalador é compatível somente com Windows.');
+ // SHA-256 verification and release origin checks happen before executing anything.
+ const file=await downloads().verifiedPath(id);
+ const result=await shell.openPath(file);
+ if(result)throw Error('O Windows não abriu o instalador: '+String(result).slice(0,160));
+ return {started:true,message:'Instalador aberto. Conclua a instalação nas janelas do Windows.'};
 });
 ipcMain.handle('central:show-download',async(event,id)=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');
