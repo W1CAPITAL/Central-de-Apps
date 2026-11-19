@@ -94,7 +94,19 @@ jobs:
             adb shell cat /sdcard/opencode.xml | grep -q 'OpenCode Mobile'
             adb shell cat /sdcard/opencode.xml | grep -q 'Entrar e conectar'
             adb shell cat /sdcard/opencode.xml | grep -q 'Seu e-mail'
-            adb shell cat /sdcard/opencode.xml | grep -q 'Enviar mensagem'
+            # O campo de conversa fica abaixo do login em telas pequenas.
+            # Rolar antes de validar evita falso negativo do UIAutomator.
+            FOUND=0
+            for ATTEMPT in 1 2 3 4; do
+              adb shell input swipe 560 1550 560 340 280
+              sleep 1
+              adb shell uiautomator dump /sdcard/opencode.xml
+              if adb shell cat /sdcard/opencode.xml | grep -q 'Enviar mensagem'; then
+                FOUND=1
+                break
+              fi
+            done
+            test "$FOUND" -eq 1
 
       - name: Guardar APK como artefato do GitHub
         uses: actions/upload-artifact@v4
