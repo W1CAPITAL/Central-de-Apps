@@ -35,6 +35,8 @@ public final class MainActivity extends Activity {
             "br.com.w1capital.infinitum.android","W1CAPITAL/Infinitum","IN"),
         new Product("predictbot","PredictBot","Agentes e integração com OpenCode e MCP",
             "br.com.w1capital.predictbot.android","W1CAPITAL/PredictBot","PB"),
+        new Product("opencode","W1 OpenCode","Agente de IA na Cloudflare, sem pareamento com PC",
+            "br.com.w1capital.opencode.android","W1CAPITAL/Central-de-Apps","OC"),
         new Product("central","Central de Apps","Instalação, atualização e organização dos aplicativos W1",
             "br.com.w1capital.central.android","W1CAPITAL/Central-de-Apps","W1")
     };

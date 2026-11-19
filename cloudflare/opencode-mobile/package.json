@@ -1,0 +1,19 @@
+{
+  "name": "@w1capital/opencode-mobile-cloud",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "deploy": "wrangler deploy",
+    "check:worker": "wrangler deploy --dry-run --outdir .wrangler-build"
+  },
+  "dependencies": {
+    "@opencode/sdk": "^2.0.24",
+    "@opencode/plugin": "^2.0.24",
+    "agents": "latest"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

@@ -48,7 +48,7 @@ jobs:
           W1_ANDROID_VERSION_CODE: ${{ github.run_number }}
           W1_ANDROID_VERSION_NAME: 1.0.${{ github.run_number }}
         run: |
-          gradle -p android :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
+          gradle -p android :app:testDebugUnitTest :opencode:testDebugUnitTest :app:assembleDebug :opencode:assembleDebug --no-daemon --stacktrace
       - name: Validar APK gerado
         run: |
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
@@ -56,6 +56,11 @@ jobs:
           "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           unzip -l "$APK" | grep -E 'classes.dex|AndroidManifest.xml'
           sha256sum "$APK"
+          MOBILE="android/opencode/build/outputs/apk/debug/opencode-debug.apk"
+          test -s "$MOBILE"
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose "$MOBILE"
+          unzip -l "$MOBILE" | grep -E "classes.dex|AndroidManifest.xml"
+          sha256sum "$MOBILE"
       - name: Habilitar aceleração do emulador Android
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -76,12 +81,19 @@ jobs:
             sleep 6
             adb shell uiautomator dump /sdcard/window.xml
             adb shell cat /sdcard/window.xml | grep -q 'Central de Apps'
+            adb install -r android/opencode/build/outputs/apk/debug/opencode-debug.apk
+            adb shell am start -n br.com.w1capital.opencode.android/br.com.w1capital.opencode.MainActivity
+            sleep 4
+            adb shell uiautomator dump /sdcard/opencode.xml
+            adb shell cat /sdcard/opencode.xml | grep -q 'OpenCode Mobile'
 
       - name: Guardar APK como artefato do GitHub
         uses: actions/upload-artifact@v4
         with:
           name: W1-Central-Android-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/opencode/build/outputs/apk/debug/opencode-debug.apk
           if-no-files-found: error
           retention-days: 14
 
@@ -97,8 +109,10 @@ jobs:
           TAG="android-preview-v${VERSION}"
           FILE="W1-Central-de-Apps-Android-${VERSION}.apk"
           cp android/app/build/outputs/apk/debug/app-debug.apk "${FILE}"
-          gh release create "${TAG}" "${FILE}" \
+          MOBILE="OpenCode-W1-Android-${VERSION}.apk"
+          cp android/opencode/build/outputs/apk/debug/opencode-debug.apk "${MOBILE}"
+          gh release create "${TAG}" "${FILE}" "${MOBILE}" \
             --target "${GITHUB_SHA}" \
             --title "W1 Central Android ${VERSION} (teste)" \
-            --notes "APK Android nativo da Central W1. Consulta as releases oficiais, apresenta os produtos, abre aplicativos instalados e baixa APKs com SHA-256 verificado. Build de teste assinado com chave de desenvolvimento temporária: atualizações entre versões podem exigir reinstalação. Não contém LexisPredict, INFINITUM ou PredictBot como aplicativos Android autônomos. Não inclui inferência local no celular." \
+            --notes "APKs Android nativos da Central W1 e do W1 OpenCode sem pareamento com PC (requer Cloudflare Worker configurado). Consulta as releases oficiais, apresenta os produtos, abre aplicativos instalados e baixa APKs com SHA-256 verificado. Build de teste assinado com chave de desenvolvimento temporária: atualizações entre versões podem exigir reinstalação. Não contém LexisPredict, INFINITUM ou PredictBot como aplicativos Android autônomos. Não inclui inferência local no celular." \
             --prerelease

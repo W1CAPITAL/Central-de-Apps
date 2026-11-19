@@ -43,3 +43,11 @@ APK: `android/app/build/outputs/apk/debug/app-debug.apk`.
 ## Próximas versões Android dos produtos
 
 O LexisPredict e o INFINITUM utilizam Next.js standalone e integrações de dados que não podem simplesmente ser convertidas de Windows x64 para Android. O PredictBot usa OpenCode/MCP com recursos de desktop. Cada um requer um cliente Android específico ou um runtime local compatível. Esses APKs não estão incluídos nesta primeira Central Android.
+
+## W1 OpenCode para Android, sem computador
+
+O módulo independente `android/opencode/` compila o **W1 OpenCode Mobile**, um APK próprio que não exige QR Code nem pareamento com Windows. Ele se conecta por HTTPS ao host OpenCode 2 implementado com `@opencode/sdk/workerd` em `cloudflare/opencode-mobile/`. Para começar é necessário implantar o Worker, configurar o segredo `MOBILE_API_TOKEN`, informar a URL e a senha no APK. A senha é criptografada com Android Keystore AES-GCM; a URL é salva no aplicativo sem credenciais.
+
+A execução da IA acontece na Cloudflare e está sujeita a limites do plano e do provedor. As ferramentas locais do desktop não funcionam na Cloudflare; a integração GitHub para edição de repositórios ainda requer ferramentas remotas autorizadas. Essa é uma aplicação independente, **não uma modificação do APK oficial de terceiros**.
+
+No GitHub Actions, o mesmo workflow compila dois APKs: a Central W1 e o W1 OpenCode.
