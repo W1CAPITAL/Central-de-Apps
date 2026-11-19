@@ -30,8 +30,9 @@ export function selectLocalAIProfile({platform,arch,totalMemory,availableMemory,
  return Object.freeze({supported:true,threads:lowMemory?1:Math.max(1,Math.min(2,cores)),context:lowMemory?512:1024,output:lowMemory?256:512,gpuLayers:0,parallel:1,idleSleepSeconds:300});
 }
 
-export function createLocalAIProviderConfig({port=8765}={}){
+export function createLocalAIProviderConfig({port=8765,context=1024}={}){
  if(!Number.isInteger(port)||port<1024||port>65535)throw Error('Porta da IA local inválida.');
+ if(!Number.isInteger(context)||context<512||context>1024)throw Error('Contexto da IA local inválido.');
  return {
   $schema:'https://opencode.ai/config.json',
   providers:{
@@ -44,7 +45,7 @@ export function createLocalAIProviderConfig({port=8765}={}){
       name:LOCAL_AI_MODEL.name,
       modelID:'w1-qwen3-1.7b',
       capabilities:{tools:false,input:['text'],output:['text']},
-      limit:{context:1024,output:512}
+      limit:{context,output:Math.min(512,Math.floor(context/2))}
      }
     }
    }
