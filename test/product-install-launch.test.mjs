@@ -11,8 +11,12 @@ test('installer download has a separate verified install action exposed to the s
  assert.ok(start>0,'Missing installer IPC handler');
  const handler=main.slice(start,main.indexOf('\n});',start));
  assert.match(handler,/trustedStoreEvent\(event\)/);
- assert.ok(handler.indexOf('await downloads().verifiedPath(id)')>0);
- assert.ok(handler.indexOf('await shell.openPath(file)')>handler.indexOf('await downloads().verifiedPath(id)'));
+ assert.match(handler,/installProductWithVerification\\(id\\)/);
+ assert.match(main,/await downloads\\(\\)\\.verifiedPath\\(id\\)/);
+ assert.match(main,/await downloads\\(\\)\\.download\\(id\\)/);
+ assert.match(main,/planProductInstall\\(id,/);
+ assert.match(main,/child\\.once\\('exit'/);
+ assert.doesNotMatch(main,/shell\\.openPath\\(file\\)/);
  assert.match(ui,/bridge\.installProduct\(app\.id\)/);
  assert.match(ui,/Instalar /);
 });
