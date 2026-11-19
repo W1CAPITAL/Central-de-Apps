@@ -149,3 +149,8 @@ footer{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;colo
 
 .opencode-model-grid{grid-template-columns:minmax(0,1fr)}
 .opencode-model-grid select{width:100%}
+
+.linger-option{margin-top:12px;padding:12px;border:1px solid #76505d;border-radius:12px;background:rgba(90,35,55,.12)}
+.linger-option p{margin:5px 0;color:#e9d4de;font-size:12px;line-height:1.5}
+.linger-option small{display:block;margin-top:8px;font-size:10px;line-height:1.5;color:#bba5b0}
+.linger-option .wide-button{margin-top:8px}

@@ -5,7 +5,7 @@ import {Transform,Readable} from 'node:stream';
 import {pipeline} from 'node:stream/promises';
 import {spawn} from 'node:child_process';
 import {createServer} from 'node:net';
-import {cpus,totalmem} from 'node:os';
+import {cpus,totalmem,freemem} from 'node:os';
 import {dirname,join,isAbsolute,win32} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {
@@ -91,13 +91,13 @@ export async function downloadVerifiedAsset({asset,destination,assetType,fetchIm
 }
 
 export class LocalAIManager{
- #root;#configPath;#fetch;#spawn;#hardware;#onProgress;#preparePromise;#lastStatus;#ready;#child;#waitAttempts;#waitIntervalMs;
- constructor({rootDirectory,configPath,fetchImpl=fetch,spawnImpl=spawn,platform=process.platform,arch=process.arch,totalMemory=totalmem(),logicalCores=cpus().length,onProgress=()=>{},waitAttempts=300,waitIntervalMs=1000}={}){
+ #root;#configPath;#fetch;#spawn;#hardware;#onProgress;#preparePromise;#lastStatus;#ready;#child;#waitAttempts;#waitIntervalMs;#freeMemory;
+ constructor({rootDirectory,configPath,fetchImpl=fetch,spawnImpl=spawn,platform=process.platform,arch=process.arch,totalMemory=totalmem(),logicalCores=cpus().length,freeMemory=freemem,onProgress=()=>{},waitAttempts=300,waitIntervalMs=1000}={}){
   if(typeof rootDirectory!=='string'||!(isAbsolute(rootDirectory)||win32.isAbsolute(rootDirectory)))throw Error('Diretório local da IA deve ser absoluto.');
   if(typeof configPath!=='string'||!(isAbsolute(configPath)||win32.isAbsolute(configPath)))throw Error('Configuração OpenCode da IA deve ter caminho absoluto.');
   this.#root=rootDirectory;this.#configPath=configPath;this.#fetch=fetchImpl;this.#spawn=spawnImpl;
   this.#hardware={platform,arch,totalMemory,logicalCores};this.#onProgress=onProgress;
-  this.#waitAttempts=waitAttempts;this.#waitIntervalMs=waitIntervalMs;
+  this.#waitAttempts=waitAttempts;this.#waitIntervalMs=waitIntervalMs;this.#freeMemory=typeof freeMemory==='function'?freeMemory:freemem;
  }
  #paths(){
   return {
@@ -255,10 +255,10 @@ export class LocalAIManager{
   await this.#waitReady(port,key,child);
   return port;
  }
- async #writeOpenCodeConfig(port){
+ async #writeOpenCodeConfig(port,context=1024){
   await mkdir(dirname(this.#configPath),{recursive:true});
   const temporary=this.#configPath+'.'+process.pid+'.tmp';
-  await writeFile(temporary,JSON.stringify(createLocalAIProviderConfig({port}),null,2)+'\n',{mode:0o600});
+  await writeFile(temporary,JSON.stringify(createLocalAIProviderConfig({port,context}),null,2)+'\n',{mode:0o600});
   await rename(temporary,this.#configPath);
  }
  async prepare(){
@@ -271,15 +271,17 @@ export class LocalAIManager{
   try{return await this.#prepareUnlocked()}finally{await release()}
  }
  async #prepareUnlocked(){
-  const profile=selectLocalAIProfile(this.#hardware);
+  const profile=selectLocalAIProfile({...this.#hardware,availableMemory:this.#freeMemory()});
   if(!profile.supported){this.#emit({phase:'unsupported',supported:false,percent:0,message:profile.reason});throw Error(profile.reason)}
   this.#emit({phase:'checking',supported:true,percent:0,message:'Verificando os componentes e a memória disponível.'});
   await mkdir(this.#root,{recursive:true});
   const key=await this.#ensureKey();
   const existing=await this.#findExistingServer(key);
   if(existing){
-   await this.#writeOpenCodeConfig(existing);
-   await this.#writeState({port:existing,engineVersion:LOCAL_AI_ENGINE.version,modelRevision:LOCAL_AI_MODEL.revision});
+   const prior=await this.#readState();
+   const actualContext=prior?.context||1024;
+   await this.#writeOpenCodeConfig(existing,actualContext);
+   await this.#writeState({port:existing,engineVersion:LOCAL_AI_ENGINE.version,modelRevision:LOCAL_AI_MODEL.revision,context:actualContext,threads:prior?.threads||profile.threads});
    this.#ready={port:existing,key,configPath:this.#configPath};
    this.#emit({phase:'ready',supported:true,running:true,installed:true,percent:100,port:existing,endpoint:'http://127.0.0.1:'+existing+'/v1',model:LOCAL_AI_MODEL.name,message:'IA local já estava em execução e foi reutilizada pelas janelas W1.'});
    return {...this.#lastStatus};
@@ -287,14 +289,14 @@ export class LocalAIManager{
   const executable=await this.#ensureEngine();
   const modelPath=await this.#ensureModel();
   const port=await this.#startServer(executable,modelPath,this.#paths().key,key,profile);
-  await this.#writeState({port,engineVersion:LOCAL_AI_ENGINE.version,modelRevision:LOCAL_AI_MODEL.revision,modelPath,executable});
-  await this.#writeOpenCodeConfig(port);
+  await this.#writeState({port,engineVersion:LOCAL_AI_ENGINE.version,modelRevision:LOCAL_AI_MODEL.revision,modelPath,executable,threads:profile.threads,context:profile.context});
+  await this.#writeOpenCodeConfig(port,profile.context);
   this.#ready={port,key,configPath:this.#configPath};
   this.#emit({phase:'ready',supported:true,running:true,installed:true,percent:100,port,endpoint:'http://127.0.0.1:'+port+'/v1',model:LOCAL_AI_MODEL.name,message:'IA local pronta. O modelo ficará ocioso e liberará memória após 5 minutos sem uso.'});
   return {...this.#lastStatus};
  }
  async status(){
-  const profile=selectLocalAIProfile(this.#hardware);
+  const profile=selectLocalAIProfile({...this.#hardware,availableMemory:this.#freeMemory()});
   if(!profile.supported)return {phase:'unsupported',supported:false,running:false,installed:false,message:profile.reason};
   if(this.#lastStatus&&['checking','downloading-engine','extracting-engine','downloading-model','starting'].includes(this.#lastStatus.phase))return {...this.#lastStatus};
   const paths=this.#paths(),key=await this.#readKey(),state=await this.#readState();
@@ -302,7 +304,7 @@ export class LocalAIManager{
   const modelInstalled=await exists(paths.model);
   const port=key?await this.#findExistingServer(key):null;
   if(port){
-   await this.#writeOpenCodeConfig(port);
+   await this.#writeOpenCodeConfig(port,state?.context||1024);
    this.#ready={port,key,configPath:this.#configPath};
   }
   const installed=!!executable&&modelInstalled;
@@ -311,7 +313,7 @@ export class LocalAIManager{
    supported:true,installed,running:!!port,engineInstalled:!!executable,modelInstalled,
    port:port||null,endpoint:port?'http://127.0.0.1:'+port+'/v1':null,
    model:LOCAL_AI_MODEL.name,modelSizeLabel:'1,28 GB',
-   threads:profile.threads,context:profile.context,
+   threads:port&&state?.threads?state.threads:profile.threads,context:port&&state?.context?state.context:profile.context,
    message:port?'IA local conectada e disponível.':installed?'Motor e modelo instalados; inicie para carregar a IA.':'Pronta para instalação automática. O primeiro download usa cerca de 1,31 GB.'
   };
  }

@@ -2,7 +2,8 @@
  // never downloads or executes an unknown binary on behalf of a user.
 export const OFFICIAL_TOOL_URLS=Object.freeze({
  opencode:'https://opencode.ai/desktop',
- warp:'https://developers.cloudflare.com/warp-client/get-started/windows/'
+ warp:'https://developers.cloudflare.com/warp-client/get-started/windows/',
+ linger:'https://github.com/simplexai-labs/linger/releases/latest'
 });
 export function officialToolUrl(provider){
  if(typeof provider!=='string'||!Object.hasOwn(OFFICIAL_TOOL_URLS,provider))

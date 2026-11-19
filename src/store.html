@@ -78,6 +78,12 @@
     <p>Conecte o executor instalado para trabalhar com seus projetos, sempre com autorização.</p>
     <button type="button" class="secondary wide-button" id="setup-opencode">Baixar OpenCode oficial</button>
     <button type="button" class="secondary wide-button" id="setup-warp">Baixar Cloudflare WARP</button>
+    <div class="linger-option">
+     <p><strong>Linger (agente pessoal externo)</strong></p>
+     <p id="linger-compatibility" role="status">Verificando se este computador comporta os serviços adicionais do Linger...</p>
+     <button type="button" class="secondary wide-button" id="setup-linger">Ver versão oficial do Linger</button>
+     <small>Opcional e separado da W1. Não instala automaticamente, não altera suas sessões OpenCode e não ativa o PolyStrata.</small>
+    </div>
     <button type="button" class="accent wide-button" id="show-advanced-integration">Configurar OpenCode e MCP</button>
    </section>
   </aside>
@@ -131,7 +137,7 @@
   <footer><span>© 2026 W1 Capital · Central de Apps</span><span id="store-version"></span></footer>
  </main>
 </div>
-<script src="./store.js"></script>\n<script src="./local-ai-ui.js"></script>
+<script src="./store.js"></script><script src="./linger-ui.js"></script>\n<script src="./local-ai-ui.js"></script>
 <script src="./opencode-ui.js"></script>
 <script src="./opencode-relay-ui.js"></script>
 </body>
