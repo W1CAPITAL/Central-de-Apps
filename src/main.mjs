@@ -522,7 +522,13 @@ ipcMain.handle('central:opencode-desktop-update',async(event,action)=>{
   });
   if(choice.response!==0)return {cancelled:true};
   const folder=join(app.getPath('userData'),'trusted-opencode-updates');
-  const path=await downloadVerifiedOpenCodeDesktop({asset:latest,folder});
+  let lastPercent=-1;
+  const path=await downloadVerifiedOpenCodeDesktop({asset:latest,folder,onProgress:percent=>{
+   if(percent===lastPercent)return;
+   lastPercent=percent;
+   for(const win of new Set([storeWindow,windows.get('predictbot')]))
+    if(win&&!win.isDestroyed())win.webContents.send('central:opencode-desktop-update-progress',percent);
+  }});
   const result=await shell.openPath(path);
   if(result)throw Error('O Windows não abriu o instalador do OpenCode: '+String(result).slice(0,120));
   return {launched:true,version:latest.version};
