@@ -21,6 +21,7 @@ import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distributi
 import {ProductDownloads} from './product-downloads.mjs';
 import {productInstallation,planProductInstall,readProductRecord,writeProductRecord} from './installed-products.mjs';
 import {LocalAIManager} from './local-ai-manager.mjs';
+import {LocalPredictBotChat} from './predictbot-local.mjs';
 import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
 
 const BUILD=productSpec(JSON.parse(readFileSync(new URL('./product-build.json',import.meta.url),'utf8')).id);
@@ -47,6 +48,7 @@ function previousInstallAttempt(asset){
 let openCode;
 let openCodeDesktopRelease=null,openCodeDesktopTask=null;
 let localAIManager;
+let localPredictBot;
 let productDownloads;
 const productInstallTasks=new Map();
 const installedProductsFile=join(app.getPath('userData'),'installed-products.json');
@@ -68,6 +70,26 @@ function trustedOpenCodeEvent(event){
  return trustedStoreEvent(event)||!!(bot&&!bot.isDestroyed()&&event.sender===bot.webContents&&event.senderFrame?.url===pathToFileURL(BOT_FILE).href);
 }
 function getOpenCode(){return openCode||(openCode=new OpenCodeController({stateDirectory:join(app.getPath('userData'),'opencode-sessions')}));}
+function trustedPredictBotEvent(event){
+ const bot=windows.get('predictbot');
+ return (BUILD.id==='predictbot'&&trustedStoreEvent(event))||
+  !!(bot&&!bot.isDestroyed()&&event.sender===bot.webContents&&
+  event.senderFrame?.url===pathToFileURL(BOT_FILE).href);
+}
+function getLocalPredictBot(){
+ return localPredictBot||(localPredictBot=new LocalPredictBotChat({
+  file:join(app.getPath('userData'),'predictbot-local-history.json'),
+  loadRuntime:async()=>{
+   const manager=getLocalAI();
+   const current=await manager.status();
+   if(!current.running)await manager.prepare();
+   const active=await manager.status(),credentials=await manager.openCodeEnvironment();
+   if(!active.running||!active.endpoint||!credentials?.apiKey)
+    throw Error('A IA local ainda não está pronta. Verifique a conexão e o espaço em disco.');
+   return {endpoint:active.endpoint, key:credentials.apiKey};
+  }
+ }));
+}
 function announceLocalAI(state){
  const targets=new Set([storeWindow,windows.get('predictbot')]);
  for(const target of targets)if(target&&!target.isDestroyed())target.webContents.send('central:local-ai-state',state);
@@ -613,6 +635,15 @@ ipcMain.handle('central:opencode-desktop-update',async(event,action)=>{
 ipcMain.handle('central:opencode',async(event,action,input={})=>{
  if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
  if(!input||typeof input!=='object'||JSON.stringify(input).length>50000)throw Error('Solicitação OpenCode inválida.');
+ // PredictBot abre diretamente em conversa. A instalação do modelo é feita
+ // no computador local; nenhuma senha ou URL vai para a interface.
+ if(trustedPredictBotEvent(event)&&action==='autoStart'){
+  if(process.env.W1_DESKTOP_SMOKE_TEST==='1')
+   return {connected:false,message:'Teste visual sem baixar modelos de IA.'};
+  return getLocalPredictBot().start();
+ }
+ if(trustedPredictBotEvent(event)&&['sessions','create','messages','prompt'].includes(action))
+  return getLocalPredictBot().act(action,input);
  if(action==='pickExecutable'){
   const result=await dialog.showOpenDialog({title:'Escolher a CLI do OpenCode',properties:['openFile'],filters:[{name:'Executável do OpenCode',extensions:['exe']}]});
   return result.canceled?'':result.filePaths[0];
