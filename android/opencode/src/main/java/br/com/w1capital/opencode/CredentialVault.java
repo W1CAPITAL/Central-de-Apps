@@ -12,7 +12,7 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
-/** Tokens never enter APK source or unencrypted SharedPreferences. */
+/** Credenciais de sessão são criptografadas pelo Android Keystore, nunca embutidas no APK. */
 public final class CredentialVault {
     private static final String ALIAS = "w1_opencode_mobile_aes";
     private final SharedPreferences preferences;
@@ -31,15 +31,15 @@ public final class CredentialVault {
         return generator.generateKey();
     }
     public boolean save(String token) {
+        if (token == null || token.isEmpty()) return false;
         try {
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, getKey());
             byte[] cipherText = cipher.doFinal(token.getBytes(StandardCharsets.UTF_8));
-            preferences.edit()
+            return preferences.edit()
                     .putString("iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
                     .putString("token", Base64.encodeToString(cipherText, Base64.NO_WRAP))
-                    .apply();
-            return true;
+                    .commit();
         } catch (Exception ignored) { return false; }
     }
     public String load() {
@@ -52,8 +52,11 @@ public final class CredentialVault {
                     new GCMParameterSpec(128, Base64.decode(iv, Base64.DEFAULT)));
             return new String(cipher.doFinal(Base64.decode(data, Base64.DEFAULT)), StandardCharsets.UTF_8);
         } catch (Exception ignored) {
-            preferences.edit().remove("iv").remove("token").apply();
+            clear();
             return "";
         }
+    }
+    public void clear() {
+        preferences.edit().remove("iv").remove("token").commit();
     }
 }
