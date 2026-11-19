@@ -23,6 +23,7 @@ import {productInstallation,planProductInstall,readProductRecord,writeProductRec
 import {LocalAIManager} from './local-ai-manager.mjs';
 import {LocalPredictBotChat} from './predictbot-local.mjs';
 import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
+import {singleFlight,loadProductWhenReady} from './product-startup.mjs';
 
 const BUILD=productSpec(JSON.parse(readFileSync(new URL('./product-build.json',import.meta.url),'utf8')).id);
 const previousProfile=app.getPath('userData');
@@ -51,6 +52,7 @@ let localAIManager;
 let localPredictBot;
 let productDownloads;
 const productInstallTasks=new Map();
+const productOpenTasks=new Map();
 const installedProductsFile=join(app.getPath('userData'),'installed-products.json');
 const userLocalData=()=>process.env.LOCALAPPDATA||join(app.getPath('home'),'AppData','Local');
 function installedProductState(id){
@@ -139,6 +141,7 @@ function productEntry(id){
 async function waitForProduct(id,record){
  const url='http://127.0.0.1:'+record.port+resolveApp(id).localHealth;
  for(let i=0;i<240;i++){
+  if(record.startupFailure)throw Error('O servidor local não pôde iniciar.');
   if(record.child.exitCode!==null||record.child.signalCode!==null)
    throw Error('O servidor local do '+resolveApp(id).name+' encerrou antes de iniciar.');
   try{
@@ -170,8 +173,8 @@ async function startProduct(id){
   env:safeEnvironment(id,port,nonce)
  });
  child.stderr?.resume();
- const record={child,port,nonce};
- child.once('error',()=>{if(running.get(id)===record){
+ const record={child,port,nonce,startupFailure:null};
+ child.once('error',error=>{record.startupFailure=error;if(running.get(id)===record){
   running.delete(id);setStatus(id,'error','Falha ao iniciar servidor local.');}});
  child.once('exit',()=>{if(running.get(id)===record){
   running.delete(id);setStatus(id,'error','Servidor local encerrado.');}});
@@ -260,11 +263,11 @@ function productBrowser(id,port){
   callback(false);
  });
  attachLexisZoomMenu(win,id);
- win.once('ready-to-show',()=>win.show());
+ // Não mostrar uma tela preta antes da verificação do conteúdo real.
  win.on('closed',()=>{windows.delete(id);announce()});
  return win;
 }
-async function openProduct(id){
+async function openProductInternal(id){
  resolveApp(id);
  const current=windows.get(id);
  if(current&&!current.isDestroyed()){current.show();current.focus();return publicState()}
@@ -279,15 +282,34 @@ async function openProduct(id){
   await bot.loadFile(BOT_FILE);setStatus(id,'running','PredictBot aberto no computador.');
   return publicState();
  }
- setStatus(id,'starting','Iniciando '+resolveApp(id).name+' no seu computador, sem Vercel...');
+ setStatus(id,'starting','Preparando '+resolveApp(id).name+' no computador...');
+ let win=null;
  try{
   const record=await startProduct(id);
-  const win=productBrowser(id,record.port);
+  win=productBrowser(id,record.port);
   windows.set(id,win);
-  await win.loadURL('http://127.0.0.1:'+record.port+resolveApp(id).localEntry);
+  const url='http://127.0.0.1:'+record.port+resolveApp(id).localEntry;
+  await loadProductWhenReady({
+   navigate:()=>win.loadURL(url),
+   inspect:()=>win.webContents.executeJavaScript(`(()=>{
+     const text=(document.body?.innerText||'').trim();
+     return {
+       ready:document.readyState==='complete',
+       visibleCharacters:text.length,
+       fatal:/Application error:|Internal Server Error|ERR_CONNECTION_|This site can't be reached|500 Internal Server Error|404: This page could not be found/i.test(text.slice(0,500))
+     };
+   })()`,true),
+   isDestroyed:()=>win.isDestroyed()||win.webContents.isDestroyed(),
+   onRetry:attempt=>setStatus(id,'starting','Recuperando a tela do '+resolveApp(id).name+' automaticamente ('+attempt+'/2)...')
+  });
+  if(win.isDestroyed())throw Error('Janela encerrada durante a inicialização.');
   win.show();
-  setStatus(id,'running','Aplicativo aberto no servidor Next.js local.');
+  win.focus();
+  setStatus(id,'running',resolveApp(id).name+' aberto no computador.');
  }catch(error){
+  // Uma janela cujo loadURL falhou não pode permanecer no mapa de janelas.
+  if(win&&!win.isDestroyed())win.destroy();
+  if(windows.get(id)===win)windows.delete(id);
   setStatus(id,'error',error?.message||'Não foi possível iniciar o aplicativo.');
   const parent=storeWindow&&!storeWindow.isDestroyed()?storeWindow:null;
   await dialog.showMessageBox(parent||undefined,{
@@ -297,6 +319,11 @@ async function openProduct(id){
   });
  }
  return publicState();
+}
+// Cinco cliques enquanto o Next inicia devem compartilhar a mesma tentativa.
+function openProduct(id){
+ resolveApp(id);
+ return singleFlight(productOpenTasks,id,()=>openProductInternal(id));
 }
 function compareVersion(v1,v2){
  const norm=s=>String(s||'').replace(/^v/,'').split('.').map(Number);
