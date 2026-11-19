@@ -1,0 +1,23 @@
+name: Testar inferência local real no Windows
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/test-local-inference-windows.ps1'
+      - '.github/workflows/local-ai-inference.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inference:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+      - name: Verificar download oficial, carga do GGUF e geração real em CPU
+        shell: pwsh
+        run: ./scripts/test-local-inference-windows.ps1
