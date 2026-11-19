@@ -16,6 +16,7 @@ import {APPS,resolveApp} from './catalog.mjs';
 import {reserveStablePort,safeEnvironment,isLocalUrl,isSafeExternalUrl,canonicalProductUrl} from './runtime-policy.mjs';
 import {validateReleaseAsset,downloadVerifiedRelease,verifyFileDigest} from './update-security.mjs';
 import {createInPlaceUpdatePlan} from './update-install.mjs';
+import {OPENCODE_RELEASES_API,chooseOpenCodeDesktopRelease,downloadVerifiedOpenCodeDesktop} from './opencode-desktop-update.mjs';
 import {productSpec,fetchReleaseCatalog,selectProductRelease} from './distribution.mjs';
 import {ProductDownloads} from './product-downloads.mjs';
 import {LocalAIManager} from './local-ai-manager.mjs';
@@ -43,6 +44,7 @@ function previousInstallAttempt(asset){
  catch{return false;}
 }
 let openCode;
+let openCodeDesktopRelease=null,openCodeDesktopTask=null;
 let localAIManager;
 let productDownloads;
 function downloads(){return productDownloads||(productDownloads=new ProductDownloads({folder:join(app.getPath('downloads'),'W1 Capital'),onState:announce}));}
@@ -478,6 +480,55 @@ ipcMain.handle('central:local-ai',async(event,action)=>{
  if(action==='status')return manager.status();
  if(action==='prepare')return manager.prepare();
  throw Error('Operação de IA local não autorizada.');
+});
+// The OpenCode desktop maintains its own electron-updater. W1 never overrides
+// that updater; this opt-in verified installer is a recovery path if it gets stuck.
+ipcMain.handle('central:opencode-desktop-update',async(event,action)=>{
+ if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
+ if(process.platform!=='win32')throw Error('Instalador oficial disponível apenas para Windows.');
+ if(!['check','repair'].includes(action))throw Error('Ação de atualização OpenCode inválida.');
+ if(action==='check'){
+  const response=await fetch(OPENCODE_RELEASES_API,{
+   headers:{Accept:'application/vnd.github+json','User-Agent':'W1-Central-OpenCode-Update'},
+   cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)
+  });
+  if(!response.ok)throw Error('Não foi possível consultar as releases oficiais do OpenCode (HTTP '+response.status+').');
+  const length=Number(response.headers?.get?.('content-length'))||0;
+  if(length>3_000_000)throw Error('Catálogo do OpenCode muito grande.');
+  const releases=await response.json();
+  const latest=chooseOpenCodeDesktopRelease(releases);
+  if(!latest)throw Error('Nenhum instalador estável x64 com SHA-256 foi publicado pelo OpenCode.');
+  openCodeDesktopRelease=latest;
+  return {version:latest.version,releaseUrl:latest.releaseUrl,downloadBytes:latest.size,nativeUpdater:true};
+ }
+ if(openCodeDesktopTask)return openCodeDesktopTask;
+ const task=(async()=>{
+  // We intentionally ask before launching an independent vendor installer.
+  const latest=openCodeDesktopRelease||await (async()=>{
+   const response=await fetch(OPENCODE_RELEASES_API,{
+    headers:{Accept:'application/vnd.github+json','User-Agent':'W1-Central-OpenCode-Update'},
+    cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)
+   });
+   if(!response.ok)throw Error('Não foi possível consultar a versão oficial do OpenCode.');
+   const found=chooseOpenCodeDesktopRelease(await response.json());
+   if(!found)throw Error('Nenhum instalador OpenCode verificado está disponível.');
+   return found;
+  })();
+  const choice=await dialog.showMessageBox({
+   type:'question',title:'OpenCode · W1 Capital',
+   message:'Abrir o instalador oficial do OpenCode v'+latest.version+'?',
+   detail:'Esta é uma opção de reparo quando a atualização do OpenCode fica presa. O instalador vem do GitHub do desenvolvedor e terá SHA-256 conferido. Feche o OpenCode antes de confirmar a instalação. Nenhum dado ou projeto será apagado.',
+   buttons:['Baixar e abrir instalador','Cancelar'],defaultId:1,cancelId:1,noLink:true
+  });
+  if(choice.response!==0)return {cancelled:true};
+  const folder=join(app.getPath('userData'),'trusted-opencode-updates');
+  const path=await downloadVerifiedOpenCodeDesktop({asset:latest,folder});
+  const result=await shell.openPath(path);
+  if(result)throw Error('O Windows não abriu o instalador do OpenCode: '+String(result).slice(0,120));
+  return {launched:true,version:latest.version};
+ })().finally(()=>{openCodeDesktopTask=null});
+ openCodeDesktopTask=task;
+ return task;
 });
 ipcMain.handle('central:opencode',async(event,action,input={})=>{
  if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
