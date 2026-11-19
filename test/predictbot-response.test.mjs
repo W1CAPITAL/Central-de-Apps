@@ -19,3 +19,7 @@ test('não mostra raciocínio interno como resposta e explica truncamento',()=>{
 test('resposta vazia comum apresenta diagnóstico claro',()=>{
  assert.throws(()=>extractAnswerText({choices:[{message:{content:null}}]}),/texto/i);
 });
+
+test('não expõe blocos de raciocínio quando servidor antigo mistura think em content',()=>{
+ assert.equal(extractAnswerText({choices:[{message:{content:'<think>interno e privado</think>Olá, posso ajudar.'}}]}),'Olá, posso ajudar.');
+});
