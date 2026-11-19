@@ -75,3 +75,15 @@ test('o modelo padrão é GGUF Qwen3 compatível com stock llama.cpp, não I2_S 
  assert.match(LOCAL_AI_MODEL.fileName,/Q4_K_M\.gguf$/);
  assert.doesNotMatch(LOCAL_AI_MODEL.fileName,/i2_s/i);
 });
+
+test('planejador leve reduz CPU e contexto quando a RAM livre do i3 está apertada',()=>{
+ const GiB=1024**3;
+ const busy=selectLocalAIProfile({platform:'win32',arch:'x64',totalMemory:8*GiB,availableMemory:2*GiB,logicalCores:4});
+ assert.equal(busy.supported,true);
+ assert.equal(busy.threads,1);
+ assert.equal(busy.context,512);
+ assert.equal(busy.parallel,1);
+ const free=selectLocalAIProfile({platform:'win32',arch:'x64',totalMemory:8*GiB,availableMemory:5*GiB,logicalCores:4});
+ assert.equal(free.threads,2);
+ assert.equal(free.context,1024);
+});
