@@ -62,3 +62,14 @@ test('marca a atualização como tentativa somente após o instalador iniciar se
  assert.ok(launched>=0&&marker>launched,'a marca persistente não pode bloquear novas tentativas após erro ao abrir o instalador');
  assert.match(method,/handingOffUpdate=true/);
 });
+
+test('Sair pelo menu também aplica a atualização já baixada, sem criar instalação duplicada',()=>{
+ const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
+ const start=main.indexOf("app.on('before-quit'");
+ const end=main.indexOf("app.on('window-all-closed'",start);
+ assert.ok(start>=0&&end>start);
+ const exit=main.slice(start,end);
+ assert.match(exit,/event\.preventDefault\(\)/);
+ assert.match(exit,/automaticUpdates&&release\.phase==='downloaded'/);
+ assert.match(exit,/installUpdate\(true\)/);
+});
