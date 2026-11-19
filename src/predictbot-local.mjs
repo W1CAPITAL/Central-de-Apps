@@ -42,7 +42,8 @@ export class LocalPredictBotChat {
       url.pathname!=='/v1'||url.username||url.password||url.search||url.hash)
     throw Error('A IA deve responder somente no endereço local do computador.');
    if(!/^[a-f0-9]{64}$/i.test(runtime?.key||''))throw Error('A autenticação da IA local não está pronta.');
-   this.#runtime={endpoint:url.origin+'/v1',key:runtime.key};
+   this.#runtime={endpoint:url.origin+'/v1',key:runtime.key,
+    context:runtime.context===512?512:1024};
    await this.#read();
    return {connected:true,mode:'local',sessions:await this.act('sessions')};
   })().catch(error=>{this.#startup=null;throw error});
@@ -78,7 +79,9 @@ export class LocalPredictBotChat {
    if(!this.#runtime)throw Error('A IA ainda não foi iniciada.');
    const text=input.text;
    if(typeof text!=='string'||!text.trim()||text.length>12000)throw Error('Mensagem inválida. Escreva até 12.000 caracteres.');
-   if(text.length>2200)throw Error('O modelo local desta versão aceita mensagens de até 2.200 caracteres por vez.');
+   const small=this.#runtime.context===512;
+   const maxChars=small?800:1800;
+   if(text.length>maxChars)throw Error('O modelo local deste computador aceita mensagens de até '+maxChars+' caracteres por vez.');
    if(this.#busy.has(chat.id))throw Error('Já existe uma resposta em andamento nesta conversa.');
    this.#busy.add(chat.id);
    try{
@@ -86,13 +89,23 @@ export class LocalPredictBotChat {
     chat.messages=chat.messages.slice(-MAX_CHAT_MESSAGES);
     chat.updatedAt=new Date().toISOString();
     await this.#save();
-    const context=chat.messages.slice(-6).map(m=>({role:m.role,content:m.text.slice(-1200)}));
+    // Reserva espaço para a resposta e reduz contexto antigo antes de atingir
+    // o limite do modelo no PC de 8 GB. Não trunca a mensagem atual.
+    let remaining=small?850:2000;
+    const context=[];
+    for(const entry of chat.messages.slice(-8).reverse()){
+     if(remaining<=0)break;
+     const value=entry.text.slice(-remaining);
+     if(!value)continue;
+     context.unshift({role:entry.role,content:value});
+     remaining-=value.length;
+    }
     let response;
     try{
      response=await this.#fetch(this.#runtime.endpoint+'/chat/completions',{
       method:'POST',redirect:'error',signal:AbortSignal.timeout(120000),
       headers:{Authorization:'Bearer '+this.#runtime.key,Accept:'application/json','Content-Type':'application/json'},
-      body:JSON.stringify({model:'w1-qwen3-1.7b',messages:context,stream:false,max_tokens:256})
+      body:JSON.stringify({model:'w1-qwen3-1.7b',messages:context,stream:false,max_tokens:small?128:256})
      });
     }catch{throw Error('A IA local não respondeu. A mensagem foi salva; ela não será reenviada automaticamente.');}
     if(!response.ok){
