@@ -153,3 +153,12 @@ footer{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;colo
 .opencode-updater-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .opencode-updater-actions button{flex:1;min-width:155px}
 #oc-desktop-update-status{line-height:1.5;max-width:620px}
+
+/* Instalação e abertura acessíveis em um clique. Manutenção só quando solicitada. */
+.product-advanced{width:100%;margin-top:12px}
+.product-advanced>summary{cursor:pointer;display:inline-block;color:#b4a3ae;font-size:11px;padding:5px 2px;list-style:none}
+.product-advanced>summary::after{content:'  ▾';font-size:11px}
+.product-advanced[open]>summary::after{content:'  ▴'}
+.product-advanced>summary::-webkit-details-marker{display:none}
+.product-advanced>summary:hover{color:#fff}
+.product-advanced>.product-download{margin-top:10px}
