@@ -36,7 +36,7 @@ function productCard(app){
   launch.disabled=true;launch.textContent='Abrindo...';
   try{await (independentlyInstalled?bridge.openInstalledProduct(app.id):bridge.launch(app.id))}
   catch(error){launch.textContent='Não foi possível abrir';launch.title=String(error?.message||'Falha local')}
-  finally{launch.disabled=false}
+  finally{launch.disabled=false;launch.textContent=(independentlyInstalled?'Abrir ':'Abrir na Central · ')+app.name}
  });
  bottom.appendChild(launch);
  const d=app.download||{};
