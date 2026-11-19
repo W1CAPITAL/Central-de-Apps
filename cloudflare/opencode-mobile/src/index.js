@@ -28,7 +28,7 @@ export class Assistant extends DurableObject {
       plugins: [this.ai.plugin, workerTools],
     }),
     defaults: {
-      model: this.ai("@cf/moonshotai/kimi-k2.7-code", { reasoningEffort: "low" }),
+      model: this.ai("@cf/openai/gpt-oss-20b", { reasoningEffort: "low" }),
       agent: "build",
     },
   });
