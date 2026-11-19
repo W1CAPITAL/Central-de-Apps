@@ -232,6 +232,17 @@ function attachLexisZoomMenu(win,id){
  });
 }
 
+function inspectProductScreen(contents){
+ // Não extrair textos ou dados de clientes: somente comprimento e falha visível.
+ return contents.executeJavaScript(`(()=>{
+   const text=(document.body?.innerText||'').trim();
+   return {
+     ready:document.readyState==='complete',
+     visibleCharacters:text.length,
+     fatal:/Application error:|Internal Server Error|ERR_CONNECTION_|This site can't be reached|500 Internal Server Error|404: This page could not be found/i.test(text.slice(0,500))
+   };
+ })()`,true);
+}
 function productBrowser(id,port){
  const productSession=session.fromPartition('persist:central-'+id);
  // Rewrite only the same-port loopback alias, before the request reaches DNS.
@@ -272,14 +283,33 @@ async function openProductInternal(id){
  const current=windows.get(id);
  if(current&&!current.isDestroyed()){current.show();current.focus();return publicState()}
  if(id==='predictbot'){
-  const bot=new BrowserWindow({width:1100,height:850,title:'PredictBot · W1 Capital',
+  const bot=new BrowserWindow({width:1100,height:850,show:false,backgroundColor:'#212121',
+   title:'PredictBot · W1 Capital',
    webPreferences:{preload:join(import.meta.dirname,'preload.cjs'),nodeIntegration:false,contextIsolation:true,sandbox:true}});
   windows.set(id,bot);
   bot.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   bot.webContents.on('will-navigate',event=>event.preventDefault());
   bot.webContents.session.setPermissionRequestHandler((_sender,_permission,callback)=>callback(false));
-  bot.on('closed',()=>{windows.delete(id);announce();});
-  await bot.loadFile(BOT_FILE);setStatus(id,'running','PredictBot aberto no computador.');
+  bot.on('closed',()=>{if(windows.get(id)===bot)windows.delete(id);announce();});
+  try{
+   await loadProductWhenReady({
+    navigate:()=>bot.loadFile(BOT_FILE),
+    inspect:()=>inspectProductScreen(bot.webContents),
+    isDestroyed:()=>bot.isDestroyed()||bot.webContents.isDestroyed(),
+    onRetry:attempt=>setStatus(id,'starting','Recuperando a tela do PredictBot ('+attempt+'/2)...')
+   });
+   bot.show();bot.focus();
+   setStatus(id,'running','PredictBot aberto no computador.');
+  }catch(error){
+   if(!bot.isDestroyed())bot.destroy();
+   if(windows.get(id)===bot)windows.delete(id);
+   setStatus(id,'error',error?.message||'O PredictBot não carregou.');
+   await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
+    type:'error',title:'PredictBot · W1 Capital',
+    message:'Não foi possível abrir o PredictBot.',
+    detail:String(error?.message||'Erro de inicialização.').slice(0,300),buttons:['Entendi']
+   });
+  }
   return publicState();
  }
  setStatus(id,'starting','Preparando '+resolveApp(id).name+' no computador...');
@@ -291,14 +321,7 @@ async function openProductInternal(id){
   const url='http://127.0.0.1:'+record.port+resolveApp(id).localEntry;
   await loadProductWhenReady({
    navigate:()=>win.loadURL(url),
-   inspect:()=>win.webContents.executeJavaScript(`(()=>{
-     const text=(document.body?.innerText||'').trim();
-     return {
-       ready:document.readyState==='complete',
-       visibleCharacters:text.length,
-       fatal:/Application error:|Internal Server Error|ERR_CONNECTION_|This site can't be reached|500 Internal Server Error|404: This page could not be found/i.test(text.slice(0,500))
-     };
-   })()`,true),
+   inspect:()=>inspectProductScreen(win.webContents),
    isDestroyed:()=>win.isDestroyed()||win.webContents.isDestroyed(),
    onRetry:attempt=>setStatus(id,'starting','Recuperando a tela do '+resolveApp(id).name+' automaticamente ('+attempt+'/2)...')
   });
