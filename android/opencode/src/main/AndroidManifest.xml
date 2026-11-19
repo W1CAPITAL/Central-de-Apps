@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="W1 OpenCode"
+        android:icon="@drawable/w1_opencode_icon"
+        android:roundIcon="@drawable/w1_opencode_icon"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:supportsRtl="true"
