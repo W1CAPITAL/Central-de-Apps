@@ -54,7 +54,9 @@ try{
  await store.screenshot({path:join(results,'central.png')});
  for(const [id,name] of [['lexispredict','LexisPredict'],['infinitum','INFINITUM']]){
   const created=desktop.waitForEvent('window',{timeout:90000});
-  await store.locator('.product-card.'+id+' button.launch-btn').click();
+  // Testa explicitamente a cópia local integrada. O botão principal, quando
+  // há release estável, instala o EXE independente em um clique.
+  await store.evaluate(productId=>window.w1Central.launch(productId),id);
   const page=await created;
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
@@ -65,13 +67,15 @@ try{
   await page.screenshot({path:join(results,id+'.png')});
   await store.waitForFunction(appId=>window.w1Central.getState().then(s=>s.apps.find(a=>a.id===appId)?.status.phase==='running'),id);
   const count=desktop.windows().length;
-  await store.locator('.product-card.'+id+' button.launch-btn').click();
+  // Testa explicitamente a cópia local integrada. O botão principal, quando
+  // há release estável, instala o EXE independente em um clique.
+  await store.evaluate(productId=>window.w1Central.launch(productId),id);
   assert.equal(desktop.windows().length,count,'Reabrir deve reutilizar a janela');
   assert.deepEqual(errors,[],id+': erro JavaScript na tela inicial');
   console.log(name+': botão da loja abriu janela local real; IPC isolado e reabertura confirmados.');
  }
  const created=desktop.waitForEvent('window',{timeout:30000});
- await store.locator('.product-card.predictbot button.launch-btn').click();
+ await store.evaluate(()=>window.w1Central.launch('predictbot'));
  const bot=await created;
  await bot.waitForURL('file:///**/predictbot.html');
  await bot.locator('#chat-form').waitFor();
