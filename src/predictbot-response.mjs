@@ -7,7 +7,7 @@ export function extractAnswerText(payload){
  const value=choice?.message?.content??choice?.text;
  const text=typeof value==='string'?value:
   Array.isArray(value)?value.filter(part=>part?.type==='text'&&typeof part.text==='string').map(part=>part.text).join(''):'';
- const visible=text.replace(/<think>[\\s\\S]*?<\\/think>/gi,'').trim();
+ const visible=text.replace(new RegExp('<think>.*?</think>','gis'),'').trim();
  if(visible&&!visible.includes('<think>'))return visible;
  if(choice?.finish_reason==='length'||typeof choice?.message?.reasoning_content==='string')
   throw Error('O modelo atingiu o limite antes de produzir a resposta. A mensagem foi salva. Tente gerar novamente com uma pergunta mais curta.');
