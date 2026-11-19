@@ -28,12 +28,13 @@ function productCard(app){
  const copy=el('div','card-copy');
  copy.appendChild(el('p',null,app.description));
  const bottom=el('div','card-bottom');
- const launch=el('button','launch-btn','Abrir na Central · '+app.name);
+ const independentlyInstalled=app.installation?.installed===true;
+ const launch=el('button','launch-btn',(independentlyInstalled?'Abrir ':'Abrir na Central · ')+app.name);
  launch.type='button';
- launch.disabled=app.status?.phase==='starting';
+ launch.disabled=app.status?.phase==='starting'||app.installation?.phase==='installing';
  launch.addEventListener('click',async()=>{
   launch.disabled=true;launch.textContent='Abrindo...';
-  try{await bridge.launch(app.id)}
+  try{await (independentlyInstalled?bridge.openInstalledProduct(app.id):bridge.launch(app.id))}
   catch(error){launch.textContent='Não foi possível abrir';launch.title=String(error?.message||'Falha local')}
   finally{launch.disabled=false}
  });
@@ -79,11 +80,11 @@ function productCard(app){
  });
  area.appendChild(action);
  if(installState.installed){
-  const installed=el('button','secondary','Abrir '+app.name+' instalado');
+  const installed=el('button','secondary','Abrir versão integrada de '+app.name);
   installed.type='button';
   installed.addEventListener('click',async()=>{
    installed.disabled=true;
-   try{await bridge.openInstalledProduct(app.id)}
+   try{await bridge.launch(app.id)}
    catch(error){
     const cardNow=document.querySelector('.product-card.'+app.id);
     if(cardNow)cardNow.appendChild(el('p','card-error','Não foi possível abrir: '+String(error?.message||'Falha do Windows')));
