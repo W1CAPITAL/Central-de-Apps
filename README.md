@@ -19,6 +19,16 @@
 
 O projeto Android está em [android/](android/README.md), com catálogo e instalador de APKs oficiais. É um aplicativo próprio, sem Electron nem Adobe AIR. As versões de teste são compiladas e disponibilizadas por GitHub Actions; os aplicativos LexisPredict, INFINITUM e PredictBot ainda precisam de APKs Android específicos e não são substituídos pelos seus instaladores Windows.
 
+## Linger e proteção de recursos da IA local
+
+A Central oferece um **atalho opcional** para as releases oficiais de [Linger](https://github.com/simplexai-labs/linger/releases/latest), um agente pessoal independente. O aplicativo W1 detecta a RAM e avisa quando a máquina usa o perfil leve. A integração **não** faz download automático, não lança o Linger, não modifica as credenciais, não mistura seus dados com o PredictBot e não copia a interface do editor.
+
+O modelo padrão local da W1 permanece **Qwen3 1.7B Q4_K_M**, acessado pelo OpenCode com a configuração isolada da Central. Inspirado no planejamento de recursos descrito pelo Linger, quando há menos de 3 GiB de memória livre o perfil da W1 reduz a execução para uma thread de CPU e 512 tokens de contexto, com o provedor OpenCode anunciado no mesmo limite; no restante, utiliza até duas threads e contexto de 1024. O motor continua local e pode consumir memória e CPU enquanto ativo. Essa redução melhora a contenção, mas não transforma a IA pequena em modelo de ponta.
+
+O **PolyStrata** usado com modelos MoE grandes, como Qwen3.8-Flash-Next, exige GPU dedicada e dezenas de gigabytes de RAM (por exemplo, ao menos 12 GB de VRAM e 32 GB de RAM nas recomendações publicadas). Não é ativado em PCs i3 com 8 GB, nem é instalado pela Central.
+
+O Linger tem licença própria baseada em Apache 2.0 com condições adicionais: sua interface mantém marca/copyright e hospedar o produto a terceiros pode exigir licença comercial. Por esse motivo, o atalho oferece o aplicativo original separado da W1, sem remover marcas ou publicar uma cópia hospedada. **Não existe integração MCP ou compartilhamento automático de memória entre Linger e PredictBot nesta etapa**; usar o link não equivale a conectar os dois aplicativos.
+
 ## Download para Windows
 
 A release estável mais recente reúne os quatro instaladores independentes da W1 Capital. Use os links abaixo para obter sempre a versão estável atual.
