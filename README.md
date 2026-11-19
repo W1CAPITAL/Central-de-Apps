@@ -29,6 +29,14 @@ O **PolyStrata** usado com modelos MoE grandes, como Qwen3.8-Flash-Next, exige G
 
 O Linger tem licença própria baseada em Apache 2.0 com condições adicionais: sua interface mantém marca/copyright e hospedar o produto a terceiros pode exigir licença comercial. Por esse motivo, o atalho oferece o aplicativo original separado da W1, sem remover marcas ou publicar uma cópia hospedada. **Não existe integração MCP ou compartilhamento automático de memória entre Linger e PredictBot nesta etapa**; usar o link não equivale a conectar os dois aplicativos.
 
+## Atualizações Windows: Central e OpenCode
+
+**Central e aplicativos W1:** a instalação é feita sobre a pasta atual pelo instalador NSIS oficial e mantém as configurações do usuário. A Central consulta releases estáveis W1, baixa em segundo plano com verificação SHA-256 e aplica a atualização ao sair. A ação **Atualizar e reiniciar** valida o arquivo novamente, inicia o NSIS e só registra uma tentativa após iniciar o instalador; um erro ao iniciar não causa bloqueio permanente de tentativas. O pipeline Windows instala um EXE real e verifica a reabertura no mesmo caminho.
+
+**OpenCode Desktop para Windows:** utiliza o atualizador próprio do desenvolvedor, com o processo de atualização/reinício do Electron. A Central não sobrepõe esse mecanismo nem executa uma atualização do OpenCode por trás do usuário. Caso o OpenCode entre em ciclo de atualização, a Central e o PredictBot possuem **Verificar OpenCode para PC** e **Reparar ou atualizar OpenCode**. O reparo consulta a lista de releases estáveis (não apenas `/releases/latest`, que pode estar defasado), baixa o executável x64 direto de `anomalyco/opencode`, valida seu hash SHA-256 e só o abre depois da confirmação do usuário. Nenhum arquivo de projetos ou credencial é apagado pela Central.
+
+O download e o instalador OpenCode são do autor oficial. O executável é verificado por hash, mas a instalação final e possíveis diálogos de segurança são controlados pelo Windows e pelo instalador OpenCode. Se o OpenCode estiver aberto, feche-o antes de confirmar a instalação de reparo. Esta opção não instala outros produtos W1 nem altera modelos, agentes ou Supabase.
+
 ## Download para Windows
 
 A release estável mais recente reúne os quatro instaladores independentes da W1 Capital. Use os links abaixo para obter sempre a versão estável atual.

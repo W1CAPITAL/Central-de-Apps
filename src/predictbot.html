@@ -29,6 +29,11 @@
     <p class="oc-note">Usuário e empresa separam o histórico desta conta do Windows. Esta conexão não autoriza acesso ao banco do CRM.</p>
     <div class="update-actions"><button type="button" class="accent" id="oc-simple-setup">Configurar OpenCode + IA local</button><button type="button" class="secondary" id="oc-pick-exe">Escolher executável</button><button type="button" class="secondary" id="oc-download">Baixar OpenCode oficial</button><button type="button" class="secondary" id="oc-detect">Detectar instalação</button><button type="submit" class="accent">Conectar e testar</button><button type="button" class="secondary" id="oc-disconnect">Desconectar</button></div>
    </form>
+  <div class="opencode-updater-actions">
+     <button type="button" class="secondary" id="oc-desktop-check">Verificar OpenCode para PC</button>
+     <button type="button" class="secondary" id="oc-desktop-repair">Reparar ou atualizar OpenCode</button>
+    </div>
+    <p class="oc-note" id="oc-desktop-update-status" role="status">O OpenCode possui atualizador próprio. Utilize o reparo somente se ele falhar.</p>
    <div id="oc-workspace" hidden>
     <div class="opencode-grid"><label>Sessão<select id="oc-session"></select></label><label>Permissões de nova sessão<select id="oc-permissions"><option value="restricted">Ferramentas bloqueadas</option><option value="review">Pedir aprovação no OpenCode</option></select></label></div>
     <div class="opencode-grid opencode-model-grid"><label>Modelo da sessão<select id="oc-model"><option value="" disabled selected>Selecione um modelo para esta sessão</option></select></label></div>
@@ -55,4 +60,4 @@
     <pre id="oc-output" role="log" aria-live="polite"></pre>
    </div>
   </section>
-<footer>W1 Capital · PredictBot</footer></main><script src="./local-ai-ui.js"></script><script src="./linger-ui.js"></script><script src="./opencode-ui.js"></script><script src="./opencode-relay-ui.js"></script></body></html>
+<footer>W1 Capital · PredictBot</footer></main><script src="./local-ai-ui.js"></script><script src="./linger-ui.js"></script><script src="./opencode-desktop-update-ui.js"></script><script src="./opencode-ui.js"></script><script src="./opencode-relay-ui.js"></script></body></html>

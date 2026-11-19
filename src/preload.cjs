@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('w1Central',Object.freeze({
  openCodeRelay:(action,input)=>ipcRenderer.invoke('central:opencode-relay',action,input),
  onRelayState:listener=>{if(typeof listener!=='function')return ()=>{};const fn=(_event,state)=>listener(state);ipcRenderer.on('central:opencode-relay-state',fn);return ()=>ipcRenderer.removeListener('central:opencode-relay-state',fn);},
  openCode:(action,input)=>ipcRenderer.invoke('central:opencode',action,input),
+ openCodeDesktopUpdate:action=>ipcRenderer.invoke('central:opencode-desktop-update',action),
+ onOpenCodeDesktopProgress:listener=>{if(typeof listener!=='function')return ()=>{};const fn=(_event,progress)=>listener(progress);ipcRenderer.on('central:opencode-desktop-update-progress',fn);return ()=>ipcRenderer.removeListener('central:opencode-desktop-update-progress',fn);},
  localAI:action=>ipcRenderer.invoke('central:local-ai',action),
  onLocalAIProgress:listener=>{if(typeof listener!=='function')return ()=>{};const fn=(_event,state)=>listener(state);ipcRenderer.on('central:local-ai-state',fn);return ()=>ipcRenderer.removeListener('central:local-ai-state',fn);},
  getState:()=>ipcRenderer.invoke('central:get-state'),
