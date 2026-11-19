@@ -52,3 +52,26 @@ test('catálogo unificado permite baixar também o INFINITUM sem disparar instal
   assert.equal(downloads.snapshot('predictbot').phase,'unavailable');
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
+
+test('reabrir a Central reutiliza instalador de produto já validado sem baixar tudo novamente',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'w1-cache-reopen-'));
+ const bytes=Buffer.alloc(1_000_000,31),version='0.1.212';
+ const name='INFINITUM-Setup-'+version+'-x64.exe';
+ const url='https://github.com/W1CAPITAL/Central-de-Apps/releases/download/v'+version+'/'+name;
+ const releases=[{tag_name:'v'+version,prerelease:false,draft:false,assets:[{
+  name,size:bytes.length,digest:'sha256:'+createHash('sha256').update(bytes).digest('hex'),browser_download_url:url
+ }]}];
+ let calls=0;
+ const fetchImpl=async()=>{
+  calls++;
+  const response=new Response(bytes);Object.defineProperty(response,'url',{value:url});return response;
+ };
+ try{
+  const first=new ProductDownloads({folder:root,fetchImpl});
+  first.update(releases);await first.download('infinitum');
+  const second=new ProductDownloads({folder:root,fetchImpl});
+  second.update(releases);await second.download('infinitum');
+  assert.equal(calls,1,'um instalador validado não deve baixar de novo após reiniciar');
+  assert.equal(second.snapshot('infinitum').phase,'downloaded');
+ }finally{rmSync(root,{recursive:true,force:true})}
+});
