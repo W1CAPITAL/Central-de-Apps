@@ -18,5 +18,13 @@ test('loja baixa o produto escolhido e mostra progresso sem executar HTML da rel
   const progress=[...dom.window.document.querySelectorAll('button')].find(b=>b.textContent==='Baixando 37%');
   assert.equal(progress.disabled,true);
   assert.equal(dom.window.document.querySelector('.card-error img'),null);
+  state.apps=['infinitum','lexispredict','predictbot'].map(id=>({id,name:id}));
+  update(state);
+  for(const id of state.apps.map(app=>app.id)){
+   const src=dom.window.document.querySelector('.product-card.'+id+' img.app-mark').getAttribute('src');
+   assert.equal(src,'./brand/'+id+'.png');
+   const png=readFileSync(new URL('../src/'+src,import.meta.url));
+   assert.equal(png.readUInt32BE(0),0x89504e47);
+  }
  }finally{dom.window.close()}
 });

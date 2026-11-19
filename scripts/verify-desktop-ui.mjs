@@ -17,6 +17,15 @@ const desktop=await electron.launch({
  executablePath:resolve(process.argv[2]||'dist/win-unpacked/W1 Central de Apps.exe'),
  args:['--user-data-dir='+profile],env,timeout:60000
 });
+async function verifyImages(page,selector,count){
+ const images=page.locator(selector);
+ assert.equal(await images.count(),count);
+ await images.evaluateAll(async elements=>{
+  await Promise.all(elements.map(image=>image.decode()));
+  if(elements.some(image=>image.naturalWidth===0))throw Error('Imagem de marca vazia.');
+ });
+}
+
 try{
  const store=await desktop.firstWindow();
  if(product==='lexispredict'||product==='infinitum'){
@@ -29,6 +38,7 @@ try{
  }else if(product==='predictbot'){
   await store.waitForURL('file:///**/predictbot.html');
   await store.locator('#opencode-form').waitFor();
+  await verifyImages(store,'.brand img',1);
   const state=await store.evaluate(()=>window.w1Central.openCodeRelay('state'));
   assert.equal(state.state,'stopped');
   await store.screenshot({path:join(results,'predictbot.png')});
@@ -37,6 +47,8 @@ try{
  await store.waitForURL('file:///**/store.html');
  await store.getByRole('button',{name:'Abrir LexisPredict',exact:true}).waitFor();
  await store.getByRole('button',{name:'Abrir INFINITUM',exact:true}).waitFor();
+ await verifyImages(store,'.product-card img.app-mark',3);
+ await verifyImages(store,'.brand img',1);
  await store.screenshot({path:join(results,'central.png')});
  for(const [id,name] of [['lexispredict','LexisPredict'],['infinitum','INFINITUM']]){
   const created=desktop.waitForEvent('window',{timeout:90000});

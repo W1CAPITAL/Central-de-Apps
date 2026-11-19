@@ -13,8 +13,11 @@ function productCard(app){
  const card=el('article','product-card '+app.id);
  card.dataset.name=String(app.name||app.id);
  const top=el('div','card-top');
- const symbol=app.id==='lexispredict'?'⚖':app.id==='infinitum'?'∞':'▣';
- top.appendChild(el('span','app-mark',symbol));
+ const logo=el('img','app-mark');
+ const mark=['lexispredict','infinitum','predictbot'].includes(app.id)?app.id:'central';
+ logo.src='./brand/'+mark+'.png';
+ logo.alt='';
+ top.appendChild(logo);
  const ident=el('div','card-ident');
  ident.append(el('h3',null,app.name),el('span','card-kicker',app.subtitle));
  top.appendChild(ident);

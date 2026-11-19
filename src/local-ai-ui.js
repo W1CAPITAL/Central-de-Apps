@@ -8,7 +8,7 @@
  if(!bridge?.localAI||!statusEl||!messageEl||!prepareButton)return;
  const active=new Set(['checking','downloading-engine','extracting-engine','downloading-model','starting']);
  const labels={
-  unsupported:'Não compatível', 'not-installed':'Não instalada', installed:'Instalada · parada',
+  error:'Preparação interrompida',unsupported:'Não compatível', 'not-installed':'Não instalada', installed:'Instalada · parada',
   checking:'Verificando', 'downloading-engine':'Baixando motor', 'extracting-engine':'Preparando motor',
   'downloading-model':'Baixando modelo',starting:'Carregando modelo',ready:'Pronta'
  };
@@ -34,7 +34,11 @@
    percentEl.textContent=state.totalBytes>0?pct+'% · '+formatBytes(state.receivedBytes)+' / '+formatBytes(state.totalBytes):state.receivedBytes?formatBytes(state.receivedBytes)+' baixados':downloading?'Preparando...':'';
   }
   prepareButton.disabled=downloading||state.supported===false;
-  prepareButton.textContent=phase==='ready'?'IA local pronta':downloading?'Preparando...':state.installed?'Iniciar IA local':'Preparar automaticamente';
+  prepareButton.textContent=phase==='error'?'Retomar preparação':phase==='ready'?'IA local pronta':downloading?'Preparando...':state.installed?'Iniciar IA local':'Preparar automaticamente';
+ }
+ async function renderFailure(){
+  const state=await bridge.localAI('status').catch(()=>null);
+  render(state?.phase==='error'||state?.phase==='unsupported'?state:{phase:'error',message:'A preparação parou. Clique em retomar para tentar novamente.'});
  }
  async function refresh(){
   try{
@@ -43,18 +47,14 @@
    if(card?.dataset.autoSetup==='true'&&state.supported!==false&&!state.running&&['not-installed','installed'].includes(state.phase)){
     prepareButton.disabled=true;
     try{render(await bridge.localAI('prepare'))}
-    catch(error){statusEl.textContent='Preparação automática interrompida';messageEl.textContent=String(error?.message||'Não foi possível preparar a IA local.')}
-    finally{prepareButton.disabled=false}
+    catch{await renderFailure()}
    }
   }catch(error){messageEl.textContent=String(error?.message||'Não foi possível consultar a IA local.')}
  }
  prepareButton.addEventListener('click',async()=>{
   prepareButton.disabled=true;
   try{render(await bridge.localAI('prepare'))}
-  catch(error){
-   statusEl.textContent='Precisa de atenção';
-   messageEl.textContent=String(error?.message||'A instalação da IA local não foi concluída.');
-  }finally{prepareButton.disabled=false}
+  catch{await renderFailure()}
  });
  checkButton?.addEventListener('click',async()=>{
   checkButton.disabled=true;

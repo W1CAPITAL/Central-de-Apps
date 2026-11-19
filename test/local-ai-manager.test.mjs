@@ -62,3 +62,49 @@ test('downloadVerifiedAsset confere também o tamanho exato publicado no manifes
   await assert.rejects(()=>stat(destination),{code:'ENOENT'});
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('retoma do disco após queda a 65% e verifica o arquivo completo',async()=>{
+ const {createServer}=await import('node:http');
+ const bytes=Buffer.alloc(100000,42),cut=65000;
+ const ranges=[];
+ const server=createServer((req,res)=>{
+  ranges.push(req.headers.range);
+  if(ranges.length===1){
+   res.writeHead(200,{'Content-Length':bytes.length});
+   res.write(bytes.subarray(0,cut));
+   setTimeout(()=>res.destroy(),100);
+  }else{
+   const offset=Number(req.headers.range?.match(/^bytes=(\d+)-$/)?.[1]);
+   if(offset!==cut){res.writeHead(400);res.end();return}
+   res.writeHead(206,{'Content-Length':bytes.length-offset,'Content-Range':'bytes '+offset+'-'+(bytes.length-1)+'/'+bytes.length});
+   res.end(bytes.subarray(offset));
+  }
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const root=await mkdtemp(join(tmpdir(),'w1-interrupted-'));
+ try{
+  const official={...asset,size:bytes.length,maxBytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')};
+  const fetchImpl=async(url,options)=>{
+   const result=await fetch('http://127.0.0.1:'+server.address().port,options);
+   return {url,headers:result.headers,body:result.body,status:result.status,ok:result.ok};
+  };
+  const destination=join(root,'runtime.zip');
+  await downloadVerifiedAsset({asset:official,destination,assetType:'engine',fetchImpl,retryDelayMs:1});
+  assert.deepEqual(ranges,[undefined,'bytes=65000-']);
+  assert.deepEqual(await readFile(destination),bytes);
+ }finally{server.closeAllConnections();server.close();await rm(root,{recursive:true,force:true})}
+});
+
+test('retomada após reabrir reinicia com segurança quando o servidor ignora Range',async()=>{
+ const {writeFile}=await import('node:fs/promises');
+ const root=await mkdtemp(join(tmpdir(),'w1-resume-'));
+ try{
+  const destination=join(root,'runtime.zip');
+  await writeFile(destination+'.'+digest+'.part',payload.subarray(0,8));
+  await downloadVerifiedAsset({asset:{...asset,size:payload.length},destination,assetType:'engine',fetchImpl:async(url,{headers})=>{
+   assert.equal(headers.Range,'bytes=8-');
+   return response();
+  }});
+  assert.deepEqual(await readFile(destination),payload);
+ }finally{await rm(root,{recursive:true,force:true})}
+});

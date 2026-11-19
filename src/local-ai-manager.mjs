@@ -54,39 +54,90 @@ async function portAvailable(port){
  });
 }
 
-export async function downloadVerifiedAsset({asset,destination,assetType,fetchImpl=fetch,onProgress=()=>{},timeoutMs=60*60*1000}={}){
+class InterruptedDownload extends Error {}
+
+async function transferAsset({asset,assetType,partial,offset,fetchImpl,onProgress,timeoutMs}){
+ const headers={'User-Agent':'W1-Capital-Local-AI','Accept-Encoding':'identity'};
+ if(offset)headers.Range='bytes='+offset+'-';
+ let response;
+ try{
+  response=await fetchImpl(asset.url,{redirect:'follow',cache:'no-store',headers,signal:AbortSignal.timeout(timeoutMs)});
+ }catch(error){throw new InterruptedDownload('A conexão foi interrompida.',{cause:error})}
+ try{
+  validateAssetRedirect(response.url||asset.url,assetType);
+  if(response.status===416&&offset){
+   await rm(partial,{force:true});
+   throw new InterruptedDownload('O servidor solicitou um novo download.');
+  }
+  if([408,429,500,502,503,504].includes(response.status))throw new InterruptedDownload('O servidor está temporariamente indisponível.');
+  if(!response.ok||!response.body||![200,206].includes(response.status))throw Error('Download oficial respondeu HTTP '+response.status+'.');
+  const length=Number(response.headers.get('content-length'))||0;
+  let totalBytes=asset.size||length;
+  if(response.status===206){
+   const match=/^bytes (\d+)-(\d+)\/(\d+)$/.exec(response.headers.get('content-range')||'');
+   if(!match||Number(match[1])!==offset||Number(match[2])!==Number(match[3])-1||
+      Number(match[3])<=offset||(length&&length!==Number(match[3])-offset))throw Error('Intervalo de retomada inválido.');
+   totalBytes=Number(match[3]);
+  }else{
+   offset=0;
+   if(asset.size&&length&&length!==asset.size)throw Error('Tamanho do download diferente do manifesto.');
+  }
+  if(totalBytes>asset.maxBytes||(asset.size&&totalBytes!==asset.size))throw Error('Tamanho do download diferente do manifesto.');
+  let received=offset;
+  const report=()=>onProgress({receivedBytes:received,totalBytes,percent:totalBytes?Math.min(99,received/totalBytes*100):0});
+  report();
+  const meter=new Transform({transform(chunk,encoding,callback){
+   received+=chunk.length;
+   if(received>(totalBytes||asset.maxBytes))return callback(Error('Download excedeu o limite de tamanho permitido.'));
+   report();
+   callback(null,chunk);
+  }});
+  const source=Readable.fromWeb(response.body);
+  // Only transport failures are retried. Disk and size errors keep their own diagnostics.
+  let transportError;
+  source.once('error',error=>{transportError=error});
+  try{await pipeline(source,meter,createWriteStream(partial,{flags:offset?'a':'w',mode:0o600}))}
+  catch(error){
+   if(error===transportError&&!(error.code&&['ENOSPC','EACCES','EPERM'].includes(error.code))&&received<=(totalBytes||asset.maxBytes)){
+    throw new InterruptedDownload('A conexão foi interrompida.',{cause:error});
+   }
+   throw error;
+  }
+  if(totalBytes&&received!==totalBytes)throw new InterruptedDownload('A conexão terminou antes do fim do arquivo.');
+ }finally{await response.body?.cancel().catch(()=>{})}
+}
+
+export async function downloadVerifiedAsset({asset,destination,assetType,fetchImpl=fetch,onProgress=()=>{},timeoutMs=60*60*1000,retryDelayMs=1000}={}){
  if(!asset||typeof asset.url!=='string'||!/^[a-f0-9]{64}$/i.test(String(asset.sha256||'')))throw Error('Manifesto de download inválido.');
  if(typeof destination!=='string'||!(isAbsolute(destination)||win32.isAbsolute(destination)))throw Error('Destino absoluto obrigatório.');
  if(!Number.isSafeInteger(asset.maxBytes)||asset.maxBytes<1||asset.maxBytes>2_000_000_000)throw Error('Limite de download inválido.');
  validateAssetRedirect(asset.url,assetType);
- const temporary=destination+'.'+process.pid+'.'+randomBytes(6).toString('hex')+'.part';
- let received=0;
- try{
-  await mkdir(dirname(destination),{recursive:true});
-  const response=await fetchImpl(asset.url,{redirect:'follow',cache:'no-store',headers:{'User-Agent':'W1-Capital-Local-AI'},signal:AbortSignal.timeout(timeoutMs)});
-  if(!response?.ok||!response.body)throw Error('Download oficial respondeu HTTP '+String(response?.status||0)+'.');
-  validateAssetRedirect(response.url||asset.url,assetType);
-  const totalBytes=Number(response.headers?.get?.('content-length'))||asset.size||0;
-  if(totalBytes>asset.maxBytes||(asset.size&&totalBytes&&totalBytes!==asset.size))throw Error('Download excedeu o tamanho permitido.');
-  const hash=createHash('sha256');
-  const meter=new Transform({
-   transform(chunk,encoding,callback){
-    received+=chunk.length;
-    if(received>asset.maxBytes){callback(Error('Download excedeu o limite de tamanho permitido.'));return}
-    hash.update(chunk);
-    try{onProgress({receivedBytes:received,totalBytes,percent:totalBytes?Math.min(99,received/totalBytes*100):0})}catch{}
-    callback(null,chunk);
+ // LocalAIManager holds the shared Windows setup lock while using this file.
+ const partial=destination+'.'+asset.sha256+'.part';
+ await mkdir(dirname(destination),{recursive:true});
+ for(let attempt=0;;attempt++){
+  let bytes=await stat(partial).then(info=>info.size,error=>{if(error.code==='ENOENT')return 0;throw error});
+  if(bytes>(asset.size||asset.maxBytes)){await rm(partial);bytes=0}
+  try{
+   if(!asset.size||bytes!==asset.size){
+    await transferAsset({asset,assetType,partial,offset:bytes,fetchImpl,onProgress,timeoutMs});
    }
-  });
-  await pipeline(Readable.fromWeb(response.body),meter,createWriteStream(temporary,{flags:'wx'}));
-  const actual=hash.digest('hex');
-  if(asset.size&&received!==asset.size)throw Error('Tamanho do arquivo não corresponde ao manifesto oficial.');
-  if(actual.toLowerCase()!==asset.sha256.toLowerCase())throw Error('SHA-256 do download não corresponde ao manifesto oficial.');
-  await rename(temporary,destination);
-  return {destination,sha256:actual,bytes:received};
- }catch(error){
-  await rm(temporary,{force:true}).catch(()=>{});
-  throw error;
+   const actual=await sha256File(partial);
+   if(actual.toLowerCase()!==asset.sha256.toLowerCase()){
+    await rm(partial);
+    if(bytes)throw new InterruptedDownload('O arquivo parcial precisa ser baixado novamente.');
+    throw Error('SHA-256 do download não corresponde ao manifesto oficial.');
+   }
+   const size=(await stat(partial)).size;
+   await rename(partial,destination);
+   return {destination,sha256:actual,bytes:size};
+  }catch(error){
+   if(!(error instanceof InterruptedDownload))throw error;
+   if(attempt>=3)throw Error('Download interrompido. Clique em retomar para continuar da parte salva.');
+   const saved=await stat(partial).then(info=>info.size,()=>0);
+   onProgress({message:'Reconectando para continuar o download…',receivedBytes:saved,totalBytes:asset.size||0,percent:asset.size?Math.min(99,saved/asset.size*100):0});
+   await delay(retryDelayMs*2**attempt);
+  }
  }
 }
 
@@ -263,7 +314,10 @@ export class LocalAIManager{
  }
  async prepare(){
   if(this.#preparePromise)return this.#preparePromise;
-  this.#preparePromise=this.#prepare().finally(()=>{this.#preparePromise=null});
+  this.#preparePromise=this.#prepare().catch(error=>{
+   if(this.#lastStatus?.phase!=='unsupported')this.#emit({phase:'error',supported:true,message:error.message});
+   throw error;
+  }).finally(()=>{this.#preparePromise=null});
   return this.#preparePromise;
  }
  async #prepare(){
@@ -298,7 +352,7 @@ export class LocalAIManager{
  async status(){
   const profile=selectLocalAIProfile({...this.#hardware,availableMemory:this.#freeMemory()});
   if(!profile.supported)return {phase:'unsupported',supported:false,running:false,installed:false,message:profile.reason};
-  if(this.#lastStatus&&['checking','downloading-engine','extracting-engine','downloading-model','starting'].includes(this.#lastStatus.phase))return {...this.#lastStatus};
+  if(this.#lastStatus&&['error','checking','downloading-engine','extracting-engine','downloading-model','starting'].includes(this.#lastStatus.phase))return {...this.#lastStatus};
   const paths=this.#paths(),key=await this.#readKey(),state=await this.#readState();
   const executable=await findFile(paths.engineDir,'llama-server.exe');
   const modelInstalled=await exists(paths.model);
