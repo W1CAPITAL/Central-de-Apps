@@ -15,6 +15,12 @@
    <button type="button" id="chat-new" class="pb-new">＋ Nova conversa</button>
    <div class="pb-list-title">Suas conversas</div>
    <nav id="chat-list" class="pb-chat-list" aria-label="Conversas salvas"></nav>
+   <nav class="pb-tools" aria-label="Ferramentas do PredictBot">
+    <button id="pb-library" type="button">Biblioteca</button>
+    <button id="pb-skills" type="button">Habilidades</button>
+    <button id="pb-plugins" type="button">Plugins</button>
+    <button id="pb-settings" type="button">Configurações</button>
+   </nav>
    <div class="pb-sidebar-footer">
     <span class="pb-brand-dot" aria-hidden="true"></span>
     <span>W1 Capital · Assistente pessoal</span>
@@ -26,18 +32,35 @@
      <button type="button" id="chat-sidebar-toggle" class="pb-icon-button" aria-label="Mostrar ou ocultar conversas">☰</button>
      <div class="pb-header-name"><strong>PredictBot</strong><span>Assistente W1</span></div>
     </div>
-    <div id="chat-status" class="pb-status" role="status" aria-live="polite">Preparando seu assistente…</div>
+    <div class="pb-header-right">
+     <label for="pb-model" class="sr-only">Selecionar modelo de IA</label>
+     <select id="pb-model" title="Modelos instalados"><option value="w1-qwen3-1.7b">Qwen3 1.7B · local</option></select>
+     <div id="chat-status" class="pb-status" role="status" aria-live="polite">Preparando seu assistente…</div>
+    </div>
    </header>
    <section id="chat-messages" class="pb-messages" aria-label="Mensagens da conversa" role="log" aria-live="polite">
     <div id="chat-welcome" class="pb-welcome"><img src="./brand/predictbot.png" alt="" /><h1>Como posso ajudar?</h1><p>Escreva sua mensagem. O PredictBot prepara a conexão automaticamente.</p></div>
    </section>
+   <section id="pb-workspace-panel" class="pb-workspace-panel" hidden aria-label="Ferramentas do PredictBot">
+    <div class="pb-panel-head"><h2 id="pb-panel-title">Biblioteca</h2><button type="button" id="pb-panel-close" aria-label="Fechar painel">✕</button></div>
+    <div id="pb-panel-content"></div>
+   </section>
    <div class="pb-footer">
     <div id="chat-alert" class="pb-alert" role="alert" hidden></div>
     <button type="button" id="chat-retry" class="pb-retry" hidden>Tentar conectar novamente</button>
+    <div id="pb-selected-files" class="pb-selected-files" aria-live="polite"></div>
     <form id="chat-form" class="pb-composer">
      <label for="chat-input" class="sr-only">Mensagem ao PredictBot</label>
      <textarea id="chat-input" rows="1" maxlength="12000" placeholder="Pergunte qualquer coisa..." autocomplete="off"></textarea>
-     <div class="pb-composer-actions"><span id="chat-hint">Enter para enviar · Shift+Enter para nova linha</span><button type="submit" id="chat-send" aria-label="Enviar mensagem" disabled>➜</button></div>
+     <div class="pb-composer-actions">
+      <div class="pb-compose-tools">
+       <button id="pb-attach" type="button" title="Adicionar arquivos à biblioteca e à conversa">＋ Arquivo</button>
+       <label for="pb-skill" class="sr-only">Habilidade da conversa</label>
+       <select id="pb-skill" title="Habilidade"><option value="general">Conversa</option><option value="summary">Resumir</option><option value="explain">Explicar</option><option value="code">Programar</option></select>
+      </div>
+      <span id="chat-hint">Enter envia</span>
+      <button type="submit" id="chat-send" aria-label="Enviar mensagem" disabled>➜</button>
+     </div>
     </form>
     <small>O PredictBot pode cometer erros. Revise informações importantes.</small>
    </div>
