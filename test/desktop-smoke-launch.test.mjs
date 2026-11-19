@@ -5,12 +5,13 @@ import {JSDOM} from 'jsdom';
 
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
-test('teste real Windows seleciona botões por produto, independentemente do texto visual',()=>{
+test('smoke Windows valida cópia local explicitamente, sem ativar o instalador em primeiro uso',()=>{
  const script=read('scripts/verify-desktop-ui.mjs');
- assert.doesNotMatch(script,/getByRole\('button',\{name:'Abrir /);
- for(const id of ['lexispredict','infinitum','predictbot']){
-  assert.match(script,new RegExp('product-card\\.'+id));
- }
+ assert.doesNotMatch(script,/getByRole\\('button',\\{name:'Abrir /);
+ assert.match(script,/product-card\\.lexispredict/);
+ assert.match(script,/product-card\\.infinitum/);
+ assert.match(script,/window\\.w1Central\\.launch\\(productId\\)/);
+ assert.match(script,/window\\.w1Central\\.launch\\('predictbot'\\)/);
 });
 
 test('botões de abrir reais aparecem sob IDs de produto fixos da loja',async()=>{
