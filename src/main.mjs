@@ -588,7 +588,14 @@ app.whenReady().then(()=>{
  const timer=setInterval(()=>void checkUpdates(),30*60*1000);
  timer.unref?.();
 }).catch(()=>app.quit());
-app.on('before-quit',()=>{
+app.on('before-quit',event=>{
+ // A menu "Sair" goes directly through before-quit, not window-all-closed.
+ // Do not silently discard an already verified automatic update.
+ if(!closing&&automaticUpdates&&release.phase==='downloaded'&&!installing&&!handingOffUpdate){
+  event.preventDefault();
+  void installUpdate(true).then(()=>{if(!handingOffUpdate)app.quit()});
+  return;
+ }
  if(closing)return;
  closing=true;
  stopOpenCodeRelay();
