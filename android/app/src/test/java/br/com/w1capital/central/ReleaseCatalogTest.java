@@ -33,6 +33,7 @@ public class ReleaseCatalogTest {
  @Test public void ensuresNoUntrustedPackageNames() {
   assertEquals("W1-Central-de-Apps-Android-1.0.1.apk",ReleaseCatalog.fileName("central","1.0.1"));
   assertEquals("PredictBot-Android-1.0.1.apk",ReleaseCatalog.fileName("predictbot","1.0.1"));
+  assertEquals("OpenCode-W1-Android-1.0.1.apk",ReleaseCatalog.fileName("opencode","1.0.1"));
   try { ReleaseCatalog.fileName("windows","1.0.1");fail(); }catch(IllegalArgumentException expected){}
   try { ReleaseCatalog.fileName("central","../../x");fail(); }catch(IllegalArgumentException expected){}
  }

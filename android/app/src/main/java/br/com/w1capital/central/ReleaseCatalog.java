@@ -27,6 +27,7 @@ public final class ReleaseCatalog {
     static {
         Map<String,String> map = new HashMap<>();
         map.put("central","W1-Central-de-Apps");
+        map.put("opencode","OpenCode-W1");
         map.put("lexispredict","LexisPredict");
         map.put("infinitum","INFINITUM");
         map.put("predictbot","PredictBot");

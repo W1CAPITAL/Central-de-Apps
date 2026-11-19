@@ -6,6 +6,7 @@
         <package android:name="br.com.w1capital.lexispredict.android" />
         <package android:name="br.com.w1capital.infinitum.android" />
         <package android:name="br.com.w1capital.predictbot.android" />
+        <package android:name="br.com.w1capital.opencode.android" />
     </queries>
     <application
         android:allowBackup="false"

@@ -196,3 +196,7 @@ O script de ícones gera no runner Windows ícones de identidade W1 com o mesmo 
 Preview sem Authenticode W1 válida **não pode ser anunciado como confiável pelo SmartScreen**. Uma versão estável sem alertas de editor desconhecido requer certificado de assinatura de código válido, instalação legítima e reputação do editor junto ao Windows. Não desative proteções nem contorne a verificação. O canal automático verifica o digest SHA-256 das releases oficiais do GitHub; a proteção do SmartScreen permanece ativa.
 
 A integração dos agentes LexisPredict/INFINITUM com a ponte remota depende das alterações revisadas e testadas nos respectivos repositórios; adicionar um botão na Central não autoriza acessos jurídicos automaticamente.
+
+## W1 OpenCode Mobile (sem parear com PC)
+
+Projeto Android independente em [android/opencode](android/opencode) e servidor [Cloudflare SDK](cloudflare/opencode-mobile/README.md). O APK do W1 OpenCode é compilado pelo workflow Android e oferecido na Central de Apps W1 após a publicação da release. É necessário configurar o Worker para que o chat funcione. O aplicativo original do OpenCode de terceiros não é alterado.

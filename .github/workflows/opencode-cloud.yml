@@ -1,0 +1,33 @@
+name: W1 OpenCode Mobile — SDK Cloudflare
+on:
+  push:
+    paths:
+      - 'cloudflare/opencode-mobile/**'
+      - '.github/workflows/opencode-cloud.yml'
+  pull_request:
+    paths:
+      - 'cloudflare/opencode-mobile/**'
+      - '.github/workflows/opencode-cloud.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: cloudflare/opencode-mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+      - name: Testar autenticação e entrada
+        run: npm test
+      - name: Validar empacotamento do SDK Workerd
+        run: npm run check:worker
