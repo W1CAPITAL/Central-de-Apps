@@ -43,12 +43,18 @@ jobs:
           test -x "$SDK_MANAGER"
           yes | "$SDK_MANAGER" --licenses >/dev/null || true
           "$SDK_MANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+      - name: Validar autenticação e isolamento do OpenCode Cloudflare
+        run: node --test cloudflare/opencode-mobile/test/*.test.mjs
       - name: Testes, compilação e APK assinado para testes
         env:
           W1_ANDROID_VERSION_CODE: ${{ github.run_number }}
           W1_ANDROID_VERSION_NAME: 1.0.${{ github.run_number }}
         run: |
           gradle -p android :app:testDebugUnitTest :opencode:testDebugUnitTest :app:assembleDebug :opencode:assembleDebug --no-daemon --stacktrace
+      - name: Confirmar que a identidade W1 foi incorporada ao APK
+        run: |
+          test -s android/opencode/build/generated/w1brand/drawable-nodpi/w1_opencode_icon.jpg
+          file android/opencode/build/generated/w1brand/drawable-nodpi/w1_opencode_icon.jpg | grep -q 'JPEG image data'
       - name: Validar APK gerado
         run: |
           APK="android/app/build/outputs/apk/debug/app-debug.apk"
@@ -86,6 +92,9 @@ jobs:
             sleep 4
             adb shell uiautomator dump /sdcard/opencode.xml
             adb shell cat /sdcard/opencode.xml | grep -q 'OpenCode Mobile'
+            adb shell cat /sdcard/opencode.xml | grep -q 'Entrar e conectar'
+            adb shell cat /sdcard/opencode.xml | grep -q 'Seu e-mail'
+            adb shell cat /sdcard/opencode.xml | grep -q 'Enviar mensagem'
 
       - name: Guardar APK como artefato do GitHub
         uses: actions/upload-artifact@v4
@@ -114,5 +123,5 @@ jobs:
           gh release create "${TAG}" "${FILE}" "${MOBILE}" \
             --target "${GITHUB_SHA}" \
             --title "W1 Central Android ${VERSION} (teste)" \
-            --notes "APKs Android nativos da Central W1 e do W1 OpenCode sem pareamento com PC (requer Cloudflare Worker configurado). Consulta as releases oficiais, apresenta os produtos, abre aplicativos instalados e baixa APKs com SHA-256 verificado. Build de teste assinado com chave de desenvolvimento temporária: atualizações entre versões podem exigir reinstalação. Não contém LexisPredict, INFINITUM ou PredictBot como aplicativos Android autônomos. Não inclui inferência local no celular." \
+            --notes "APKs Android nativos da Central W1 e do W1 OpenCode sem pareamento com PC (usa login W1, requer backend Cloudflare publicado). Consulta as releases oficiais, apresenta os produtos, abre aplicativos instalados e baixa APKs com SHA-256 verificado. Build de teste assinado com chave de desenvolvimento temporária: atualizações entre versões podem exigir reinstalação. Não contém LexisPredict, INFINITUM ou PredictBot como aplicativos Android autônomos. Não inclui inferência local no celular." \
             --prerelease
