@@ -86,7 +86,7 @@ function getLocalPredictBot(){
    const active=await manager.status(),credentials=await manager.openCodeEnvironment();
    if(!active.running||!active.endpoint||!credentials?.apiKey)
     throw Error('A IA local ainda não está pronta. Verifique a conexão e o espaço em disco.');
-   return {endpoint:active.endpoint, key:credentials.apiKey};
+   return {endpoint:active.endpoint, key:credentials.apiKey,context:active.context||1024};
   }
  }));
 }
