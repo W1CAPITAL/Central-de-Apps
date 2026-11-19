@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import {readFile,writeFile,rename,mkdir} from 'node:fs/promises';
 import {dirname} from 'node:path';
+import {extractAnswerText,buildLocalCompletion} from './predictbot-response.mjs';
 
 const ID=/^ses_[a-f0-9]{32}$/i;
 const MAX_CHAT_MESSAGES=40;
@@ -105,7 +106,7 @@ export class LocalPredictBotChat {
      response=await this.#fetch(this.#runtime.endpoint+'/chat/completions',{
       method:'POST',redirect:'error',signal:AbortSignal.timeout(120000),
       headers:{Authorization:'Bearer '+this.#runtime.key,Accept:'application/json','Content-Type':'application/json'},
-      body:JSON.stringify({model:'w1-qwen3-1.7b',messages:context,stream:false,max_tokens:small?128:256})
+      body:JSON.stringify(buildLocalCompletion(context,{small}))
      });
     }catch{throw Error('A IA local não respondeu. A mensagem foi salva; ela não será reenviada automaticamente.');}
     if(!response.ok){
@@ -115,8 +116,7 @@ export class LocalPredictBotChat {
     const length=Number(response.headers.get('content-length')||0);
     if(length>1_000_000)throw Error('Resposta local excessiva.');
     const payload=await response.json();
-    const answer=payload?.choices?.[0]?.message?.content;
-    if(typeof answer!=='string'||!answer.trim())throw Error('A IA local não enviou uma resposta em texto.');
+    const answer=extractAnswerText(payload);
     chat.messages.push({role:'assistant',text:answer.slice(0,30000)});
     chat.messages=chat.messages.slice(-MAX_CHAT_MESSAGES);
     chat.updatedAt=new Date().toISOString();
