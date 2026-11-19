@@ -23,7 +23,7 @@ test('IA local é instalada pelo app e exposta apenas a janelas OpenCode confiá
  assert.match(preload,/onLocalAIProgress/);
  assert.match(read('src/opencode-controller.mjs'),/localAI:input\.localAI/);
  assert.match(read('src/store.html'),/local-ai-ui\.js/);
- assert.match(read('src/predictbot.html'),/local-ai-ui\.js/);
+ assert.match(read('src/predictbot.html'),/predictbot-ui\.js/);
 });
 
 test('configuração automática de OpenCode prepara o modelo local antes da conexão',()=>{
@@ -32,13 +32,13 @@ test('configuração automática de OpenCode prepara o modelo local antes da con
 });
 
 test('PredictBot inicia a preparação local automaticamente no primeiro uso',()=>{
- assert.match(read('src/predictbot.html'),/data-auto-setup="true"/);
+ assert.match(read('src/predictbot-ui.js'),/call\('autoStart'\)/);
  assert.match(read('src/local-ai-ui.js'),/autoSetup/);
 });
 
 test('seletor de modelo controla somente a sessão atual no PredictBot',()=>{
  assert.match(read('src/store.html'),/id="oc-model"/);
- assert.match(read('src/predictbot.html'),/id="oc-model"/);
+ assert.match(read('src/predictbot.html'),/id="chat-input"/);
  assert.match(read('src/opencode-ui.js'),/request\('switchModel'/);
  assert.match(read('src/opencode-controller.mjs'),/case 'switchModel'/);
  assert.match(read('src/opencode-controller.mjs'),/case 'models'/);
