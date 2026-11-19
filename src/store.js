@@ -29,14 +29,25 @@ function productCard(app){
  copy.appendChild(el('p',null,app.description));
  const bottom=el('div','card-bottom');
  const independentlyInstalled=app.installation?.installed===true;
- const launch=el('button','launch-btn',(independentlyInstalled?'Abrir ':'Abrir na Central · ')+app.name);
+ const primaryLabel=independentlyInstalled?'Abrir '+app.name:
+  app.download?.version?'Instalar e abrir '+app.name:'Abrir na Central · '+app.name;
+ const launch=el('button','launch-btn',primaryLabel);
  launch.type='button';
  launch.disabled=app.status?.phase==='starting'||app.installation?.phase==='installing';
  launch.addEventListener('click',async()=>{
-  launch.disabled=true;launch.textContent='Abrindo...';
-  try{await (independentlyInstalled?bridge.openInstalledProduct(app.id):bridge.launch(app.id))}
-  catch(error){launch.textContent='Não foi possível abrir';launch.title=String(error?.message||'Falha local')}
-  finally{launch.disabled=false;launch.textContent=(independentlyInstalled?'Abrir ':'Abrir na Central · ')+app.name}
+  if(launch.disabled)return;
+  launch.disabled=true;launch.textContent='Preparando '+app.name+'...';
+  try{
+   // Quem não tem o EXE recebe instalação completa em um clique.
+   // Sem release validada, usamos a cópia local que acompanha a Central.
+   if(independentlyInstalled)await bridge.openInstalledProduct(app.id);
+   else if(app.download?.version)await bridge.installProduct(app.id);
+   else await bridge.launch(app.id);
+  }catch(error){
+   launch.title=String(error?.message||'Falha local');
+   const visible=document.querySelector('.product-card.'+app.id);
+   if(visible)visible.appendChild(el('p','card-error','Não foi possível abrir: '+launch.title));
+  }finally{launch.disabled=false;launch.textContent=primaryLabel}
  });
  bottom.appendChild(launch);
  const d=app.download||{};
