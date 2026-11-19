@@ -22,6 +22,7 @@ import {ProductDownloads} from './product-downloads.mjs';
 import {productInstallation,planProductInstall,readProductRecord,writeProductRecord} from './installed-products.mjs';
 import {LocalAIManager} from './local-ai-manager.mjs';
 import {LocalPredictBotChat} from './predictbot-local.mjs';
+import {PredictBotLibrary} from './predictbot-library.mjs';
 import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
 import {singleFlight,loadProductWhenReady} from './product-startup.mjs';
 
@@ -50,6 +51,7 @@ let openCode;
 let openCodeDesktopRelease=null,openCodeDesktopTask=null;
 let localAIManager;
 let localPredictBot;
+let predictBotLibrary;
 let productDownloads;
 const productInstallTasks=new Map();
 const productOpenTasks=new Map();
@@ -78,9 +80,13 @@ function trustedPredictBotEvent(event){
   !!(bot&&!bot.isDestroyed()&&event.sender===bot.webContents&&
   event.senderFrame?.url===pathToFileURL(BOT_FILE).href);
 }
+function getPredictBotLibrary(){
+ return predictBotLibrary||(predictBotLibrary=new PredictBotLibrary({directory:join(app.getPath('userData'),'predictbot-library')}));
+}
 function getLocalPredictBot(){
  return localPredictBot||(localPredictBot=new LocalPredictBotChat({
   file:join(app.getPath('userData'),'predictbot-local-history.json'),
+  library:getPredictBotLibrary(),
   loadRuntime:async()=>{
    const manager=getLocalAI();
    const current=await manager.status();
@@ -683,6 +689,21 @@ ipcMain.handle('central:opencode-desktop-update',async(event,action)=>{
  openCodeDesktopTask=task;
  return task;
 });
+ipcMain.handle('central:predictbot-files',async(event,action,input={})=>{
+ if(!trustedPredictBotEvent(event))throw Error('Origem não autorizada.');
+ const library=getPredictBotLibrary();
+ if(action==='list')return library.list();
+ if(action==='remove')return library.remove(input.id);
+ if(action==='pick'){
+  const result=await dialog.showOpenDialog({
+   title:'Adicionar arquivos à biblioteca do PredictBot',
+   properties:['openFile','multiSelections'],filters:ATTACHMENT_FILTERS
+  });
+  if(result.canceled)return [];
+  return library.add(result.filePaths);
+ }
+ throw Error('Operação de arquivos inválida.');
+});
 ipcMain.handle('central:opencode',async(event,action,input={})=>{
  if(!trustedOpenCodeEvent(event))throw Error('Origem não autorizada.');
  if(!input||typeof input!=='object'||JSON.stringify(input).length>50000)throw Error('Solicitação OpenCode inválida.');
@@ -693,7 +714,7 @@ ipcMain.handle('central:opencode',async(event,action,input={})=>{
    return {connected:false,message:'Teste visual sem baixar modelos de IA.'};
   return getLocalPredictBot().start();
  }
- if(trustedPredictBotEvent(event)&&['sessions','create','messages','prompt'].includes(action))
+ if(trustedPredictBotEvent(event)&&['sessions','create','messages','prompt','models','skills','setSkill','setModel'].includes(action))
   return getLocalPredictBot().act(action,input);
  if(action==='pickExecutable'){
   const result=await dialog.showOpenDialog({title:'Escolher a CLI do OpenCode',properties:['openFile'],filters:[{name:'Executável do OpenCode',extensions:['exe']}]});
