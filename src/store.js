@@ -55,18 +55,6 @@ function productCard(app){
  });
  area.appendChild(download);
  if(d.phase==='downloaded'){
-  const install=el('button','secondary','Instalar '+app.name);
-  install.type='button';
-  install.title='Executar instalador verificado (Windows). Conclua o processo na tela.';
-  install.addEventListener('click',async()=>{
-   install.disabled=true;
-   try{
-    await bridge.installProduct(app.id);
-    {const current=document.querySelector('.product-card.'+app.id);if(current)current.appendChild(el('p','card-install-status','Instalador concluído. O aplicativo independente está disponível.'));}
-   }catch(error){card.appendChild(el('p','card-error','Não foi possível abrir o instalador: '+String(error?.message||'Erro do Windows')))}
-   finally{install.disabled=false}
-  });
-  area.appendChild(install);
   const show=el('button','secondary','Mostrar instalador baixado');
   show.type='button';
   show.addEventListener('click',()=>bridge.showDownload(app.id).catch(()=>{}));
