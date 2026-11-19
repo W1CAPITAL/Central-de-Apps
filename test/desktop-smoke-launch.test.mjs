@@ -8,10 +8,10 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 test('smoke Windows valida cópia local explicitamente, sem ativar o instalador em primeiro uso',()=>{
  const script=read('scripts/verify-desktop-ui.mjs');
  assert.equal(script.includes("getByRole('button',{name:'Abrir "),false);
- assert.match(script,/product-card\\.lexispredict/);
- assert.match(script,/product-card\\.infinitum/);
- assert.match(script,/window\\.w1Central\\.launch\\(productId\\)/);
- assert.match(script,/window\\.w1Central\\.launch\\('predictbot'\\)/);
+ assert.ok(script.includes('product-card.lexispredict'));
+ assert.ok(script.includes('product-card.infinitum'));
+ assert.ok(script.includes('window.w1Central.launch(productId)'));
+ assert.ok(script.includes("window.w1Central.launch('predictbot')"));
 });
 
 test('botões de abrir reais aparecem sob IDs de produto fixos da loja',async()=>{
