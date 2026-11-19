@@ -105,7 +105,10 @@ function productCard(app){
   const version=installState.version?' · v'+installState.version:'';
   area.prepend(el('p','card-install-status','Instalado no computador'+version));
  }
- bottom.appendChild(area);
+ // Opções de manutenção ficam recolhidas: o uso diário precisa de um botão.
+ const advanced=el('details','product-advanced');
+ advanced.append(el('summary',null,'Outras opções'),area);
+ bottom.appendChild(advanced);
  card.append(top,copy,bottom,el('div','product-state',LABELS[app.status?.phase]||'Disponível'));
  if(d.error)card.appendChild(el('p','card-error',String(d.error)));
  if(app.status?.phase==='error')card.appendChild(el('p','card-error',String(app.status.message||'O aplicativo não iniciou.')));
