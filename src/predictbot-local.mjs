@@ -6,14 +6,21 @@ import {extractAnswerText,buildLocalCompletion} from './predictbot-response.mjs'
 const ID=/^ses_[a-f0-9]{32}$/i;
 const MAX_CHAT_MESSAGES=40;
 const MAX_CHATS=80;
+const SKILLS=Object.freeze({
+ general:'',
+ summary:'Resuma o material de forma clara, fiel ao conteúdo e sem inventar informações.',
+ explain:'Explique o assunto em português simples, com exemplos curtos e sem jargões.',
+ code:'Ajude com programação usando instruções precisas e exemplos de código seguros.'
+});
+export const PREDICTBOT_SKILLS=Object.freeze(Object.keys(SKILLS).map(id=>({id,name:({general:'Conversa',summary:'Resumir',explain:'Explicar',code:'Programar'})[id]})));
 
 /** Conversa privada para quem usa o PredictBot sem instalar uma CLI. */
 export class LocalPredictBotChat {
- #file;#loadRuntime;#fetch;#runtime;#data;#startup;#busy=new Set();
- constructor({file,loadRuntime,fetchImpl=fetch}={}){
+ #file;#loadRuntime;#fetch;#runtime;#data;#startup;#library;#busy=new Set();
+ constructor({file,loadRuntime,library=null,fetchImpl=fetch}={}){
   if(typeof file!=='string'||!file)throw Error('Armazenamento do PredictBot inválido.');
   if(typeof loadRuntime!=='function')throw Error('Motor de IA local não configurado.');
-  this.#file=file;this.#loadRuntime=loadRuntime;this.#fetch=fetchImpl;
+  this.#file=file;this.#loadRuntime=loadRuntime;this.#library=library;this.#fetch=fetchImpl;
  }
  async #read(){
   if(this.#data)return this.#data;
@@ -59,17 +66,29 @@ export class LocalPredictBotChat {
  }
  async act(action,input={}){
   await this.#read();
+  if(action==='models')return [{id:'w1-qwen3-1.7b',name:'Qwen3 1.7B · local',available:true,vision:false,audio:false,imageGeneration:false}];
+  if(action==='skills')return PREDICTBOT_SKILLS;
   if(action==='sessions'){
    return this.#data.chats.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||''))
     .map(({id,title})=>({id,title}));
   }
   if(action==='create'){
    const now=new Date().toISOString();
-   const chat={id:'ses_'+randomUUID().replaceAll('-',''),title:String(input.title||'Nova conversa').slice(0,100),messages:[],updatedAt:now};
+   const chat={id:'ses_'+randomUUID().replaceAll('-',''),title:String(input.title||'Nova conversa').slice(0,100),model:'w1-qwen3-1.7b',skill:'general',messages:[],updatedAt:now};
    this.#data.chats.unshift(chat);
    this.#data.chats=this.#data.chats.slice(0,MAX_CHATS);
    await this.#save();
    return {id:chat.id,title:chat.title};
+  }
+  if(action==='setSkill'){
+   const chat=await this.#get(input.sessionId);
+   if(!Object.hasOwn(SKILLS,input.skill))throw Error('Habilidade não disponível.');
+   chat.skill=input.skill;await this.#save();return {skill:chat.skill};
+  }
+  if(action==='setModel'){
+   const chat=await this.#get(input.sessionId);
+   if(input.model!=='w1-qwen3-1.7b')throw Error('Este modelo ainda não está instalado.');
+   chat.model=input.model;await this.#save();return {model:chat.model};
   }
   if(action==='messages'){
    const chat=await this.#get(input.sessionId);
@@ -79,14 +98,20 @@ export class LocalPredictBotChat {
    const chat=await this.#get(input.sessionId);
    if(!this.#runtime)throw Error('A IA ainda não foi iniciada.');
    const text=input.text;
-   if(typeof text!=='string'||!text.trim()||text.length>12000)throw Error('Mensagem inválida. Escreva até 12.000 caracteres.');
+   const attachmentIds=input.attachmentIds||[];
+   if(!Array.isArray(attachmentIds)||attachmentIds.length>4||attachmentIds.some(id=>typeof id!=='string'))throw Error('Seleção de anexos inválida.');
+   if(typeof text!=='string'||(!text.trim()&&!attachmentIds.length)||text.length>12000)throw Error('Mensagem inválida. Escreva até 12.000 caracteres.');
    const small=this.#runtime.context===512;
    const maxChars=small?800:1800;
    if(text.length>maxChars)throw Error('O modelo local deste computador aceita mensagens de até '+maxChars+' caracteres por vez.');
+   // Anexos são lidos só após seleção explícita e antes de salvar a mensagem.
+   const excerpt=attachmentIds.length?(await this.#library?.promptText(attachmentIds,{maxChars:Math.max(100,maxChars-text.length-100)})):'';
+   if(attachmentIds.length&&!this.#library)throw Error('Biblioteca local indisponível.');
+   const effectiveText=(text.trim()||'Resuma o arquivo selecionado')+(excerpt?'\n\n'+excerpt:'');
    if(this.#busy.has(chat.id))throw Error('Já existe uma resposta em andamento nesta conversa.');
    this.#busy.add(chat.id);
    try{
-    chat.messages.push({role:'user',text:text.trim()});
+    chat.messages.push({role:'user',text:text.trim()||'Resuma o arquivo selecionado'});
     chat.messages=chat.messages.slice(-MAX_CHAT_MESSAGES);
     chat.updatedAt=new Date().toISOString();
     await this.#save();
@@ -96,7 +121,8 @@ export class LocalPredictBotChat {
     const context=[];
     for(const entry of chat.messages.slice(-8).reverse()){
      if(remaining<=0)break;
-     const value=entry.text.slice(-remaining);
+     const source=entry===chat.messages.at(-1)?effectiveText:entry.text;
+     const value=source.slice(-remaining);
      if(!value)continue;
      context.unshift({role:entry.role,content:value});
      remaining-=value.length;
@@ -106,7 +132,7 @@ export class LocalPredictBotChat {
      response=await this.#fetch(this.#runtime.endpoint+'/chat/completions',{
       method:'POST',redirect:'error',signal:AbortSignal.timeout(120000),
       headers:{Authorization:'Bearer '+this.#runtime.key,Accept:'application/json','Content-Type':'application/json'},
-      body:JSON.stringify(buildLocalCompletion(context,{small}))
+      body:JSON.stringify(buildLocalCompletion(SKILLS[chat.skill]?[{role:'system',content:SKILLS[chat.skill]},...context]:context,{small}))
      });
     }catch{throw Error('A IA local não respondeu. A mensagem foi salva; ela não será reenviada automaticamente.');}
     if(!response.ok){
