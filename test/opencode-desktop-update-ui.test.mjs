@@ -5,13 +5,14 @@ import {JSDOM} from 'jsdom';
 
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
-test('loja e PredictBot independente mostram reparo OpenCode, sem auto instalar',()=>{
+test('loja mantém reparo oficial; PredictBot não expõe configurações técnicas',()=>{
  const main=read('src/main.mjs'),preload=read('src/preload.cjs');
- for(const page of ['src/store.html','src/predictbot.html']){
+ for(const page of ['src/store.html']){
   assert.match(read(page),/id="oc-desktop-check"/);
   assert.match(read(page),/id="oc-desktop-repair"/);
   assert.match(read(page),/opencode-desktop-update-ui\.js/);
  }
+ assert.doesNotMatch(read('src/predictbot.html'),/id="oc-desktop-repair"/);
  assert.match(main,/trustedOpenCodeEvent/);
  assert.match(main,/dialog\.showMessageBox/);
  assert.match(preload,/openCodeDesktopUpdate:/);
