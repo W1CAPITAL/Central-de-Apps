@@ -7,7 +7,7 @@ const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
 test('smoke Windows valida cópia local explicitamente, sem ativar o instalador em primeiro uso',()=>{
  const script=read('scripts/verify-desktop-ui.mjs');
- assert.doesNotMatch(script,/getByRole\\('button',\\{name:'Abrir /);
+ assert.equal(script.includes("getByRole('button',{name:'Abrir "),false);
  assert.match(script,/product-card\\.lexispredict/);
  assert.match(script,/product-card\\.infinitum/);
  assert.match(script,/window\\.w1Central\\.launch\\(productId\\)/);
