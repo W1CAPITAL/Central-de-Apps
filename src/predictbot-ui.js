@@ -19,6 +19,9 @@
  const setStatus=(value,connected=false)=>{status.textContent=value;status.classList.toggle('ready',connected)};
  const updateButton=()=>{send.disabled=!ready||busy||(!input.value.trim()&&!selectedFiles.length)};
  const note=(value)=>{alert.textContent=value;alert.hidden=!value;retry.hidden=!value};
+ const plainError=error=>String(error?.message||error||'Falha local')
+  .replace(/^Error invoking remote method '[^']+':\\s*Error:\\s*/i,'')
+  .replace(/^Error:\\s*/i,'').slice(0,280);
  const remember=(id,title)=>{
   if(!/^ses[a-zA-Z0-9_-]+$/.test(id))return;
   sessionTitles[id]=String(title||'Nova conversa').trim().slice(0,70)||'Nova conversa';
@@ -143,7 +146,7 @@
    setStatus('Conectado',true);
   }catch(error){
    if(currentSession)try{render(await call('messages',{sessionId:currentSession}))}catch{}
-   note('Não foi possível concluir a resposta: '+(error?.message||'erro inesperado')+'. O envio não será repetido automaticamente.');
+   note('A resposta não foi concluída: '+plainError(error)+'. A mensagem não será enviada novamente sozinha.');
   }
   finally{busy=false;updateButton()}
  }
