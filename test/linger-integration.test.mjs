@@ -38,6 +38,6 @@ test('abre apenas release do editor do Linger e preserva a separação do W1',()
  assert.match(store,/id="setup-linger"/);
  assert.match(store,/id="linger-compatibility"/);
  assert.match(ui,/setup-linger/);
- assert.match(ui,/linger-capability/);
+ assert.match(ui,/getLingerCapability/);
  assert.doesNotMatch(main,/require\(['"]linger['"]\)/);
 });
