@@ -53,3 +53,12 @@ test('o atualizador usa SHA-256 e não depende de Authenticode',()=>{
  assert.ok(!workflow.includes('needs.windows.outputs.signed'));
  assert.ok(!workflow.includes('  preview:'));
 });
+
+test('marca a atualização como tentativa somente após o instalador iniciar sem falha',()=>{
+ const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
+ const method=main.slice(main.indexOf('async function installUpdate('),main.indexOf('async function downloadUpdate('));
+ const launched=method.indexOf('await launch(downloadedInstaller,plan.nsisArguments)');
+ const marker=method.indexOf('writeFileSync(installAttemptFile');
+ assert.ok(launched>=0&&marker>launched,'a marca persistente não pode bloquear novas tentativas após erro ao abrir o instalador');
+ assert.match(method,/handingOffUpdate=true/);
+});
