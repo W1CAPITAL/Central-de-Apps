@@ -55,6 +55,8 @@ test('o atualizador exige SHA-256 e Authenticode antes de substituir a instalaç
  assert.ok(workflow.includes("if: github.ref == 'refs/heads/main'"));
  assert.ok(workflow.includes("needs.windows.outputs.signed == 'true'"));
  assert.ok(workflow.includes('Get-AuthenticodeSignature'));
+ assert.ok(workflow.includes("('dist/W1-Central-de-Apps-Setup-' + $env:CENTRAL_VERSION + '-x64.exe')"),'cada caminho deve ser avaliado antes de entrar no array PowerShell');
+ assert.ok(workflow.includes("('dist/products/predictbot/PredictBot-Setup-' + $env:CENTRAL_VERSION + '-x64.exe')"),'o array não pode concatenar os quatro caminhos em um único item');
  assert.ok(workflow.includes('Nenhuma release pública será criada'));
  assert.ok(workflow.includes('expect-signature-block'));
  assert.ok(workflow.includes('Update CI sem assinatura recusado antes da execução'));
