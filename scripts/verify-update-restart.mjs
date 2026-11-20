@@ -57,7 +57,7 @@ try{
  await page.locator('#check-updates').click();
  await page.locator('#download-background').click();
  if(expectSignatureBlock){
-  await page.waitForFunction(()=>window.w1Central.getState().then(s=>s.release.phase==='error'),null,{timeout:90000});
+  await page.waitForFunction(()=>window.w1Central.getState().then(s=>s.release.phase==='error'&&/assinatura W1 Capital/i.test(s.release.error||'')),null,{timeout:90000});
   const blocked=await page.evaluate(()=>window.w1Central.getState().then(s=>s.release));
   assert.match(blocked.error||'',/assinatura W1 Capital/i);
   assert.equal(existsSync(join(profile,'last-install-attempt.json')),false);
