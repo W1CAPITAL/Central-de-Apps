@@ -33,6 +33,15 @@ try{
  const page=await desktop.firstWindow();
  page.on('console',message=>console.log('Central: '+message.text()));
  page.on('pageerror',error=>console.error('Central: '+error.message));
+ async function waitForRelease(predicate,timeout=90000){
+  const deadline=Date.now()+timeout;
+  while(true){
+   const value=await page.evaluate(()=>window.w1Central.getState().then(s=>s.release));
+   if(predicate(value))return value;
+   if(Date.now()>deadline)throw Error('Estado esperado da atualização não foi alcançado: '+JSON.stringify(value));
+   await new Promise(resolve=>setTimeout(resolve,150));
+  }
+ }
  await page.waitForURL('file:///**/store.html');
  const deadline=Date.now()+60000;
  while(!(await page.evaluate(()=>window.w1Central.getState().then(s=>s.release.checkedAt)))){
@@ -55,11 +64,10 @@ try{
   };
  },{api:RELEASES_API,catalog});
  await page.locator('#check-updates').click();
- await page.waitForFunction(()=>window.w1Central.getState().then(s=>s.release.phase==='available'&&s.release.error===null),null,{timeout:90000});
+ await waitForRelease(value=>value.phase==='available'&&value.error===null);
  await page.locator('#download-background').click();
  if(expectSignatureBlock){
-  await page.waitForFunction(()=>window.w1Central.getState().then(s=>s.release.phase==='error'&&/assinatura W1 Capital/i.test(s.release.error||'')),null,{timeout:90000});
-  const blocked=await page.evaluate(()=>window.w1Central.getState().then(s=>s.release));
+  const blocked=await waitForRelease(value=>value.phase==='error'&&/assinatura W1 Capital/i.test(value.error||''));
   assert.match(blocked.error||'',/assinatura W1 Capital/i);
   assert.equal(existsSync(join(profile,'last-install-attempt.json')),false);
   assert.equal(await page.locator('#install-update').isHidden(),true);
