@@ -55,6 +55,7 @@ try{
   };
  },{api:RELEASES_API,catalog});
  await page.locator('#check-updates').click();
+ await page.waitForFunction(()=>window.w1Central.getState().then(s=>s.release.phase==='available'&&s.release.error===null),null,{timeout:90000});
  await page.locator('#download-background').click();
  if(expectSignatureBlock){
   await page.waitForFunction(()=>window.w1Central.getState().then(s=>s.release.phase==='error'&&/assinatura W1 Capital/i.test(s.release.error||'')),null,{timeout:90000});
