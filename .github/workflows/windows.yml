@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: central-windows-${{ github.ref }}
@@ -43,12 +44,25 @@ jobs:
           echo "predictbot_sha=$predictbot_sha" >> "$GITHUB_OUTPUT"
           build=true
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            release_dir="$(mktemp -d)"
-            latest_tag="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=1" --jq '.[0].tag_name // empty')"
-            if [ -n "$latest_tag" ] && gh release download "$latest_tag" --repo "$GITHUB_REPOSITORY" --pattern source-commits.json --dir "$release_dir" >/dev/null 2>&1; then
-              if python3 -c 'import json,sys; x=json.load(open(sys.argv[1]));sys.exit(0 if x.get("lexispredict")==sys.argv[2] and x.get("infinitum")==sys.argv[3] and x.get("predictbot")==sys.argv[4] and x.get("central")==sys.argv[5] else 1)' "$release_dir/source-commits.json" "$lexis_sha" "$infinitum_sha" "$predictbot_sha" "$GITHUB_SHA"; then
-                build=false
+            checkpoint_dir="$(mktemp -d)"
+            checkpoint_file="$checkpoint_dir/source-commits.json"
+            for run_id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/windows.yml/runs?status=success&per_page=20" --jq '.workflow_runs[].id' 2>/dev/null || true); do
+              artifact_id="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" --jq '.artifacts[] | select(.name | startswith("W1-source-commits-")) | .id' 2>/dev/null | head -n 1 || true)"
+              if [ -n "$artifact_id" ]; then
+                checkpoint_zip="$checkpoint_dir/source-commits.zip"
+                if gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" > "$checkpoint_zip" 2>/dev/null && unzip -p "$checkpoint_zip" source-commits.json > "$checkpoint_file"; then
+                  break
+                fi
               fi
+            done
+            if [ ! -s "$checkpoint_file" ]; then
+              latest_tag="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=1" --jq '.[0].tag_name // empty')"
+              if [ -n "$latest_tag" ]; then
+                gh release download "$latest_tag" --repo "$GITHUB_REPOSITORY" --pattern source-commits.json --dir "$checkpoint_dir" >/dev/null 2>&1 || true
+              fi
+            fi
+            if [ -s "$checkpoint_file" ] && python3 -c 'import json,sys; x=json.load(open(sys.argv[1]));sys.exit(0 if x.get("lexispredict")==sys.argv[2] and x.get("infinitum")==sys.argv[3] and x.get("predictbot")==sys.argv[4] and x.get("central")==sys.argv[5] else 1)' "$checkpoint_file" "$lexis_sha" "$infinitum_sha" "$predictbot_sha" "$GITHUB_SHA"; then
+              build=false
             fi
           fi
           echo "build=$build" >> "$GITHUB_OUTPUT"
@@ -335,6 +349,13 @@ jobs:
         run: |
           $record = @{ lexispredict=$env:LEXIS_SHA; infinitum=$env:INFINITUM_SHA; predictbot=$env:PREDICTBOT_SHA; central=$env:GITHUB_SHA } | ConvertTo-Json -Compress
           $record | Set-Content -Path 'source-commits.json' -Encoding utf8
+      - name: Arquivar checkpoint leve das origens
+        uses: actions/upload-artifact@v4
+        with:
+          name: W1-source-commits-${{ github.run_number }}
+          path: central/source-commits.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Arquivar instalador Windows
         uses: actions/upload-artifact@v4
         with:
