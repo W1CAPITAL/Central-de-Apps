@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {copyFileSync,createReadStream,mkdirSync,mkdtempSync,statSync,writeFileSync,readFileSync} from 'node:fs';
+import {copyFileSync,createReadStream,mkdirSync,mkdtempSync,statSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {RELEASES_API} from '../src/distribution.mjs';
 
 const {_electron:electron}=createRequire(resolve('..','desktop-test','package.json'))('playwright-core');
-const [executable,installer,buildVersion]=process.argv.slice(2);
+const [executable,installer,buildVersion,mode='signed']=process.argv.slice(2);
+if(!['signed','expect-signature-block'].includes(mode))throw Error('Modo de teste de atualização inválido.');
+const expectSignatureBlock=mode==='expect-signature-block';
 const version='1.0.'+buildVersion.split('.')[2];
 const name='W1-Central-de-Apps-Setup-'+version+'-x64.exe';
 const profile=mkdtempSync(join(tmpdir(),'W1 update test '));
@@ -54,20 +56,29 @@ try{
  },{api:RELEASES_API,catalog});
  await page.locator('#check-updates').click();
  await page.locator('#download-background').click();
- await page.locator('#install-update').waitFor({state:'visible',timeout:90000});
- const before=await page.evaluate(()=>window.w1Central.getState());
- assert.equal(before.release.phase,'downloaded');
- const closed=page.waitForEvent('close',{timeout:90000});
- const message=page.locator('#update-message').filter({hasText:/Atualização não concluída|não pôde ser iniciada/i});
- const error=message.waitFor({state:'visible',timeout:90000}).then(async()=>{
-  throw Error('Falha ao iniciar NSIS: '+await message.textContent());
- });
- await Promise.all([
-  Promise.race([closed,error.catch(cause=>{if(!/closed/i.test(cause.message))throw cause;return closed;})]),
-  page.locator('#install-update').click({noWaitAfter:true,timeout:15000}).catch(cause=>{if(!/closed/i.test(cause.message))throw cause;})
- ]);
- assert.equal(JSON.parse(readFileSync(join(profile,'last-install-attempt.json'),'utf8')).sha256,sha256);
- console.log('O botão confirmou o pacote em cache e a Central fechou para o NSIS.');
+ if(expectSignatureBlock){
+  await page.waitForFunction(()=>window.w1Central.getState().then(s=>s.release.phase==='error'),null,{timeout:90000});
+  const blocked=await page.evaluate(()=>window.w1Central.getState().then(s=>s.release));
+  assert.match(blocked.error||'',/assinatura W1 Capital/i);
+  assert.equal(existsSync(join(profile,'last-install-attempt.json')),false);
+  assert.equal(await page.locator('#install-update').isHidden(),true);
+  console.log('Instalador CI sem assinatura foi bloqueado antes da execução.');
+ }else{
+  await page.locator('#install-update').waitFor({state:'visible',timeout:90000});
+  const before=await page.evaluate(()=>window.w1Central.getState());
+  assert.equal(before.release.phase,'downloaded');
+  const closed=page.waitForEvent('close',{timeout:90000});
+  const message=page.locator('#update-message').filter({hasText:/Atualização não concluída|não pôde ser iniciada/i});
+  const error=message.waitFor({state:'visible',timeout:90000}).then(async()=>{
+   throw Error('Falha ao iniciar NSIS: '+await message.textContent());
+  });
+  await Promise.all([
+   Promise.race([closed,error.catch(cause=>{if(!/closed/i.test(cause.message))throw cause;return closed;})]),
+   page.locator('#install-update').click({noWaitAfter:true,timeout:15000}).catch(cause=>{if(!/closed/i.test(cause.message))throw cause;})
+  ]);
+  assert.equal(JSON.parse(readFileSync(join(profile,'last-install-attempt.json'),'utf8')).sha256,sha256);
+  console.log('O botão confirmou o pacote assinado em cache e a Central fechou para o NSIS.');
+ }
 }catch(error){
  const page=desktop.windows()[0];
  if(page&&!page.isClosed()){
