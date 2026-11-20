@@ -60,6 +60,7 @@ test('o atualizador exige SHA-256 e Authenticode antes de substituir a instalaç
  assert.ok(workflow.includes('Update CI sem assinatura recusado antes da execução'));
  const restartSmoke=readFileSync(new URL('../scripts/verify-update-restart.mjs',import.meta.url),'utf8');
  assert.ok(restartSmoke.includes("mode='signed'"));
+ assert.ok(restartSmoke.includes("release.phase==='available'&&s.release.error===null"),'o smoke deve limpar o estado anterior antes de iniciar o download');
  assert.ok(restartSmoke.includes("release.phase==='error'"));
  assert.ok(restartSmoke.includes('last-install-attempt.json'),'o teste deve confirmar que o instalador bloqueado não foi executado');
  assert.ok(!workflow.includes('  preview:'));
