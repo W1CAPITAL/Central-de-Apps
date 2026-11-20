@@ -230,21 +230,29 @@ jobs:
           if (-not (Test-Path -LiteralPath $installed -PathType Leaf)) { throw 'NSIS não instalou o EXE.' }
           node scripts/verify-desktop-ui.mjs $installed desktop-smoke-installed
           if ($LASTEXITCODE -ne 0) { throw 'EXE instalado falhou no teste visual.' }
-          $originalPath = (Resolve-Path -LiteralPath $installed).Path
-          node scripts/verify-update-restart.mjs $installed $installer $env:CENTRAL_VERSION
-          if ($LASTEXITCODE -ne 0) { throw 'Falha ao transferir a atualização para o instalador.' }
-          $deadline = (Get-Date).AddMinutes(10)
-          do {
-            $relaunched = Get-Process -Name 'W1 Central de Apps' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $installed -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
-            if ($relaunched) { break }
-            Start-Sleep -Seconds 2
-          } while ((Get-Date) -lt $deadline)
-          if (-not $relaunched) { throw 'O instalador não reabriu a janela da Central no caminho original.' }
-          Write-Host "Janela da Central reaberta no Windows: PID $($relaunched.Id)"
-          [void]$relaunched.CloseMainWindow()
-          $updatedPath = (Resolve-Path -LiteralPath $installed).Path
-          $copies = @(Get-ChildItem -LiteralPath $installDir -Filter 'W1 Central de Apps.exe' -File -Recurse)
-          if ($updatedPath -ne $originalPath -or $copies.Count -ne 1) { throw 'A atualização criou uma segunda instalação da Central.' }
+          $signature = Get-AuthenticodeSignature -LiteralPath $installer
+          $signed = $signature.Status -eq 'Valid' -and $signature.SignerCertificate -and $signature.SignerCertificate.Subject -match 'W1 Capital'
+          if (-not $signed) {
+            node scripts/verify-update-restart.mjs $installed $installer $env:CENTRAL_VERSION expect-signature-block
+            if ($LASTEXITCODE -ne 0) { throw 'O EXE CI sem assinatura não foi bloqueado corretamente.' }
+            Write-Host 'Update CI sem assinatura recusado antes da execução, como exigido.'
+          } else {
+            $originalPath = (Resolve-Path -LiteralPath $installed).Path
+            node scripts/verify-update-restart.mjs $installed $installer $env:CENTRAL_VERSION signed
+            if ($LASTEXITCODE -ne 0) { throw 'Falha ao transferir a atualização assinada para o instalador.' }
+            $deadline = (Get-Date).AddMinutes(10)
+            do {
+              $relaunched = Get-Process -Name 'W1 Central de Apps' -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $installed -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+              if ($relaunched) { break }
+              Start-Sleep -Seconds 2
+            } while ((Get-Date) -lt $deadline)
+            if (-not $relaunched) { throw 'O instalador assinado não reabriu a janela da Central no caminho original.' }
+            Write-Host "Janela da Central reaberta no Windows: PID $($relaunched.Id)"
+            [void]$relaunched.CloseMainWindow()
+            $updatedPath = (Resolve-Path -LiteralPath $installed).Path
+            $copies = @(Get-ChildItem -LiteralPath $installDir -Filter 'W1 Central de Apps.exe' -File -Recurse)
+            if ($updatedPath -ne $originalPath -or $copies.Count -ne 1) { throw 'A atualização criou uma segunda instalação da Central.' }
+          }
       - name: Guardar capturas da instalação real no runner
         if: always()
         uses: actions/upload-artifact@v4
