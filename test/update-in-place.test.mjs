@@ -55,7 +55,7 @@ test('o atualizador exige SHA-256 e Authenticode antes de substituir a instalaç
  assert.ok(workflow.includes("if: github.ref == 'refs/heads/main'"));
  assert.ok(workflow.includes("needs.windows.outputs.signed == 'true'"));
  assert.ok(workflow.includes('Get-AuthenticodeSignature'));
- assert.ok(workflow.includes('actions/workflows/windows.yml/runs?status=success'),'o agendamento deve consultar o último build validado');
+ assert.ok(workflow.includes('actions/workflows/windows.yml/runs?status=success'),'o agendamento deve consultar o último build validado');\n assert.ok(workflow.includes('gh api --paginate'),'a busca de checkpoint não pode parar nos 20 runs mais recentes');\n assert.ok(workflow.includes('per_page=100'),'a paginação deve reduzir chamadas sem limitar a busca à primeira página');\n assert.ok(!workflow.includes('status=success&per_page=20'),'a janela curta reproduz a recompilação depois de execuções sem artefato');
  assert.ok(workflow.includes('W1-source-commits-${{ github.run_number }}'),'o build deve publicar um checkpoint leve sem depender de release assinada');
  assert.ok(workflow.includes('actions/artifacts/$artifact_id/zip'),'o agendamento deve recuperar o checkpoint sem baixar os instaladores');
  assert.ok(workflow.includes("('dist/W1-Central-de-Apps-Setup-' + $env:CENTRAL_VERSION + '-x64.exe')"),'cada caminho deve ser avaliado antes de entrar no array PowerShell');
