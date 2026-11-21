@@ -46,7 +46,7 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             checkpoint_dir="$(mktemp -d)"
             checkpoint_file="$checkpoint_dir/source-commits.json"
-            for run_id in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/windows.yml/runs?status=success&per_page=20" --jq '.workflow_runs[].id' 2>/dev/null || true); do
+            for run_id in $(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/workflows/windows.yml/runs?status=success&per_page=100" --jq '.workflow_runs[].id' 2>/dev/null || true); do
               artifact_id="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" --jq '.artifacts[] | select(.name | startswith("W1-source-commits-")) | .id' 2>/dev/null | head -n 1 || true)"
               if [ -n "$artifact_id" ]; then
                 checkpoint_zip="$checkpoint_dir/source-commits.zip"
