@@ -519,8 +519,19 @@ async function openInstalledProduct(id){
  const candidate=productInstallation(id,{localAppData:userLocalData(),storedDirectory:readProductRecord(installedProductsFile,id)?.directory});
  if(!candidate.installed)throw Error('O aplicativo independente ainda não está instalado. Use Instalar ou atualizar e abrir.');
  const error=await shell.openPath(candidate.exe);
- if(error)throw Error('O Windows não conseguiu abrir '+resolveApp(id).name+': '+String(error).slice(0,160));
- return {opened:true,installation:installedProductState(id)};
+ if(error){
+  // A loja nunca pode deixar o usuário sem acesso porque um EXE individual
+  // antigo falhou: tente a edição integrada da Central, com a mesma base.
+  // Confirmar estado "running" evita reportar sucesso com tela vazia.
+  if(BUILD.id==='central'){
+   const recovery=await openProduct(id);
+   const status=recovery?.apps?.find(app=>app.id===id)?.status;
+   if(status?.phase==='running')
+    return {opened:true,recovered:true,mode:'integrated',installation:installedProductState(id)};
+  }
+  throw Error('O Windows não conseguiu abrir '+resolveApp(id).name+': '+String(error).slice(0,160));
+ }
+ return {opened:true,recovered:false,mode:'standalone',installation:installedProductState(id)};
 }
 async function installProductWithVerification(id){
  const spec=productSpec(id);
