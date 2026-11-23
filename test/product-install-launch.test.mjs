@@ -20,8 +20,11 @@ test('installer download has a separate verified install action exposed to the s
  assert.match(ui,/bridge\.installProduct\(app\.id\)/);
  assert.match(ui,/Instalar /);
 });
-test('local Next startup provides time for a slow Windows PC',()=>{
+test('local Next startup supports slow PCs and reports the local HTTP status',()=>{
  const main=read('../src/main.mjs');
- assert.match(main,/for\(let i=0;i<240;i\+\+\)/);
- assert.match(main,/await sleep\(350\)/);
+ const health=read('../src/local-health.mjs');
+ assert.match(main,/await waitForLocalHealth\(/);
+ assert.match(health,/attempts=100/);
+ assert.match(health,/timeout=2500/);
+ assert.match(health,/response.status/);
 });
