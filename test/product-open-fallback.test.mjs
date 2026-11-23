@@ -6,7 +6,7 @@ const store=readFileSync(new URL('../src/store.js',import.meta.url),'utf8');
 
 test('o erro do Windows ao abrir EXE independente tenta o app integrado, sem anunciar falso sucesso',()=>{
  const start=main.indexOf('async function openInstalledProduct(id)');
- const end=main.indexOf('async function installProductWithVerification(id)',start);
+ const end=main.indexOf('async function installProductWithVerification(',start);
  assert.ok(start>=0&&end>start);
  const fn=main.slice(start,end);
  assert.match(fn,/shell\.openPath\(candidate\.exe\)/);
