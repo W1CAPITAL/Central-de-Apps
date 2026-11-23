@@ -59,11 +59,13 @@ export async function verifyFileDigest(file,asset){
  return true;
 }
 
-// Atualizações automáticas exigem os mesmos bytes publicados e uma assinatura
-// Authenticode W1 válida. SHA-256 sozinho não identifica o editor do executável.
+// Stable releases retain Authenticode verification when signed.
+// W1 previews are CI-tested GitHub releases without Authenticode: validate
+// their exact official release URL, size and GitHub-published SHA-256 before
+// caching, and again immediately before invoking NSIS. No third-party hosts.
 export async function downloadVerifiedRelease({signatureScript,...options}){
  const file=await downloadRelease({...options,markOfWeb:false});
- await verifyWindowsSignature(file,signatureScript);
+ if(options.asset?.preview!==true)await verifyWindowsSignature(file,signatureScript);
  return file;
 }
 // Manual installers retain Windows' Internet-zone marking.
@@ -75,7 +77,7 @@ async function downloadRelease({asset,folder,onProgress=()=>{},fetchImpl=fetch,m
   const tag=(asset.preview?'preview-v':'v')+asset.version;
   validateProductRelease({tag_name:tag,prerelease:asset.preview,assets:[{
    name:asset.name,browser_download_url:asset.url,size:asset.size,digest:'sha256:'+asset.sha256
-  }]},asset.product,{manual:markOfWeb});
+  }]},asset.product,{manual:markOfWeb,allowPreview:asset.preview===true});
  }else{
   if(!asset||!VERSION.test(asset.version)||asset.name!=='W1-Central-de-Apps-Setup-'+asset.version+'-x64.exe')
    throw Error('Instalador não passou pela validação do catálogo.');
