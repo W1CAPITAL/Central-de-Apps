@@ -39,7 +39,14 @@ function productCard(app){
  const independentlyInstalled=app.installation?.installed===true;
  const officialRelease=app.download?.version&&!app.download.preview;
  const needsUpdate=independentlyInstalled&&officialRelease&&newerProductVersion(app.installation?.version,app.download.version);
- const primaryLabel=independentlyInstalled?(needsUpdate?'Atualizar e abrir ':'Abrir ')+app.name:
+ // A Central pode empacotar a main dos projetos antes de existir uma release
+ // assinada. Não abrir/instalar o EXE antigo enquanto há código novo integrado.
+ const builtInVersion=currentState?.storeVersion||null;
+ const builtInIsNewer=newerProductVersion(app.download?.version,builtInVersion)&&
+  (!independentlyInstalled||newerProductVersion(app.installation?.version,builtInVersion));
+ const preferBundled=builtInIsNewer;
+ const primaryLabel=preferBundled?'Abrir versão atualizada na Central · '+app.name:
+  independentlyInstalled?(needsUpdate?'Atualizar e abrir ':'Abrir ')+app.name:
   officialRelease?'Instalar e abrir '+app.name:'Abrir na Central · '+app.name;
  const launch=el('button','launch-btn',primaryLabel);
  launch.type='button';
@@ -50,8 +57,16 @@ function productCard(app){
   try{
    // Quem não tem o EXE recebe instalação completa em um clique.
    // Sem release validada, usamos a cópia local que acompanha a Central.
-   if(needsUpdate)await bridge.installProduct(app.id);
-   else if(independentlyInstalled)await bridge.openInstalledProduct(app.id);
+   if(preferBundled)await bridge.launch(app.id);
+   else if(needsUpdate)await bridge.installProduct(app.id);
+   else if(independentlyInstalled){
+    const result=await bridge.openInstalledProduct(app.id);
+    if(result?.recovered){
+     const visible=document.querySelector('.product-card.'+app.id);
+     if(visible)visible.appendChild(el('p','card-install-status',
+      'O Windows recusou o EXE independente. A versão integrada foi aberta para você continuar trabalhando.'));
+    }
+   }
    else if(officialRelease)await bridge.installProduct(app.id);
    else await bridge.launch(app.id);
   }catch(error){
@@ -63,6 +78,8 @@ function productCard(app){
  bottom.appendChild(launch);
  const d=app.download||{};
  const area=el('div','product-download');
+ if(preferBundled)area.appendChild(el('p','card-install-status',
+  'EXE independente ainda na versão anterior. A edição integrada desta Central contém código mais novo; use Abrir acima.'));
  area.appendChild(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · Prévia não assinada':' · Estável'):'Sem instalador disponível'));
  const name=app.name;
  const text=d.phase==='downloading'?'Baixando '+(d.percent||0)+'%':d.phase==='downloaded'?'Instalador baixado':'Baixar '+name+' para Windows';
@@ -94,7 +111,9 @@ function productCard(app){
   try{
    const result=await bridge.installProduct(app.id);
    const cardNow=document.querySelector('.product-card.'+app.id);
-   if(result?.installed&&cardNow)cardNow.appendChild(el('p','card-install-status',app.name+' instalado. Abrindo o aplicativo independente...'));
+   if(result?.installed&&cardNow)cardNow.appendChild(el('p','card-install-status',
+    result.recovered?'O instalador terminou, mas o EXE foi recusado pelo Windows. A versão integrada foi aberta.':
+    app.name+' instalado. Iniciando o aplicativo independente...'));
   }catch(error){
    const cardNow=document.querySelector('.product-card.'+app.id);
    if(cardNow)cardNow.appendChild(el('p','card-error','Não foi possível concluir a instalação: '+String(error?.message||'Erro do Windows')));

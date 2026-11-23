@@ -4,11 +4,11 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
-function fixture({installed,installedVersion='0.1.212'}){
+function fixture({installed,installedVersion='0.1.212',storeVersion='0.1.212',releaseVersion='0.1.212'}){
  const dom=new JSDOM(read('src/store.html'),{runScripts:'outside-only'});
  const calls=[];
  const state={apps:[{id:'lexispredict',name:'LexisPredict',status:{phase:'bundled'},
-  download:{version:'0.1.212',phase:'available'},installation:{installed,phase:installed?'installed':'missing',version:installed?installedVersion:null}}],release:{}};
+  download:{version:releaseVersion,phase:'available'},installation:{installed,phase:installed?'installed':'missing',version:installed?installedVersion:null}}],release:{},storeVersion};
  dom.window.w1Central={onState:()=>{},getState:async()=>state,setAutomaticUpdates:async()=>{},
   launch:async id=>calls.push(['bundled',id]),
   openInstalledProduct:async id=>calls.push(['installed',id]),
@@ -58,6 +58,41 @@ test('Loja mostra ação principal e deixa manutenção opcional recolhida', asy
 
 test('Central atualiza e abre versão antiga pelo botão principal, sem menu técnico',async()=>{
  const {dom,calls}=fixture({installed:true,installedVersion:'0.1.211'});
+ try{
+  await tick();
+  const button=dom.window.document.querySelector('.product-card.lexispredict button.launch-btn');
+  assert.equal(button.textContent,'Atualizar e abrir LexisPredict');
+  button.click();await tick();
+  assert.deepEqual(calls,[['install','lexispredict']]);
+ }finally{dom.window.close()}
+});
+
+test('com exe independente antigo e Central mais nova, abrir usa a versão integrada atualizada',async()=>{
+ const {dom,calls}=fixture({installed:true,installedVersion:'0.1.290',storeVersion:'0.1.338',releaseVersion:'0.1.290'});
+ try{
+  await tick();
+  const button=dom.window.document.querySelector('.product-card.lexispredict button.launch-btn');
+  assert.match(button.textContent,/versão atualizada na Central/);
+  button.click();await tick();
+  assert.deepEqual(calls,[['bundled','lexispredict']]);
+  const notes=[...dom.window.document.querySelectorAll('.product-card.lexispredict .card-install-status')];
+  assert.ok(notes.some(note=>/EXE independente/.test(note.textContent||'')));
+ }finally{dom.window.close()}
+});
+
+test('se a Central tem código mais novo, não manda instalar release assinada antiga',async()=>{
+ const {dom,calls}=fixture({installed:false,storeVersion:'0.1.338',releaseVersion:'0.1.290'});
+ try{
+  await tick();
+  const button=dom.window.document.querySelector('.product-card.lexispredict button.launch-btn');
+  assert.match(button.textContent,/versão atualizada na Central/);
+  button.click();await tick();
+  assert.deepEqual(calls,[['bundled','lexispredict']]);
+ }finally{dom.window.close()}
+});
+
+test('com release independente mais nova que a Central, mantém instalação de EXE novo',async()=>{
+ const {dom,calls}=fixture({installed:true,installedVersion:'0.1.300',storeVersion:'0.1.310',releaseVersion:'0.1.320'});
  try{
   await tick();
   const button=dom.window.document.querySelector('.product-card.lexispredict button.launch-btn');

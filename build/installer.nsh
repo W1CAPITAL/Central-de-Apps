@@ -53,6 +53,19 @@ w1_temp_done:
   ${If} $updateTemp != ""
     RMDir "$updateTemp"
   ${EndIf}
+
+  ; NSIS /S does not run the assisted finish-page "Run" checkbox.
+  ; The Central previously closed, installed silently and never reopened.
+  ; This is strictly the signed-update path (--updated), not first-time installs
+  ; launched by the Central, avoiding duplicate windows or double startup.
+  ${If} ${Silent}
+    ${If} ${isUpdated}
+      IfFileExists "$INSTDIR\${APP_EXECUTABLE_FILENAME}" 0 w1_updated_restart_done
+      ; Start as the logged-in Windows user even when NSIS needed elevation.
+      ${StdUtils.ExecShellAsUser} $0 "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "open" ""
+w1_updated_restart_done:
+    ${EndIf}
+  ${EndIf}
 !macroend
 
 ; A silent updater cannot acknowledge electron-builder's uninstall error dialog.
