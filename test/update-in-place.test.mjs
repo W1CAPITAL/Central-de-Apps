@@ -40,13 +40,15 @@ test('mantém apenas o instalador mais recente do mesmo aplicativo no cache',()=
  }finally{rmSync(folder,{recursive:true,force:true})}
 });
 
-test('o atualizador exige SHA-256 e Authenticode antes de substituir a instalação',()=>{
+test('o atualizador confirma SHA-256 e Authenticode só para releases assinadas',()=>{
  const main=readFileSync(new URL('../src/main.mjs',import.meta.url),'utf8');
  assert.ok(main.includes('downloadVerifiedRelease'));
  assert.ok(main.includes('createInPlaceUpdatePlan'));
  assert.ok(main.includes('await launch(downloadedInstaller,plan.nsisArguments'));
  assert.ok(main.includes("automaticUpdates&&release.phase==='downloaded'"));
  assert.ok(main.includes('verifyWindowsSignature(downloadedInstaller,signatureScript())'));
+ assert.ok(main.includes('if(verifiedAsset.preview!==true)'));
+ assert.ok(main.includes('if(selected.preview!==true)'));
  assert.ok(main.includes('verifyWindowsSignature(installer,signatureScript())'));
  const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
  assert.deepEqual(pkg.build.asarUnpack,['src/verify-signature.ps1']);
@@ -64,8 +66,8 @@ test('o atualizador exige SHA-256 e Authenticode antes de substituir a instalaç
  assert.ok(workflow.includes("('dist/W1-Central-de-Apps-Setup-' + $env:CENTRAL_VERSION + '-x64.exe')"),'cada caminho deve ser avaliado antes de entrar no array PowerShell');
  assert.ok(workflow.includes("('dist/products/predictbot/PredictBot-Setup-' + $env:CENTRAL_VERSION + '-x64.exe')"),'o array não pode concatenar os quatro caminhos em um único item');
  assert.ok(workflow.includes('Nenhuma release pública será criada'));
- assert.ok(workflow.includes('expect-signature-block'));
- assert.ok(workflow.includes('Update CI sem assinatura recusado antes da execução'));
+ assert.ok(workflow.includes('verified-preview'));
+ assert.ok(workflow.includes('O instalador não reabriu a janela da Central'));
  const restartSmoke=readFileSync(new URL('../scripts/verify-update-restart.mjs',import.meta.url),'utf8');
  assert.ok(restartSmoke.includes("mode='signed'"));
  assert.ok(restartSmoke.includes('async function waitForRelease'),'o smoke deve observar o estado real em vez de tratar Promise pendente como sucesso');

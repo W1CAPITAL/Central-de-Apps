@@ -12,7 +12,7 @@ test('loja diferencia rede falhando de falta de release estável e expõe diagn�
  try{
   dom.window.eval(read('src/store.js'));
   await new Promise(resolve=>setTimeout(resolve,0));
-  assert.match(dom.window.document.getElementById('update-message').textContent,/versão estável/i);
+  assert.match(dom.window.document.getElementById('update-message').textContent,/versão publicada/i);
   onState({...state,release:{available:false,error:'GitHub indisponível (HTTP 429)'}});
   assert.match(dom.window.document.getElementById('update-message').textContent,/HTTP 429/);
   onState({...state,release:{available:false,version:'0.1.89',error:null}});

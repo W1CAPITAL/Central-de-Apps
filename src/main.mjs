@@ -1,5 +1,6 @@
 import {app,BrowserWindow,ipcMain,Menu,shell,dialog,session} from 'electron';
-import {spawn} from 'node:child_process';
+import {spawn,execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import {join,dirname} from 'node:path';
 import {existsSync,readFileSync,writeFileSync,mkdirSync,lstatSync} from 'node:fs';
 import {classifyAttachment,ATTACHMENT_FILTERS} from './attachment-policy.mjs';
@@ -25,6 +26,8 @@ import {LocalPredictBotChat} from './predictbot-local.mjs';
 import {PredictBotLibrary} from './predictbot-library.mjs';
 import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
 import {singleFlight,loadProductWhenReady} from './product-startup.mjs';
+import {shouldAutoUpdateInstalledProduct} from './product-auto-update.mjs';
+const runExecutable=promisify(execFile);
 
 const BUILD=productSpec(JSON.parse(readFileSync(new URL('./product-build.json',import.meta.url),'utf8')).id);
 const previousProfile=app.getPath('userData');
@@ -55,6 +58,7 @@ let localPredictBot;
 let predictBotLibrary;
 let productDownloads;
 const productInstallTasks=new Map();
+const productAutomaticChecks=new Map();
 const productOpenTasks=new Map();
 const installedProductsFile=join(app.getPath('userData'),'installed-products.json');
 const userLocalData=()=>process.env.LOCALAPPDATA||join(app.getPath('home'),'AppData','Local');
@@ -68,7 +72,9 @@ let automaticUpdates=true;
 function setAutomaticUpdates(enabled){
  automaticUpdates=enabled;
  writeFileSync(join(app.getPath('userData'),'automatic-updates.json'),JSON.stringify({enabled}));
- announce();return publicState();
+ announce();
+ if(enabled)void checkUpdates();
+ return publicState();
 }
 function trustedOpenCodeEvent(event){
  const bot=windows.get('predictbot');
@@ -370,8 +376,11 @@ async function refreshUpdateCatalog(){
  try{
   const catalog=await fetchReleaseCatalog();
   downloads().update(catalog);
+  if(BUILD.id==='central'&&automaticUpdates)void singleFlight(productAutomaticChecks,'installed',updateInstalledProductsAutomatically)
+   .catch(error=>console.warn('[central-auto-products]',String(error?.message||error).slice(0,180)));
   if(installing||handingOffUpdate)return publicState();
-  const candidate=selectProductRelease(catalog,BUILD.id);
+  // A versão validada mais nova pode ser uma preview aprovada no CI.
+  const candidate=selectProductRelease(catalog,BUILD.id,{allowPreview:true});
   if(!candidate){release={...release,version:null,notes:'',url:null,error:null,phase:'none',canDownload:false,available:false,checkedAt:new Date().toISOString()};return publicState();}
   const version=candidate.version,html=candidate.releaseUrl;
   const available=compareVersion(version,app.getVersion())>0;
@@ -420,7 +429,10 @@ async function installUpdate(automatic=false){
   if(choice.response!==0)return publicState();
  }
   await verifyFileDigest(downloadedInstaller,verifiedAsset);
-  await verifyWindowsSignature(downloadedInstaller,signatureScript());
+  // Releases CI preview não têm certificado; URL oficial + SHA-256 já foram
+  // conferidos duas vezes. Releases estáveis assinadas continuam com Authenticode.
+  if(verifiedAsset.preview!==true)
+   await verifyWindowsSignature(downloadedInstaller,signatureScript());
   const plan=createInPlaceUpdatePlan({
    installerPath:downloadedInstaller,executablePath:process.execPath,
   });
@@ -533,23 +545,27 @@ async function openInstalledProduct(id){
  }
  return {opened:true,recovered:false,mode:'standalone',installation:installedProductState(id)};
 }
-async function installProductWithVerification(id){
+async function installProductWithVerification(id,automatic=false){
  const spec=productSpec(id);
  if(!['lexispredict','infinitum','predictbot'].includes(id))throw Error('Aplicativo independente não autorizado.');
  const record=readProductRecord(installedProductsFile,id);
  const candidate=productInstallation(id,{localAppData:userLocalData(),storedDirectory:record?.directory});
  const selected=downloads().snapshot(id);
  if(!selected.version)throw Error('Nenhuma versão independente publicada. Verifique as versões na Central.');
- const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
-  type:'question',title:'W1 Capital · '+spec.name,
-  message:(candidate.installed?'Atualizar':'Instalar')+' '+spec.name+' v'+selected.version+' e abrir?',
-  detail:'O arquivo será baixado da release oficial W1, conferido por SHA-256 e instalado na pasta local do Windows. O aplicativo será aberto ao terminar, sem exigir passos técnicos. Seus projetos e dados não serão apagados.',
-  buttons:['Instalar e abrir','Cancelar'],defaultId:0,cancelId:1,noLink:true
- });
- if(choice.response!==0)return {cancelled:true};
+ if(automatic){
+  if(!candidate.installed)throw Error('Instalação silenciosa não pode criar um aplicativo novo.');
+ }else{
+  const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
+   type:'question',title:'W1 Capital · '+spec.name,
+   message:(candidate.installed?'Atualizar':'Instalar')+' '+spec.name+' v'+selected.version+' e abrir?',
+   detail:'O arquivo será baixado da release W1, conferido por SHA-256 e instalado na mesma pasta. Seus projetos e dados são preservados.',
+   buttons:['Instalar e abrir','Cancelar'],defaultId:0,cancelId:1,noLink:true
+  });
+  if(choice.response!==0)return {cancelled:true};
+ }
  if(downloads().snapshot(id).phase!=='downloaded')await downloads().download(id);
  const installer=await downloads().verifiedPath(id);
- await verifyWindowsSignature(installer,signatureScript());
+ if(selected.preview!==true)await verifyWindowsSignature(installer,signatureScript());
  const plan=planProductInstall(id,{localAppData:userLocalData(),storedDirectory:record?.directory,installerPath:installer});
  const exitCode=await new Promise((resolve,reject)=>{
   let done=false;
@@ -574,8 +590,43 @@ async function installProductWithVerification(id){
  if(!updated.installed)throw Error('A instalação terminou sem criar '+spec.name+'.exe na pasta esperada. O programa antigo não foi removido.');
  writeProductRecord(installedProductsFile,id,selected.version,plan.directory);
  announce();
+ if(automatic)return {installed:true,opened:false,version:selected.version,updatedInPlace:true};
  const opened=await openInstalledProduct(id);
  return {installed:true,opened:opened.opened,version:selected.version};
+}
+// Check a product's process before replacing its installed binary. Never
+// interrupt a running CRM or launch an application in the background.
+async function isProductRunningInWindows(id){
+ if(process.platform!=='win32')return true;
+ const image=productSpec(id).name+'.exe';
+ try{
+  const {stdout}=await runExecutable('tasklist.exe',
+   ['/FI','IMAGENAME eq '+image,'/FO','CSV','/NH'],
+   {windowsHide:true,timeout:7000,maxBuffer:64000});
+  return stdout.split(/\r?\n/).some(line=>line.trim().toLowerCase().startsWith('"'+image.toLowerCase()+'",'));
+ }catch{return true;} // Could not check whether it is running: do not overwrite.
+}
+async function updateInstalledProductsAutomatically(){
+ if(BUILD.id!=='central'||process.platform!=='win32'||!automaticUpdates||!app.isPackaged)return;
+ for(const id of ['lexispredict','infinitum','predictbot']){
+  if(!automaticUpdates||installing||handingOffUpdate)return;
+  if(productInstallTasks.has(id))continue;
+  const previous=installedProductState(id);
+  const candidate=downloads().snapshot(id);
+  if(!shouldAutoUpdateInstalledProduct({
+   enabled:automaticUpdates,installed:previous.installed,
+   installedVersion:previous.version,candidateVersion:candidate.version,running:false
+  }))continue;
+  const running=await isProductRunningInWindows(id);
+  if(running||productInstallTasks.has(id))continue;
+  const task=installProductWithVerification(id,true);
+  productInstallTasks.set(id,task);announce();
+  try{await task;}
+  catch(error){
+   // Preserve existing EXE and previous version marker on failed download/install.
+   console.warn('[central-auto-product] '+id+': '+String(error?.message||error).slice(0,160));
+  }finally{productInstallTasks.delete(id);announce();}
+ }
 }
 ipcMain.handle('central:install-product',async(event,id)=>{
  if(!trustedStoreEvent(event))throw Error('Origem não autorizada.');

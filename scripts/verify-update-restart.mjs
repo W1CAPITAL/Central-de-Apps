@@ -8,8 +8,9 @@ import {RELEASES_API} from '../src/distribution.mjs';
 
 const {_electron:electron}=createRequire(resolve('..','desktop-test','package.json'))('playwright-core');
 const [executable,installer,buildVersion,mode='signed']=process.argv.slice(2);
-if(!['signed','expect-signature-block'].includes(mode))throw Error('Modo de teste de atualização inválido.');
+if(!['signed','expect-signature-block','verified-preview'].includes(mode))throw Error('Modo de teste de atualização inválido.');
 const expectSignatureBlock=mode==='expect-signature-block';
+const isPreview=mode==='verified-preview';
 const version='1.0.'+buildVersion.split('.')[2];
 const name='W1-Central-de-Apps-Setup-'+version+'-x64.exe';
 const profile=mkdtempSync(join(tmpdir(),'W1 update test '));
@@ -20,9 +21,10 @@ copyFileSync(installer,join(folder,name));
 const hash=createHash('sha256');
 for await(const chunk of createReadStream(installer))hash.update(chunk);
 const sha256=hash.digest('hex');
-const catalog=[{tag_name:'v'+version,prerelease:false,draft:false,assets:[{
+const tag=(isPreview?'preview-v':'v')+version;
+const catalog=[{tag_name:tag,prerelease:isPreview,draft:false,assets:[{
  name,size:statSync(installer).size,digest:'sha256:'+sha256,
- browser_download_url:'https://github.com/W1CAPITAL/Central-de-Apps/releases/download/v'+version+'/'+name
+ browser_download_url:'https://github.com/W1CAPITAL/Central-de-Apps/releases/download/'+tag+'/'+name
 }]}];
 const env={...process.env};
 delete env.ELECTRON_RUN_AS_NODE;
@@ -86,7 +88,7 @@ try{
    page.locator('#install-update').click({noWaitAfter:true,timeout:15000}).catch(cause=>{if(!/closed/i.test(cause.message))throw cause;})
   ]);
   assert.equal(JSON.parse(readFileSync(join(profile,'last-install-attempt.json'),'utf8')).sha256,sha256);
-  console.log('O botão confirmou o pacote assinado em cache e a Central fechou para o NSIS.');
+  console.log('O botão confirmou o pacote SHA-256 do GitHub em cache e a Central fechou para o NSIS ('+mode+').');
  }
 }catch(error){
  const page=desktop.windows()[0];

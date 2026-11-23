@@ -17,11 +17,11 @@ export function compareVersions(a,b){
  for(let i=0;i<3;i++)if(x[i]!==y[i])return x[i]-y[i];
  return 0;
 }
-export function validateProductRelease(release,id,{manual=false}={}){
+export function validateProductRelease(release,id,{manual=false,allowPreview=false}={}){
  const spec=productSpec(id);
  if(release?.draft===true)throw Error('Rascunho fora do canal oficial.');
  const preview=release?.prerelease===true;
- if(preview&&!manual)throw Error('Versão de teste fora do canal oficial.');
+ if(preview&&!manual&&!allowPreview)throw Error('Versão de teste fora do canal oficial.');
  const tag=String(release?.tag_name||'');
  const prefix=preview?'preview-v':'v';
  const version=tag.startsWith(prefix)?tag.slice(prefix.length):'';
