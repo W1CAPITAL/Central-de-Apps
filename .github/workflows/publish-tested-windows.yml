@@ -1,0 +1,81 @@
+name: W1 — publicar EXEs Windows já testados
+
+on:
+  push:
+    paths:
+      - .github/workflows/publish-tested-windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: w1-publish-tested-329
+  cancel-in-progress: false
+
+jobs:
+  publish-tested:
+    if: github.repository == 'W1CAPITAL/Central-de-Apps'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar origem, aprovação Windows e artefato fechado
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          run_id=45188489013
+          commit=a549fe4730e8a487001f2372976720c3ceb30b4a
+          artifact_id=14826146900
+          run_json="$(gh api "repos/$repo/actions/runs/$run_id")"
+          test "$(jq -r .conclusion <<< "$run_json")" = success
+          test "$(jq -r .status <<< "$run_json")" = completed
+          test "$(jq -r .head_sha <<< "$run_json")" = "$commit"
+          test "$(jq -r .run_number <<< "$run_json")" = 329
+          artifacts="$(gh api "repos/$repo/actions/runs/$run_id/artifacts")"
+          jq -e --argjson id "$artifact_id" '.artifacts[] | select(.id==$id and .name=="W1-Central-de-Apps-Windows-x64-0.1.329" and (.expired|not))' <<< "$artifacts" >/dev/null
+          mkdir -p unpack output
+          gh api "repos/$repo/actions/artifacts/$artifact_id/zip" > installer-artifact.zip
+          unzip -q installer-artifact.zip -d unpack
+          # Do not trust arbitrary paths from archives; move only four exact
+          # filenames originating from the verified, completed Windows job.
+          for expected in             W1-Central-de-Apps-Setup-0.1.329-x64.exe             LexisPredict-Setup-0.1.329-x64.exe             INFINITUM-Setup-0.1.329-x64.exe             PredictBot-Setup-0.1.329-x64.exe; do
+            mapfile -d '' matches < <(find unpack -type f -name "$expected" -print0)
+            test "${#matches[@]}" -eq 1
+            cp -- "${matches[0]}" "output/$expected"
+            test "$(stat -c %s "output/$expected")" -gt 1000000
+          done
+          mapfile -d '' commits < <(find unpack -type f -name source-commits.json -print0)
+          test "${#commits[@]}" -eq 1
+          jq -e --arg sha "$commit" '.central==$sha and (.lexispredict|length)==40 and (.infinitum|length)==40 and (.predictbot|length)==40' "${commits[0]}" >/dev/null
+          cp -- "${commits[0]}" output/source-commits.json
+          (cd output && sha256sum -- *-Setup-0.1.329-x64.exe > SHA256SUMS.txt)
+          test "$(find output -maxdepth 1 -name '*-Setup-*.exe' | wc -l)" -eq 4
+      - name: Publicar downloads no GitHub Releases sem exigir certificado
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=preview-v0.1.329
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists. Refusing to overwrite immutable tested files."
+            exit 0
+          fi
+          cat > release-notes.md <<'EOF'
+          W1 Capital — Central 0.1.329, LexisPredict, INFINITUM e PredictBot.
+
+          Os quatro instaladores foram gerados e abertos em testes reais do GitHub Actions no Windows.
+          Disponibilizados para instalação manual, sem exigir compra de certificado digital.
+          Esta versão não possui assinatura Authenticode: o Windows poderá mostrar aviso de aplicativo não reconhecido.
+
+          Por segurança, a atualização automática das versões antigas NÃO instala esta prévia.
+          A Central antiga ainda exige Authenticode para atualizações automáticas. Use o instalador da
+          Central 0.1.329 diretamente nesta página; não é necessário instalar os outros três
+          para usar as cópias integradas. O ZIP do Actions também continua disponível.
+          Os SHA-256 dos quatro instaladores estão em SHA256SUMS.txt.
+          EOF
+          gh release create "$tag"             --repo "$GITHUB_REPOSITORY"             --target a549fe4730e8a487001f2372976720c3ceb30b4a             --title "W1 Capital 0.1.329 — instaladores Windows"             --prerelease             --notes-file release-notes.md             output/*-Setup-0.1.329-x64.exe output/SHA256SUMS.txt output/source-commits.json
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName,isPrerelease,assets             --jq '{tagName,isPrerelease,assets:[.assets[].name]}'
