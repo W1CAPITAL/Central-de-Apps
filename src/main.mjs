@@ -26,6 +26,7 @@ import {LocalPredictBotChat} from './predictbot-local.mjs';
 import {PredictBotLibrary} from './predictbot-library.mjs';
 import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
 import {singleFlight,loadProductWhenReady} from './product-startup.mjs';
+import {waitForLocalHealth} from './local-health.mjs';
 import {shouldAutoUpdateInstalledProduct} from './product-auto-update.mjs';
 const runExecutable=promisify(execFile);
 
@@ -152,24 +153,24 @@ function productEntry(id){
  return {dir,entry};
 }
 async function waitForProduct(id,record){
+ const name=resolveApp(id).name;
  const url='http://127.0.0.1:'+record.port+resolveApp(id).localHealth;
- for(let i=0;i<240;i++){
-  if(record.startupFailure)throw Error('O servidor local não pôde iniciar.');
-  if(record.child.exitCode!==null||record.child.signalCode!==null)
-   throw Error('O servidor local do '+resolveApp(id).name+' encerrou antes de iniciar.');
-  try{
-   const response=await fetch(url,{cache:'no-store',redirect:'error',signal:AbortSignal.timeout(850)});
-   if(response.ok){
-    const data=await response.json();
-    if(data?.ready===true&&data?.nonce===record.nonce)return;
-    throw Error('Identidade da sessão local não corresponde ao produto instalado.');
+ try{
+  await waitForLocalHealth({
+   name,url,nonce:record.nonce,wait:sleep,
+   alive:()=>!record.startupFailure&&record.child.exitCode===null&&record.child.signalCode===null,
+   onProgress:attempt=>{
+    if(attempt%20===0)setStatus(id,'starting','Iniciando servidor local de '+name+' ('+attempt+'/100)...');
    }
-  }catch(error){
-   if(error?.message?.startsWith('Identidade da sessão'))throw error;
+  });
+ }catch(error){
+  if(record.startupFailure){
+   const code=String(record.startupFailure.code||'').replace(/[^A-Z_0-9]/g,'').slice(0,35);
+   throw Error('O servidor local de '+name+' não iniciou'+(code?' ('+code+')':'')+'.');
   }
-  await sleep(350);
+  if(record.startupHint)throw Error(String(error?.message||'Servidor local indisponível')+' '+record.startupHint);
+  throw error;
  }
- throw Error('O servidor local do '+resolveApp(id).name+' não respondeu ao teste de segurança.');
 }
 async function startProduct(id){
  const old=running.get(id);
@@ -185,8 +186,13 @@ async function startProduct(id){
   stdio:['ignore','ignore','pipe'],
   env:safeEnvironment(id,port,nonce)
  });
- child.stderr?.resume();
- const record={child,port,nonce,startupFailure:null};
+ const record={child,port,nonce,startupFailure:null,startupHint:null};
+ // Registrar apenas códigos de falha Next, sem expor stderr ou segredos.
+ child.stderr?.on('data',chunk=>{
+  const value=String(chunk).slice(0,2048);
+  const match=value.match(/\b(EADDRINUSE|EACCES|EPERM|ENOMEM|ENOENT|MODULE_NOT_FOUND|ERR_MODULE_NOT_FOUND)\b/);
+  if(match)record.startupHint='Diagnóstico local: '+match[1]+'.';
+ });
  child.once('error',error=>{record.startupFailure=error;if(running.get(id)===record){
   running.delete(id);setStatus(id,'error','Falha ao iniciar servidor local.');}});
  child.once('exit',()=>{if(running.get(id)===record){
@@ -585,7 +591,9 @@ async function installProductWithVerification(id,automatic=false){
   child.once('error',error=>finish(error));
   child.once('exit',(code,signal)=>finish(signal?Error('Instalador interrompido: '+signal):null,code));
  });
- if(exitCode!==0)throw Error('O instalador encerrou com código '+exitCode+'. Confira as permissões do Windows.');
+ if(exitCode!==0)throw Error(exitCode===2?
+  'Código 2 ao atualizar '+spec.name+': o executável da instalação anterior ainda pode estar em uso ou a substituição falhou. A versão antiga foi preservada.':
+  'O instalador de '+spec.name+' encerrou com código '+exitCode+'. A instalação anterior foi preservada.');
  const updated=productInstallation(id,{localAppData:userLocalData(),storedDirectory:plan.directory});
  if(!updated.installed)throw Error('A instalação terminou sem criar '+spec.name+'.exe na pasta esperada. O programa antigo não foi removido.');
  writeProductRecord(installedProductsFile,id,selected.version,plan.directory);
