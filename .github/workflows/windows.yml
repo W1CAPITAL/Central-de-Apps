@@ -306,6 +306,14 @@ jobs:
             node scripts/verify-desktop-ui.mjs $installedExe ("desktop-smoke-products/installed-"+$id) $id
             if ($LASTEXITCODE -ne 0) { throw "EXE instalado falhou: $id" }
           }
+      - name: Atualizar Lexis instalado sem fechar outra cópia de mesmo nome
+        if: github.ref == 'refs/heads/main'
+        working-directory: central
+        shell: pwsh
+        run: |
+          $installer = "dist/products/lexispredict/LexisPredict-Setup-$env:CENTRAL_VERSION-x64.exe"
+          $installDir = Join-Path $env:RUNNER_TEMP 'W1ProductInstalled-lexispredict'
+          ./scripts/verify-nsis-exact-target.ps1 -Installer $installer -InstalledDirectory $installDir
       - name: Guardar capturas dos aplicativos independentes
         if: always()
         uses: actions/upload-artifact@v4
