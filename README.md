@@ -218,3 +218,7 @@ A integração dos agentes LexisPredict/INFINITUM com a ponte remota depende das
 ## W1 OpenCode Mobile (sem parear com PC)
 
 Projeto Android independente em [android/opencode](android/opencode) e servidor [Cloudflare SDK](cloudflare/opencode-mobile/README.md). O APK do W1 OpenCode é compilado pelo workflow Android e oferecido na Central de Apps W1 após a publicação da release. É necessário configurar o Worker para que o chat funcione. O aplicativo original do OpenCode de terceiros não é alterado.
+
+## Sincronização de LexisPredict — 23/11/2026
+
+A próxima compilação Windows da Central deve incorporar o código da `main` do LexisPredict após a integração das correções de carteira empresarial, carregamento progressivo, tarefas, vencidos, supervisão e relatórios. O workflow compila os servidores Next.js em modo `standalone`, sem depender de uma implantação Vercel para empacotar os EXEs. A publicação estável e a atualização automática continuam condicionadas à validação do instalador e à assinatura Authenticode W1 válida.
