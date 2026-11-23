@@ -16,7 +16,7 @@ test('NSIS encerra somente o executável do diretório sendo atualizado, não ou
  assert.match(powershell,/CloseMainWindow/);
  assert.doesNotMatch(powershell,/-Force|\.Kill\(/,'nunca perder dados forçando um CRM a fechar');
  // EncodedCommand is generated from this checked-in, readable implementation.
- const encoded=Buffer.from(powershell,'utf16le').toString('base64');
+ const encoded=Buffer.from(powershell.replace(/\r\n/g,'\n'),'utf16le').toString('base64');
  assert.ok(close.includes(encoded),'macro NSIS deve executar exatamente o script revisado');
 });
 test('instalador mantém erro explícito sem sugerir permissão como causa única do código 2',()=>{
