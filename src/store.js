@@ -80,13 +80,13 @@ function productCard(app){
  const area=el('div','product-download');
  if(preferBundled)area.appendChild(el('p','card-install-status',
   'EXE independente ainda na versão anterior. A edição integrada desta Central contém código mais novo; use Abrir acima.'));
- area.appendChild(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · Prévia não assinada':' · Estável'):'Sem instalador disponível'));
+ area.appendChild(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · Prévia verificada':' · Estável'):'Sem instalador disponível'));
  const name=app.name;
  const text=d.phase==='downloading'?'Baixando '+(d.percent||0)+'%':d.phase==='downloaded'?'Instalador baixado':'Baixar '+name+' para Windows';
  const download=el('button','secondary',text);
  download.type='button';
  download.disabled=!d.version||d.phase==='downloading'||d.phase==='downloaded';
- download.title=d.preview?'Download de teste, não entra no canal automático.':'Baixar instalador oficial para Windows.';
+ download.title=d.preview?'Instalador testado da W1, com hash verificado e atualização automática.':'Baixar instalador oficial para Windows.';
  download.addEventListener('click',async()=>{
   download.disabled=true;
   try{await bridge.downloadProduct(app.id)}
@@ -185,7 +185,7 @@ function render(value){
   byId('download-bar').style.width=pct+'%';
   byId('download-percent').textContent=Math.floor(pct)+'%';
  }else{
-  updateMessage.textContent=r.error?String(r.error).slice(0,160):!r.version?'Ainda não há versão estável publicada. As versões de teste ficam no catálogo, mas não são instaladas automaticamente.':'Nenhuma atualização disponível. Os aplicativos continuam funcionando normalmente.';
+  updateMessage.textContent=r.error?String(r.error).slice(0,160):!r.version?'Ainda não há uma versão publicada para atualização.':'Nenhuma atualização disponível. Os aplicativos continuam funcionando normalmente.';
   notes.hidden=true;releaseButton.hidden=true;downloadNow.hidden=true;downloadBackground.hidden=true;installUpdate.hidden=true;progress.hidden=true;
  }
 }
