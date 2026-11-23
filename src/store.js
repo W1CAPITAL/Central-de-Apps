@@ -59,7 +59,14 @@ function productCard(app){
    // Sem release validada, usamos a cópia local que acompanha a Central.
    if(preferBundled)await bridge.launch(app.id);
    else if(needsUpdate)await bridge.installProduct(app.id);
-   else if(independentlyInstalled)await bridge.openInstalledProduct(app.id);
+   else if(independentlyInstalled){
+    const result=await bridge.openInstalledProduct(app.id);
+    if(result?.recovered){
+     const visible=document.querySelector('.product-card.'+app.id);
+     if(visible)visible.appendChild(el('p','card-install-status',
+      'O Windows recusou o EXE independente. A versão integrada foi aberta para você continuar trabalhando.'));
+    }
+   }
    else if(officialRelease)await bridge.installProduct(app.id);
    else await bridge.launch(app.id);
   }catch(error){
@@ -104,7 +111,9 @@ function productCard(app){
   try{
    const result=await bridge.installProduct(app.id);
    const cardNow=document.querySelector('.product-card.'+app.id);
-   if(result?.installed&&cardNow)cardNow.appendChild(el('p','card-install-status',app.name+' instalado. Abrindo o aplicativo independente...'));
+   if(result?.installed&&cardNow)cardNow.appendChild(el('p','card-install-status',
+    result.recovered?'O instalador terminou, mas o EXE foi recusado pelo Windows. A versão integrada foi aberta.':
+    app.name+' instalado. Iniciando o aplicativo independente...'));
   }catch(error){
    const cardNow=document.querySelector('.product-card.'+app.id);
    if(cardNow)cardNow.appendChild(el('p','card-error','Não foi possível concluir a instalação: '+String(error?.message||'Erro do Windows')));
