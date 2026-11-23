@@ -39,7 +39,14 @@ function productCard(app){
  const independentlyInstalled=app.installation?.installed===true;
  const officialRelease=app.download?.version&&!app.download.preview;
  const needsUpdate=independentlyInstalled&&officialRelease&&newerProductVersion(app.installation?.version,app.download.version);
- const primaryLabel=independentlyInstalled?(needsUpdate?'Atualizar e abrir ':'Abrir ')+app.name:
+ // A Central pode empacotar a main dos projetos antes de existir uma release
+ // assinada. Não abrir/instalar o EXE antigo enquanto há código novo integrado.
+ const builtInVersion=currentState?.storeVersion||null;
+ const builtInIsNewer=newerProductVersion(app.download?.version,builtInVersion)&&
+  (!independentlyInstalled||newerProductVersion(app.installation?.version,builtInVersion));
+ const preferBundled=builtInIsNewer;
+ const primaryLabel=preferBundled?'Abrir versão atualizada na Central · '+app.name:
+  independentlyInstalled?(needsUpdate?'Atualizar e abrir ':'Abrir ')+app.name:
   officialRelease?'Instalar e abrir '+app.name:'Abrir na Central · '+app.name;
  const launch=el('button','launch-btn',primaryLabel);
  launch.type='button';
@@ -50,7 +57,8 @@ function productCard(app){
   try{
    // Quem não tem o EXE recebe instalação completa em um clique.
    // Sem release validada, usamos a cópia local que acompanha a Central.
-   if(needsUpdate)await bridge.installProduct(app.id);
+   if(preferBundled)await bridge.launch(app.id);
+   else if(needsUpdate)await bridge.installProduct(app.id);
    else if(independentlyInstalled)await bridge.openInstalledProduct(app.id);
    else if(officialRelease)await bridge.installProduct(app.id);
    else await bridge.launch(app.id);
@@ -63,6 +71,8 @@ function productCard(app){
  bottom.appendChild(launch);
  const d=app.download||{};
  const area=el('div','product-download');
+ if(preferBundled)area.appendChild(el('p','card-install-status',
+  'EXE independente ainda na versão anterior. A edição integrada desta Central contém código mais novo; use Abrir acima.'));
  area.appendChild(el('p','oc-note',d.version?'Windows v'+d.version+(d.preview?' · Prévia não assinada':' · Estável'):'Sem instalador disponível'));
  const name=app.name;
  const text=d.phase==='downloading'?'Baixando '+(d.percent||0)+'%':d.phase==='downloaded'?'Instalador baixado':'Baixar '+name+' para Windows';
