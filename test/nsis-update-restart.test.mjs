@@ -15,7 +15,8 @@ test('uma atualização silenciosa confirma o EXE instalado e o reabre como usu�
 });
 
 test('o smoke de atualização Windows verifica o retorno do processo na mesma instalação',()=>{
- assert.match(workflow,/node scripts\/verify-update-restart\.mjs \$installed \$installer \$env:CENTRAL_VERSION signed/);
+ assert.match(workflow,/node scripts\/verify-update-restart\.mjs \$installed \$installer \$env:CENTRAL_VERSION \$mode/);
+ assert.match(workflow,/verified-preview/);
  assert.match(workflow,/if \(-not \$relaunched\)/);
  assert.match(workflow,/assinatura Authenticode/i);
 });
