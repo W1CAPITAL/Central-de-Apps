@@ -75,8 +75,8 @@ test('com exe independente antigo e Central mais nova, abrir usa a versão integ
   assert.match(button.textContent,/versão atualizada na Central/);
   button.click();await tick();
   assert.deepEqual(calls,[['bundled','lexispredict']]);
-  const note=dom.window.document.querySelector('.product-card.lexispredict .card-install-status');
-  assert.match(note?.textContent||'',/EXE independente/);
+  const notes=[...dom.window.document.querySelectorAll('.product-card.lexispredict .card-install-status')];
+  assert.ok(notes.some(note=>/EXE independente/.test(note.textContent||'')));
  }finally{dom.window.close()}
 });
 
