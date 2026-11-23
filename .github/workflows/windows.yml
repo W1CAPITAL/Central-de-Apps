@@ -368,6 +368,76 @@ jobs:
             central/dist/products/predictbot/PredictBot-Setup-${{ env.CENTRAL_VERSION }}-x64.exe
           if-no-files-found: error
           retention-days: 30
+  publish_preview:
+    needs: [inspect, windows]
+    if: github.ref == 'refs/heads/main' && needs.windows.result == 'success' && needs.windows.outputs.signed != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Baixar EXEs compilados e testados no Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: W1-Central-de-Apps-Windows-x64-0.1.${{ github.run_number }}
+          path: downloaded
+      - name: Conferir quatro instaladores e os commits de origem antes de publicar
+        shell: bash
+        env:
+          LEXIS_SHA: ${{ needs.inspect.outputs.lexis_sha }}
+          INFINITUM_SHA: ${{ needs.inspect.outputs.infinitum_sha }}
+          PREDICTBOT_SHA: ${{ needs.inspect.outputs.predictbot_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p outgoing
+          for name in \
+            "W1-Central-de-Apps-Setup-0.1.${{ github.run_number }}-x64.exe" \
+            "LexisPredict-Setup-0.1.${{ github.run_number }}-x64.exe" \
+            "INFINITUM-Setup-0.1.${{ github.run_number }}-x64.exe" \
+            "PredictBot-Setup-0.1.${{ github.run_number }}-x64.exe"; do
+            mapfile -d '' matches < <(find downloaded -type f -name "$name" -print0)
+            test "${#matches[@]}" -eq 1
+            cp -- "${matches[0]}" "outgoing/$name"
+            test "$(stat -c %s "outgoing/$name")" -gt 1000000
+          done
+          mapfile -d '' manifests < <(find downloaded -type f -name source-commits.json -print0)
+          test "${#manifests[@]}" -eq 1
+          jq -e --arg c "$GITHUB_SHA" --arg l "$LEXIS_SHA" --arg i "$INFINITUM_SHA" --arg b "$PREDICTBOT_SHA" \
+            '.central==$c and .lexispredict==$l and .infinitum==$i and .predictbot==$b' "${manifests[0]}" >/dev/null
+          cp -- "${manifests[0]}" outgoing/source-commits.json
+          (cd outgoing && sha256sum -- *-Setup-*.exe > SHA256SUMS.txt)
+          test "$(find outgoing -maxdepth 1 -name '*-Setup-*.exe' | wc -l)" -eq 4
+      - name: Publicar preview manual sem exigir certificado
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="preview-v0.1.${{ github.run_number }}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag já existe; não substituir bytes de instaladores publicados."
+            exit 0
+          fi
+          cat > release-notes.md <<'EOF'
+          Instaladores Windows da W1 Capital compilados, instalados e abertos
+          com sucesso na suíte de testes do GitHub Actions.
+
+          Esta é uma versão manual de testes, sem assinatura Authenticode.
+          O Windows pode exibir um alerta de editor não reconhecido.
+          O atualizador automático legado NÃO instala previews sem assinatura.
+          Nenhum banco de dados precisa ser apagado ou recriado.
+
+          O pacote inclui Central, LexisPredict, Infinitum e PredictBot,
+          seus commits de origem e SHA256SUMS.txt para integridade.
+          EOF
+          gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "W1 Capital 0.1.${{ github.run_number }} — instaladores Windows testados" \
+            --prerelease --notes-file release-notes.md \
+            outgoing/*-Setup-*.exe outgoing/SHA256SUMS.txt outgoing/source-commits.json
+          gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json tagName,assets \
+            --jq '{tagName, assets:[.assets[].name]}'
+
   publish:
     needs: [windows]
     if: github.ref == 'refs/heads/main' && needs.windows.outputs.signed == 'true'
