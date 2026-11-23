@@ -5,7 +5,7 @@
  */
 export async function waitForLocalHealth({
  name,nonce,url,fetchImpl=fetch,alive=()=>true,wait=ms=>new Promise(r=>setTimeout(r,ms)),
- attempts=100,timeout=2500
+ attempts=100,timeout=2500,onProgress=()=>{}
 }){
  if(typeof name!=='string'||!name||typeof nonce!=='string'||!/^[a-f0-9]{48}$/.test(nonce))
   throw Error('Parâmetros de segurança local inválidos.');
@@ -35,7 +35,7 @@ export async function waitForLocalHealth({
    last=/^(ECONNREFUSED|EADDRINUSE|EACCES|EPERM)$/.test(code)?code:
     error?.name==='TimeoutError'||error?.name==='AbortError'?'tempo esgotado na conexão local':'falha na conexão local';
   }
-  if(i+1<attempts)await wait(600);
+  if(i+1<attempts){onProgress(i+1,last);await wait(600);}
  }
  throw Error('O servidor local do '+name+' não ficou pronto. Último resultado: '+last+'.');
 }
