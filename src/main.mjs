@@ -41,7 +41,8 @@ const states=Object.fromEntries(Object.keys(APPS).map(id=>[id,{phase:'bundled',m
 let storeWindow=null;
 let release={version:null,notes:'',url:null,checkedAt:null,error:null,phase:'none',canDownload:false,percent:0};
 let verifiedAsset=null,downloadedInstaller=null,downloadPromise=null,installing=false,handingOffUpdate=false;
-let checking=false,closing=false;
+const updateChecks=new Map();
+let closing=false;
 const installAttemptFile=join(app.getPath('userData'),'last-install-attempt.json');
 function previousInstallAttempt(asset){
  try{return JSON.parse(readFileSync(installAttemptFile,'utf8')).sha256===asset.sha256;}
@@ -361,35 +362,38 @@ function compareVersion(v1,v2){
  for(let i=0;i<3;i++){if(a[i]!==b[i])return a[i]-b[i]}
  return 0;
 }
-async function checkUpdates(){
+function checkUpdates(){
  if(!app.isPackaged)return publicState();
- if(checking)return publicState();
- checking=true;
+ return singleFlight(updateChecks,'catalog',refreshUpdateCatalog);
+}
+async function refreshUpdateCatalog(){
  try{
   const catalog=await fetchReleaseCatalog();
   downloads().update(catalog);
+  if(installing||handingOffUpdate)return publicState();
   const candidate=selectProductRelease(catalog,BUILD.id);
   if(!candidate){release={...release,version:null,notes:'',url:null,error:null,phase:'none',canDownload:false,available:false,checkedAt:new Date().toISOString()};return publicState();}
   const version=candidate.version,html=candidate.releaseUrl;
   const available=compareVersion(version,app.getVersion())>0;
   const asset=available?candidate:null;
-  const preserved=available&&verifiedAsset?.version===version&&verifiedAsset.sha256===asset.sha256&&downloadedInstaller;
-  if(!preserved){
+  const sameAsset=available&&verifiedAsset?.version===version&&verifiedAsset.sha256===asset.sha256;
+  const downloading=sameAsset&&downloadPromise&&release.phase==='downloading';
+  const downloaded=sameAsset&&downloadedInstaller&&release.phase==='downloaded';
+  if(!sameAsset){
    downloadedInstaller=null;
    verifiedAsset=asset;
   }
   release={version,notes:'Nova versão de '+BUILD.name+' disponível no GitHub.',
    url:html,checkedAt:new Date().toISOString(),error:null,available,
-   canDownload:!!asset,phase:preserved?'downloaded':available?'available':'none',
-   percent:preserved?100:0};
+   canDownload:!!asset,phase:downloading?'downloading':downloaded?'downloaded':available?'available':'none',
+   percent:downloading?release.percent:downloaded?100:0};
   if(asset && previousInstallAttempt(asset) && !handingOffUpdate && !installing && !downloadPromise){
    release={...release,phase:'error',error:'A instalação anterior foi iniciada e esta versão continua aberta. Se o instalador já terminou, clique em Atualizar agora para tentar novamente.'};
   }
-  if(!asset&&!preserved)verifiedAsset=null;
  }catch(error){
   release={...release,checkedAt:new Date().toISOString(),
    error:String(error?.message||'Não foi possível consultar versões.').slice(0,160)};
- }finally{checking=false;announce()}
+ }finally{announce()}
  if(automaticUpdates&&release.available&&release.canDownload&&release.phase==='available')void downloadUpdate();
  return publicState();
 }
