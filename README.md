@@ -222,3 +222,7 @@ Projeto Android independente em [android/opencode](android/opencode) e servidor 
 ## Sincronização de LexisPredict — 23/11/2026
 
 A próxima compilação Windows da Central deve incorporar o código da `main` do LexisPredict após a integração das correções de carteira empresarial, carregamento progressivo, tarefas, vencidos, supervisão e relatórios. O workflow compila os servidores Next.js em modo `standalone`, sem depender de uma implantação Vercel para empacotar os EXEs. A publicação estável e a atualização automática continuam condicionadas à validação do instalador e à assinatura Authenticode W1 válida.
+
+## Sincronização do INFINITUM — 24/11/2026
+
+A [PR #13 do INFINITUM](https://github.com/W1CAPITAL/Infinitum/pull/13), integrada no commit `07fb45ceac16a2632e92eeec086a43014c1b9ae5`, corrige a expansão automática das listas empresariais, a consulta integral da carteira no relatório e o consumo dos agregados históricos de atividades. CI e compilação Docker aprovados. A compilação Windows deve incorporar essa revisão ou uma revisão posterior da `main` do INFINITUM, identificada pelo manifesto `source-commits.json`. O INFINITUM permanece o destino das melhorias de CRM; o LexisPredict serve de referência funcional. A disponibilidade do EXE depende da publicação e validação do pacote Windows.
