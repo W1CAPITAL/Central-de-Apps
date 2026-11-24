@@ -7,7 +7,7 @@ export class ProductDownloads {
  constructor({folder,onState=()=>{},fetchImpl=fetch}){this.#folder=folder;this.#notify=onState;this.#fetch=fetchImpl;}
  snapshot(id){
   productSpec(id);const item=this.#items.get(id);
-  return item?{version:item.asset.version,preview:item.asset.preview,phase:item.phase,percent:item.percent,error:item.error||null}:
+  return item?{version:item.asset.version,preview:item.asset.preview,sha256:item.asset.sha256,phase:item.phase,percent:item.percent,error:item.error||null}:
    {version:null,phase:'unavailable',percent:0,error:null};
  }
  update(releases){
@@ -15,7 +15,8 @@ export class ProductDownloads {
    if(this.#busy.has(id))continue;
    const asset=selectProductRelease(releases,id,{manual:true});
    const previous=this.#items.get(id);
-   if(asset&&previous?.asset.url!==asset.url)this.#items.set(id,{asset,phase:'available',percent:0,path:null});
+   if(asset&&(previous?.asset.url!==asset.url||previous?.asset.sha256!==asset.sha256))this.#items.set(id,{asset,phase:'available',percent:0,path:null});
+   else if(!asset)this.#items.delete(id);
   }
   this.#notify();
  }
@@ -32,10 +33,12 @@ export class ProductDownloads {
    .finally(()=>{this.#busy.delete(id);this.#notify();});
   this.#busy.set(id,task);return task;
  }
- async verifiedPath(id){
+ async verifiedPackage(id){
   productSpec(id);const item=this.#items.get(id);
   if(!item?.path||item.phase!=='downloaded')throw Error('Baixe o aplicativo primeiro.');
   await verifyFileDigest(item.path,item.asset);
-  return item.path;
+  if(this.#items.get(id)!==item)throw Error('A release mudou durante a verificação.');
+  return {path:item.path,asset:item.asset};
  }
+ async verifiedPath(id){return (await this.verifiedPackage(id)).path}
 }

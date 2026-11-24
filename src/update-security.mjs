@@ -35,7 +35,7 @@ export function validateReleaseAsset(release,product='central'){
 function trustedDownloadResponse(value){
  try{
   const u=new URL(value);
-  return u.protocol==='https:'&&!u.username&&!u.password&&HOSTS.has(u.hostname.toLowerCase());
+  return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&HOSTS.has(u.hostname.toLowerCase());
  }catch{return false}
 }
 export async function verifyWindowsSignature(file,scriptPath,spawnImpl=spawn){
@@ -103,8 +103,16 @@ async function downloadRelease({asset,folder,onProgress=()=>{},fetchImpl=fetch,m
  let total=0;
  const hash=createHash('sha256');
  try{
-  const response=await fetchImpl(asset.url,{redirect:'follow',cache:'no-store',
-   signal:AbortSignal.timeout(20*60*1000)});
+  const signal=AbortSignal.timeout(60*60*1000);
+  let url=asset.url,response;
+  for(let hop=0;hop<=7;hop++){
+   if(!trustedDownloadResponse(url))throw Error('Redirecionamento para origem não autorizada.');
+   response=await fetchImpl(url,{redirect:'manual',cache:'no-store',signal});
+   if(![301,302,303,307,308].includes(response.status))break;
+   const target=response.headers.get('location');await response.body?.cancel().catch(()=>{});
+   if(!target||hop===7)throw Error('Redirecionamento inválido ou excessivo.');
+   url=new URL(target,url).href;
+  }
   if(!response.ok||!response.body||!trustedDownloadResponse(response.url||asset.url))
    throw Error('Falha no download HTTPS oficial.');
   const rawLength=Number(response.headers.get('content-length'));

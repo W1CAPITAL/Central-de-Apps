@@ -4,11 +4,10 @@ import {compareVersions} from './distribution.mjs';
  * The W1 Central does not silently install a product the user never installed.
  */
 export function shouldAutoUpdateInstalledProduct({
- enabled,installed,installedVersion,candidateVersion,running
+ enabled,installed,installedVersion,candidateVersion,running,preview=false
 }){
- if(!enabled||!installed||running||typeof candidateVersion!=='string')return false;
+ if(!enabled||!installed||running||preview===true||typeof candidateVersion!=='string')return false;
  if(!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(candidateVersion))return false;
- if(installedVersion===null||installedVersion===undefined)return true;
- if(typeof installedVersion!=='string')return false;
+ if(typeof installedVersion!=='string'||!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(installedVersion))return false;
  return compareVersions(candidateVersion,installedVersion)>0;
 }

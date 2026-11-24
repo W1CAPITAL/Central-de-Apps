@@ -28,6 +28,7 @@ import {zoomFactorForAction,zoomPercent} from './product-zoom.mjs';
 import {singleFlight,loadProductWhenReady} from './product-startup.mjs';
 import {waitForLocalHealth} from './local-health.mjs';
 import {shouldAutoUpdateInstalledProduct} from './product-auto-update.mjs';
+import {normalizeInstalledVersion,confirmInstalledVersion,canRetryInstall,sameRelease} from './install-verification.mjs';
 const runExecutable=promisify(execFile);
 
 const BUILD=productSpec(JSON.parse(readFileSync(new URL('./product-build.json',import.meta.url),'utf8')).id);
@@ -49,7 +50,7 @@ const updateChecks=new Map();
 let closing=false;
 const installAttemptFile=join(app.getPath('userData'),'last-install-attempt.json');
 function previousInstallAttempt(asset){
- try{return JSON.parse(readFileSync(installAttemptFile,'utf8')).sha256===asset.sha256;}
+ try{return !canRetryInstall(JSON.parse(readFileSync(installAttemptFile,'utf8')),asset);}
  catch{return false;}
 }
 let openCode;
@@ -63,10 +64,15 @@ const productAutomaticChecks=new Map();
 const productOpenTasks=new Map();
 const installedProductsFile=join(app.getPath('userData'),'installed-products.json');
 const userLocalData=()=>process.env.LOCALAPPDATA||join(app.getPath('home'),'AppData','Local');
+const productVersions=new Map();
+async function installedExeVersion(path){
+ if(process.platform!=='win32')return null;
+ try{const {stdout}=await runExecutable('powershell.exe',['-NoProfile','-NonInteractive','-Command','[System.Diagnostics.FileVersionInfo]::GetVersionInfo($env:W1_VERSION_EXE).ProductVersion'],{env:{...process.env,W1_VERSION_EXE:path},windowsHide:true,timeout:10000,maxBuffer:16384});return normalizeInstalledVersion(stdout)}catch{return null}
+}
 function installedProductState(id){
  const record=readProductRecord(installedProductsFile,id);
  const installed=productInstallation(id,{localAppData:userLocalData(),storedDirectory:record?.directory});
- return {installed:installed.installed,version:record?.version||null,phase:productInstallTasks.has(id)?'installing':installed.installed?'installed':'missing'};
+ return {installed:installed.installed,version:installed.installed?(productVersions.has(id)?productVersions.get(id):record?.version||null):null,phase:productInstallTasks.has(id)?'installing':installed.installed?'installed':'missing'};
 }
 function downloads(){return productDownloads||(productDownloads=new ProductDownloads({folder:join(app.getPath('downloads'),'W1 Capital'),onState:announce}));}
 let automaticUpdates=true;
@@ -409,7 +415,7 @@ async function refreshUpdateCatalog(){
   release={...release,checkedAt:new Date().toISOString(),
    error:String(error?.message||'Não foi possível consultar versões.').slice(0,160)};
  }finally{announce()}
- if(automaticUpdates&&release.available&&release.canDownload&&release.phase==='available')void downloadUpdate();
+ if(automaticUpdates&&verifiedAsset?.preview!==true&&release.available&&release.canDownload&&release.phase==='available')void downloadUpdate();
  return publicState();
 }
 function signatureScript(){
@@ -419,6 +425,7 @@ function signatureScript(){
 }
 async function installUpdate(automatic=false){
  if(installing||handingOffUpdate)return publicState();
+ if(automatic&&verifiedAsset?.preview===true)return publicState();
  if(!downloadedInstaller||!verifiedAsset||release.phase!=='downloaded')
   throw Error('Nenhum instalador verificado está pronto.');
  if(!app.isPackaged)throw Error('Atualizações automáticas estão disponíveis na versão instalada.');
@@ -429,7 +436,7 @@ async function installUpdate(automatic=false){
   const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
    type:'question',title:'Atualizar '+BUILD.name,
    message:'A versão '+verifiedAsset.version+' está pronta para instalar.',
-   detail:'A atualização substituirá os arquivos na instalação atual, no mesmo diretório. O aplicativo será reaberto quando a instalação terminar.',
+   detail:(verifiedAsset.preview?'Versão de teste sem Authenticode, verificada por SHA-256. Instalação manual somente. ':'')+'A atualização substituirá os arquivos na instalação atual, no mesmo diretório. O aplicativo será reaberto quando a instalação terminar.',
    buttons:['Atualizar e reiniciar','Depois'],defaultId:1,cancelId:1,noLink:true
   });
   if(choice.response!==0)return publicState();
@@ -459,8 +466,8 @@ async function installUpdate(automatic=false){
    await launch(join(process.resourcesPath,'elevate.exe'),['"'+downloadedInstaller+'"',...plan.nsisArguments]);
   }
   // Persist the anti-loop marker only after the installer has spawned.
-  writeFileSync(installAttemptFile,JSON.stringify({version:verifiedAsset.version,sha256:verifiedAsset.sha256}));
   handingOffUpdate=true;
+  try{writeFileSync(installAttemptFile,JSON.stringify({version:verifiedAsset.version,sha256:verifiedAsset.sha256,startedAt:Date.now()}))}catch{/* installer already spawned; do not leave the running app blocking NSIS */}
   app.quit();
  }catch(error){
   handingOffUpdate=false;
@@ -557,21 +564,26 @@ async function installProductWithVerification(id,automatic=false){
  const record=readProductRecord(installedProductsFile,id);
  const candidate=productInstallation(id,{localAppData:userLocalData(),storedDirectory:record?.directory});
  const selected=downloads().snapshot(id);
+ const currentVersion=candidate.installed?await installedExeVersion(candidate.exe):null;
+ productVersions.set(id,currentVersion);
  if(!selected.version)throw Error('Nenhuma versão independente publicada. Verifique as versões na Central.');
  if(automatic){
-  if(!candidate.installed)throw Error('Instalação silenciosa não pode criar um aplicativo novo.');
+  if(!shouldAutoUpdateInstalledProduct({enabled:automaticUpdates,installed:candidate.installed,installedVersion:currentVersion,candidateVersion:selected.version,running:false,preview:selected.preview}))throw Error('Atualização automática não autorizada para a versão instalada ou o canal selecionado.');
  }else{
   const choice=await dialog.showMessageBox(storeWindow&&!storeWindow.isDestroyed()?storeWindow:undefined,{
    type:'question',title:'W1 Capital · '+spec.name,
    message:(candidate.installed?'Atualizar':'Instalar')+' '+spec.name+' v'+selected.version+' e abrir?',
-   detail:'O arquivo será baixado da release W1, conferido por SHA-256 e instalado na mesma pasta. Seus projetos e dados são preservados.',
+   detail:(selected.preview?'Versão de teste sem Authenticode, verificada por SHA-256. ':'')+'O arquivo será baixado da release W1, conferido por SHA-256 e instalado na mesma pasta. Seus projetos e dados são preservados.',
    buttons:['Instalar e abrir','Cancelar'],defaultId:0,cancelId:1,noLink:true
   });
   if(choice.response!==0)return {cancelled:true};
  }
  if(downloads().snapshot(id).phase!=='downloaded')await downloads().download(id);
- const installer=await downloads().verifiedPath(id);
+ const verified=await downloads().verifiedPackage(id);
+ if(!sameRelease(selected,verified.asset))throw Error('A versão disponível mudou. Confira a nova release antes de instalar.');
+ const installer=verified.path;
  if(selected.preview!==true)await verifyWindowsSignature(installer,signatureScript());
+ if(automatic&&(!automaticUpdates||await isProductRunningInWindows(id)))throw Error('Atualização adiada: aplicativo em uso ou atualização automática desativada.');
  const plan=planProductInstall(id,{localAppData:userLocalData(),storedDirectory:record?.directory,installerPath:installer});
  const exitCode=await new Promise((resolve,reject)=>{
   let done=false;
@@ -582,7 +594,7 @@ async function installProductWithVerification(id,automatic=false){
   const timer=setTimeout(()=>{
    if(done)return;done=true;
    try{child.kill()}catch{}
-   reject(Error('O instalador excedeu 10 minutos. O aplicativo anterior foi preservado.'));
+   reject(Error('O instalador excedeu 10 minutos. O estado da instalação não foi confirmado; confira antes de repetir.'));
   },600000);
   const finish=(error,code)=>{
    if(done)return;done=true;clearTimeout(timer);
@@ -596,7 +608,10 @@ async function installProductWithVerification(id,automatic=false){
   'O instalador de '+spec.name+' encerrou com código '+exitCode+'. A instalação anterior foi preservada.');
  const updated=productInstallation(id,{localAppData:userLocalData(),storedDirectory:plan.directory});
  if(!updated.installed)throw Error('A instalação terminou sem criar '+spec.name+'.exe na pasta esperada. O programa antigo não foi removido.');
- writeProductRecord(installedProductsFile,id,selected.version,plan.directory);
+ const actual=await installedExeVersion(updated.exe);
+ productVersions.set(id,actual);
+ confirmInstalledVersion(actual,selected.version);
+ writeProductRecord(installedProductsFile,id,actual,plan.directory);
  announce();
  if(automatic)return {installed:true,opened:false,version:selected.version,updatedInPlace:true};
  const opened=await openInstalledProduct(id);
@@ -620,13 +635,16 @@ async function updateInstalledProductsAutomatically(){
   if(!automaticUpdates||installing||handingOffUpdate)return;
   if(productInstallTasks.has(id))continue;
   const previous=installedProductState(id);
+  const installation=productInstallation(id,{localAppData:userLocalData(),storedDirectory:readProductRecord(installedProductsFile,id)?.directory});
+  if(!installation.installed)continue;
+  const actual=await installedExeVersion(installation.exe);productVersions.set(id,actual);
   const candidate=downloads().snapshot(id);
   if(!shouldAutoUpdateInstalledProduct({
    enabled:automaticUpdates,installed:previous.installed,
-   installedVersion:previous.version,candidateVersion:candidate.version,running:false
+   installedVersion:actual,candidateVersion:candidate.version,running:false,preview:candidate.preview
   }))continue;
   const running=await isProductRunningInWindows(id);
-  if(running||productInstallTasks.has(id))continue;
+  if(running||productInstallTasks.has(id)||!automaticUpdates)continue;
   const task=installProductWithVerification(id,true);
   productInstallTasks.set(id,task);announce();
   try{await task;}

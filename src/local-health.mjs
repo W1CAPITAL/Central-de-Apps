@@ -24,7 +24,7 @@ export async function waitForLocalHealth({
     if(data){
      if(typeof data.nonce==='string'&&data.nonce!==nonce)
       throw Object.assign(new Error('Identidade da sessão local não corresponde ao produto instalado.'),{securityMismatch:true});
-     if(data.ready===true&&data.nonce===nonce)return {ready:true};
+     if(data.ready===true&&data.nonce===nonce){if(!alive())throw Object.assign(Error('O servidor local encerrou durante a verificação.'),{securityMismatch:true});return {ready:true}};
      last='rota de saúde não autorizou inicialização';
     }
    }

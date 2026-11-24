@@ -1,4 +1,4 @@
-import {existsSync,readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {existsSync,readFileSync,writeFileSync,mkdirSync,renameSync} from 'node:fs';
 import {join,dirname,resolve,isAbsolute,win32} from 'node:path';
 import {productSpec} from './distribution.mjs';
 
@@ -65,5 +65,5 @@ export function writeProductRecord(file,id,version,directory){
  }catch{}
  entries[id]={version,updatedAt:new Date().toISOString(),...(directory?{directory}:{})};
  mkdirSync(dirname(file),{recursive:true});
- writeFileSync(file,JSON.stringify(entries),'utf8');
+ const temp=file+'.tmp';writeFileSync(temp,JSON.stringify(entries),'utf8');renameSync(temp,file);
 }
