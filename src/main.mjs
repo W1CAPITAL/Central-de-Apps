@@ -405,7 +405,7 @@ async function refreshUpdateCatalog(){
    downloadedInstaller=null;
    verifiedAsset=asset;
   }
-  release={version,notes:'Nova versão de '+BUILD.name+' disponível no GitHub.',
+  release={version,preview:asset?.preview===true,notes:'Nova versão de '+BUILD.name+' disponível no GitHub.',
    url:html,checkedAt:new Date().toISOString(),error:null,available,
    canDownload:!!asset,phase:downloading?'downloading':downloaded?'downloaded':available?'available':'none',
    percent:downloading?release.percent:downloaded?100:0};

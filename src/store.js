@@ -86,7 +86,7 @@ function productCard(app){
  const download=el('button','secondary',text);
  download.type='button';
  download.disabled=!d.version||d.phase==='downloading'||d.phase==='downloaded';
- download.title=d.preview?'Instalador testado da W1, com hash verificado e atualização automática.':'Baixar instalador oficial para Windows.';
+ download.title=d.preview?'Prévia da W1 com hash verificado; instalação manual.':'Baixar instalador oficial para Windows.';
  download.addEventListener('click',async()=>{
   download.disabled=true;
   try{await bridge.downloadProduct(app.id)}
@@ -171,7 +171,7 @@ function render(value){
  if(available){
   const phase=String(r.phase||'available');
   if(phase==='downloading')updateMessage.textContent='Baixando versão '+r.version+'. Pode continuar trabalhando.';
-  else if(phase==='downloaded')updateMessage.textContent='Versão '+r.version+' verificada. Será aplicada ao fechar o aplicativo, substituindo a instalação atual.';
+  else if(phase==='downloaded')updateMessage.textContent='Versão '+r.version+' verificada. '+(r.preview?'Prévia: clique em instalar para confirmar.':value.automaticUpdates?'Será aplicada ao fechar o aplicativo.':'Clique em instalar para atualizar.');
   else if(phase==='error')updateMessage.textContent='Atualização não concluída: '+String(r.error||'O pacote não passou na verificação.');
   else if(r.canDownload)updateMessage.textContent='Central v'+r.version+' disponível para atualização.';
   else updateMessage.textContent='Release identificada, mas sem instalador oficial validável.';
