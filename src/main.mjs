@@ -392,7 +392,8 @@ async function refreshUpdateCatalog(){
    .catch(error=>console.warn('[central-auto-products]',String(error?.message||error).slice(0,180)));
   if(installing||handingOffUpdate)return publicState();
   // A versão validada mais nova pode ser uma preview aprovada no CI.
-  const candidate=selectProductRelease(catalog,BUILD.id,{allowPreview:true});
+  const stable=selectProductRelease(catalog,BUILD.id);
+  const candidate=automaticUpdates&&stable&&compareVersion(stable.version,app.getVersion())>0?stable:selectProductRelease(catalog,BUILD.id,{allowPreview:true});
   if(!candidate){release={...release,version:null,notes:'',url:null,error:null,phase:'none',canDownload:false,available:false,checkedAt:new Date().toISOString()};return publicState();}
   const version=candidate.version,html=candidate.releaseUrl;
   const available=compareVersion(version,app.getVersion())>0;
@@ -425,7 +426,7 @@ function signatureScript(){
 }
 async function installUpdate(automatic=false){
  if(installing||handingOffUpdate)return publicState();
- if(automatic&&verifiedAsset?.preview===true)return publicState();
+ if(automatic&&(verifiedAsset?.preview===true||!automaticUpdates))return publicState();
  if(!downloadedInstaller||!verifiedAsset||release.phase!=='downloaded')
   throw Error('Nenhum instalador verificado está pronto.');
  if(!app.isPackaged)throw Error('Atualizações automáticas estão disponíveis na versão instalada.');
@@ -567,6 +568,7 @@ async function installProductWithVerification(id,automatic=false){
  const currentVersion=candidate.installed?await installedExeVersion(candidate.exe):null;
  productVersions.set(id,currentVersion);
  if(!selected.version)throw Error('Nenhuma versão independente publicada. Verifique as versões na Central.');
+ if(currentVersion&&compareVersion(selected.version,currentVersion)<0)throw Error('A versão publicada é anterior à instalada; downgrade bloqueado.');
  if(automatic){
   if(!shouldAutoUpdateInstalledProduct({enabled:automaticUpdates,installed:candidate.installed,installedVersion:currentVersion,candidateVersion:selected.version,running:false,preview:selected.preview}))throw Error('Atualização automática não autorizada para a versão instalada ou o canal selecionado.');
  }else{

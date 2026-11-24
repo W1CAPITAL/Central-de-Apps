@@ -12,7 +12,7 @@ test('installer download has a separate verified install action exposed to the s
  const handler=main.slice(start,main.indexOf('\n});',start));
  assert.match(handler,/trustedStoreEvent\(event\)/);
  assert.ok(handler.includes('installProductWithVerification(id)'));
- assert.ok(main.includes('await downloads().verifiedPath(id)'));
+ assert.ok(main.includes('await downloads().verifiedPackage(id)'));
  assert.ok(main.includes('await downloads().download(id)'));
  assert.ok(main.includes('planProductInstall(id,'));
  assert.ok(main.includes("child.once('exit'"));

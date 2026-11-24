@@ -17,7 +17,7 @@ function example(version,preview,prefix='LexisPredict',bytes=Buffer.alloc(1_000_
   digest:'sha256:'+sha(bytes),browser_download_url:url}]};
 }
 
-test('Central atualiza automaticamente para a preview mais nova do GitHub com hash, não mantém v0.1.290',()=>{
+test('catálogo manual encontra a preview mais nova do GitHub com hash',()=>{
  const releases=[example('0.1.290',false),example('0.1.329',true)];
  const selected=selectProductRelease(releases,'lexispredict',{allowPreview:true});
  assert.equal(selected.version,'0.1.329');
@@ -53,6 +53,7 @@ test('atualiza apenas apps já instalados, em versão mais velha, com atualizaç
  assert.equal(shouldAutoUpdateInstalledProduct({...base,running:true}),false);
  assert.equal(shouldAutoUpdateInstalledProduct({...base,installedVersion:'0.1.329'}),false);
  assert.equal(shouldAutoUpdateInstalledProduct({...base,installedVersion:'0.1.330'}),false);
- assert.equal(shouldAutoUpdateInstalledProduct({...base,installedVersion:null}),true);
+ assert.equal(shouldAutoUpdateInstalledProduct({...base,installedVersion:null}),false);
+ assert.equal(shouldAutoUpdateInstalledProduct({...base,preview:true}),false);
  assert.equal(shouldAutoUpdateInstalledProduct({...base,candidateVersion:'fake'}),false);
 });

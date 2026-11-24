@@ -31,6 +31,8 @@ O Linger tem licença própria baseada em Apache 2.0 com condições adicionais:
 
 ## Atualizações Windows: Central e OpenCode
 
+A atualização silenciosa exige release estável assinada e, para produtos instalados, versão confirmada nos metadados do EXE. Previews permanecem disponíveis para instalação manual com SHA-256 e confirmação explícita. Uma instalação só é registrada como concluída após conferir a versão do executável; falhas não autorizam downgrade ou repetição imediata.
+
 **Central e aplicativos W1:** a instalação é feita sobre a pasta atual pelo instalador NSIS oficial e mantém as configurações do usuário. A Central consulta releases estáveis W1, baixa em segundo plano com verificação SHA-256 e aplica a atualização ao sair. A ação **Atualizar e reiniciar** valida o arquivo novamente, inicia o NSIS e só registra uma tentativa após iniciar o instalador; um erro ao iniciar não causa bloqueio permanente de tentativas. O pipeline Windows instala um EXE real e verifica a reabertura no mesmo caminho.
 
 **OpenCode Desktop para Windows:** utiliza o atualizador próprio do desenvolvedor, com o processo de atualização/reinício do Electron. A Central não sobrepõe esse mecanismo nem executa uma atualização do OpenCode por trás do usuário. Caso o OpenCode entre em ciclo de atualização, a Central e o PredictBot possuem **Verificar OpenCode para PC** e **Reparar ou atualizar OpenCode**. O reparo consulta a lista de releases estáveis (não apenas `/releases/latest`, que pode estar defasado), baixa o executável x64 direto de `anomalyco/opencode`, valida seu hash SHA-256 e só o abre depois da confirmação do usuário. Nenhum arquivo de projetos ou credencial é apagado pela Central.
